@@ -232,11 +232,13 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
   .kpis { grid-template-columns: repeat(2, 1fr); }
   .grid.two { grid-template-columns: 1fr; gap: 0; }
 }
-@media (max-width: 640px) {
+@media (max-width: 960px) {
   .topbar { flex-wrap: wrap; padding: 10px 16px; gap: 8px; }
   .tabs { order: 3; flex-basis: 100%; flex-wrap: wrap; }
-  .tab { padding: 6px 10px; }
   #lock-btn { margin-left: auto; }
+}
+@media (max-width: 640px) {
+  .tab { padding: 6px 10px; }
   .container { padding: 16px; }
   .kpis { gap: 10px; }
   .kpi { padding: 14px; }

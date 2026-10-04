@@ -848,7 +848,9 @@
     $('#install-btn').hidden = true;
   });
   window.addEventListener('appinstalled', () => { $('#install-btn').hidden = true; toast('Pocket Money is installed on your home screen.'); });
-  if (!standalone && /iPhone|iPad|iPod/.test(navigator.userAgent) && $('link[rel=manifest]')) $('#ios-hint').hidden = false;
+  // iPadOS Safari reports itself as a Mac, so also treat a touch-screen "Mac" as an iPad.
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  if (!standalone && isIOS && $('link[rel=manifest]')) $('#ios-hint').hidden = false;
   if ('serviceWorker' in navigator && $('link[rel=manifest]') && /^https?:$/.test(location.protocol)) {
     navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
   }
