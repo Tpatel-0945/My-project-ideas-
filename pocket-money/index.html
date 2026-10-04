@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Pocket Money</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Lock screen -->
+  <main id="lock" class="lock">
+    <form id="lock-form" class="lock-card" autocomplete="off">
+      <div class="logo" aria-hidden="true">₹</div>
+      <h1>Pocket Money</h1>
+      <p class="muted">Private expense manager. Enter your PIN to continue.</p>
+      <div class="pin-dots" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4"
+             aria-label="4-digit PIN" autofocus>
+      <p id="lock-error" class="error" role="alert"></p>
+      <button type="submit" class="btn primary block">Unlock</button>
+    </form>
+  </main>
+
+  <!-- App -->
+  <div id="app" hidden>
+    <header class="topbar">
+      <div class="brand"><span class="logo small" aria-hidden="true">₹</span> Pocket Money</div>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-view="overview">Overview</button>
+        <button class="tab" data-view="add">Add expense</button>
+        <button class="tab" data-view="history">History</button>
+        <button class="tab" data-view="insights">Insights</button>
+        <button class="tab" data-view="settings">Settings</button>
+      </nav>
+      <button id="lock-btn" class="btn ghost" title="Lock now">Lock</button>
+    </header>
+
+    <div class="container">
+      <!-- Overview -->
+      <section id="view-overview" class="view">
+        <div class="view-head">
+          <div>
+            <h2>Overview</h2>
+            <p class="muted" id="period-label"></p>
+          </div>
+          <div class="segmented" role="group" aria-label="Period">
+            <button data-period="week">This week</button>
+            <button data-period="month" class="active">This month</button>
+          </div>
+        </div>
+
+        <div class="kpis" id="kpis"></div>
+
+        <div class="grid two">
+          <div class="card">
+            <h3>Where your money goes</h3>
+            <div class="donut-wrap">
+              <div id="donut"></div>
+              <ul id="cat-legend" class="legend"></ul>
+            </div>
+          </div>
+          <div class="card">
+            <h3 id="daily-title">Daily spending</h3>
+            <div id="daily-bars" class="bars"></div>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <div class="card">
+            <h3>Last 6 months</h3>
+            <div id="month-bars" class="bars"></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Recent expenses</h3>
+              <button class="link" data-goto="history">See all</button>
+            </div>
+            <ul id="recent" class="tx-list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Add / edit -->
+      <section id="view-add" class="view" hidden>
+        <div class="view-head"><h2 id="form-title">Add expense</h2></div>
+        <form id="expense-form" class="card form">
+          <input type="hidden" id="f-id">
+          <label>Amount
+            <div class="amount-input"><span class="cur"></span>
+              <input id="f-amount" type="number" min="0.01" step="0.01" required placeholder="0.00">
+            </div>
+          </label>
+          <label>Category</label>
+          <div id="f-cats" class="cat-picker"></div>
+          <div class="row">
+            <label>Date <input id="f-date" type="date" required></label>
+            <label>Note <input id="f-note" type="text" maxlength="80" placeholder="e.g. Lunch at canteen"></label>
+          </div>
+          <div class="row actions">
+            <button type="button" id="f-cancel" class="btn ghost" hidden>Cancel edit</button>
+            <button type="submit" class="btn primary">Save expense</button>
+          </div>
+          <p id="form-msg" class="success" role="status"></p>
+        </form>
+      </section>
+
+      <!-- History -->
+      <section id="view-history" class="view" hidden>
+        <div class="view-head">
+          <h2>History</h2>
+          <div class="filters">
+            <input id="h-search" type="search" placeholder="Search notes…">
+            <select id="h-cat"><option value="">All categories</option></select>
+            <input id="h-month" type="month">
+          </div>
+        </div>
+        <div class="card">
+          <p class="muted" id="h-summary"></p>
+          <ul id="h-list" class="tx-list"></ul>
+        </div>
+      </section>
+
+      <!-- Insights -->
+      <section id="view-insights" class="view" hidden>
+        <div class="view-head">
+          <div>
+            <h2>Insights &amp; savings plan</h2>
+            <p class="muted">Based on your spending this month and how it compares with earlier weeks and months.</p>
+          </div>
+        </div>
+        <div id="insights" class="insights"></div>
+        <div class="card">
+          <h3>Your savings plan for the rest of this month</h3>
+          <p class="muted" id="plan-intro"></p>
+          <table class="plan">
+            <thead><tr><th>Category</th><th>Spent so far</th><th>On pace for</th><th>Cut by</th><th>New weekly limit</th></tr></thead>
+            <tbody id="plan-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Settings -->
+      <section id="view-settings" class="view" hidden>
+        <div class="view-head"><h2>Settings</h2></div>
+        <form id="settings-form" class="card form">
+          <div class="row">
+            <label>Monthly pocket money (budget)
+              <input id="s-budget" type="number" min="0" step="1" placeholder="e.g. 3000">
+            </label>
+            <label>Currency symbol
+              <select id="s-currency">
+                <option value="₹">₹ Rupee</option>
+                <option value="$">$ Dollar</option>
+                <option value="€">€ Euro</option>
+                <option value="£">£ Pound</option>
+                <option value="¥">¥ Yen</option>
+              </select>
+            </label>
+            <label>Savings goal per month
+              <input id="s-goal" type="number" min="0" step="1" placeholder="e.g. 500">
+            </label>
+          </div>
+          <div class="row actions"><button class="btn primary" type="submit">Save settings</button></div>
+          <p id="settings-msg" class="success" role="status"></p>
+        </form>
+        <div class="card">
+          <h3>Backup</h3>
+          <p class="muted">Your data is stored only in this browser on this device. Download a backup now and then so you never lose it.</p>
+          <div class="row actions left">
+            <button id="export" class="btn">Download backup</button>
+            <label class="btn">Restore backup<input id="import" type="file" accept="application/json" hidden></label>
+            <button id="wipe" class="btn danger">Delete all data</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
