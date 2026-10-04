@@ -832,6 +832,27 @@
   });
 
   // ---------- Start ----------
+  // ---------- Install as an app ----------
+  let installPrompt = null;
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installPrompt = e;
+    $('#install-btn').hidden = false;
+  });
+  $('#install-btn').addEventListener('click', async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice.catch(() => null);
+    installPrompt = null;
+    $('#install-btn').hidden = true;
+  });
+  window.addEventListener('appinstalled', () => { $('#install-btn').hidden = true; toast('Pocket Money is installed on your home screen.'); });
+  if (!standalone && /iPhone|iPad|iPod/.test(navigator.userAgent) && $('link[rel=manifest]')) $('#ios-hint').hidden = false;
+  if ('serviceWorker' in navigator && $('link[rel=manifest]') && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
+  }
+
   resetForm();
   setSyncStatus('Saved on this device');
   showLock();

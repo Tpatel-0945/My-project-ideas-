@@ -290,3 +290,5 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
 .bars.savings .bar i.current { outline-color: var(--good); }
 @media (max-width: 900px) { .budget-grid { grid-template-columns: 1fr; gap: 0; } }
 @media (max-width: 640px) { .budget-rows { grid-template-columns: repeat(2, 1fr); } }
+.btn.install { margin-top: 10px; }
+#ios-hint { margin-top: 12px; }
