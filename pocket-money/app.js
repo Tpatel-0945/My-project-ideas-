@@ -374,6 +374,7 @@
     ];
     $('#kpis').innerHTML = cards.map(c => `<div class="kpi"><div class="label">${c.label}</div><div class="value">${c.value}</div><div class="sub">${c.sub}</div></div>`).join('');
 
+    renderBudget();
     renderDonut(byCategory(p.list), p.spent);
 
     // Daily bars
@@ -406,6 +407,76 @@
     // Recent
     const recent = [...state.expenses].sort(sortDesc).slice(0, 6);
     $('#recent').innerHTML = recent.length ? recent.map(e => txItem(e, false)).join('') : '<li class="empty">No expenses yet. <button class="link" data-goto="add">Add your first one</button></li>';
+  }
+
+  // Monthly budget, spending and savings — always for the current month, whatever the period toggle shows.
+  function renderBudget() {
+    const m = periodInfo('month');
+    const goal = +state.settings.goal || 0;
+    const pill = $('#budget-pill');
+    const body = $('#budget-body');
+    if (!m.budget) {
+      pill.className = 'pill'; pill.textContent = '';
+      body.innerHTML = `<p class="muted">Set your monthly pocket money and a savings goal to see how much you can spend and how much you are saving.</p>
+        <p><button class="btn primary" data-goto="settings">Set budget &amp; savings goal</button></p>`;
+    } else {
+      const spent = m.spent;
+      const saved = m.budget - spent;               // what is still unspent right now
+      const projSaved = m.budget - m.projected;     // what will be left at month end at this pace
+      const leftToSpend = m.target - spent;         // spendable money left after protecting the goal
+      const status = spent > m.budget ? ['bad', 'Over budget']
+        : projSaved < goal ? (projSaved >= 0 ? ['warn', 'Goal at risk'] : ['bad', 'Heading over budget'])
+        : ['good', 'On track'];
+      pill.className = 'pill ' + status[0]; pill.textContent = status[1];
+      const w = v => Math.max(0, Math.min(100, (v / m.budget) * 100));
+      const over = Math.max(0, spent - m.budget);
+      const bar = over
+        ? `<i class="s-spent" style="width:${100 - w(over)}%"></i><i class="s-over" style="width:${w(over)}%"></i>`
+        : `<i class="s-spent" style="width:${w(spent)}%"></i><i class="s-left" style="width:${w(Math.max(0, leftToSpend))}%"></i><i class="s-goal" style="width:${w(Math.min(goal, saved))}%"></i>`;
+      const goalPct = goal ? Math.max(0, Math.min(100, Math.round((projSaved / goal) * 100))) : 0;
+      body.innerHTML = `
+        <div class="stack" role="img" aria-label="${esc(money(spent))} spent of ${esc(money(m.budget))}">${bar}</div>
+        <div class="stack-key">
+          <span><i style="background:var(--primary)"></i>Spent ${money(spent)}</span>
+          <span><i style="background:var(--good-soft)"></i>Left to spend ${money(Math.max(0, leftToSpend))}</span>
+          ${goal ? `<span><i style="background:var(--good)"></i>Savings goal ${money(goal)}</span>` : ''}
+        </div>
+        <div class="budget-rows">
+          <div><small>Monthly budget</small><b>${money(m.budget)}</b></div>
+          <div><small>Spent so far</small><b>${money(spent)}</b></div>
+          <div><small>Unspent right now</small><b class="${saved < 0 ? 'up' : ''}">${money(saved)}</b></div>
+          <div><small>Savings goal</small><b>${goal ? money(goal) : '—'}</b></div>
+          <div><small>Expected savings</small><b class="${projSaved < 0 ? 'up' : 'down'}">${money(projSaved)}</b></div>
+          <div><small>Left to spend</small><b class="${leftToSpend < 0 ? 'up' : ''}">${money(leftToSpend)}</b></div>
+        </div>
+        ${goal ? `<div class="goal-line">
+          <div>Savings goal: <b>${goalPct}%</b> reached at your current pace (${money(Math.max(0, projSaved))} of ${money(goal)})</div>
+          <div class="meter"><i class="${goalPct >= 100 ? '' : goalPct >= 60 ? 'warn' : 'bad'}" style="width:${goalPct}%"></i></div>
+        </div>` : '<p class="muted small">Add a savings goal in Settings to track it here.</p>'}`;
+    }
+
+    // Savings per month for the last 6 months (budget minus spending; this month uses the projection)
+    const el = $('#savings-bars');
+    if (!m.budget) {
+      el.innerHTML = '<div class="empty">Set a budget to see your savings each month.</div>';
+      $('#savings-note').textContent = '';
+      return;
+    }
+    const now = today();
+    const items = [];
+    for (let i = 5; i >= 0; i--) {
+      const s = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const spent = sum(inRange(s, new Date(s.getFullYear(), s.getMonth() + 1, 0)));
+      const v = i === 0 ? m.budget - m.projected : m.budget - spent;
+      items.push({ v, label: MONTHS[s.getMonth()], tip: `${MONTHS[s.getMonth()]} ${s.getFullYear()}: ${v < 0 ? 'overspent ' + money(-v) : 'saved ' + money(v)}${i === 0 ? ' (expected)' : ''}`, current: i === 0, has: i === 0 || spent > 0 });
+    }
+    const shown = items.filter(x => x.has);
+    const max = Math.max(...shown.map(x => Math.abs(x.v)), 1);
+    el.innerHTML = items.map(x => x.has
+      ? `<div class="bar" data-tip="${esc(x.tip)}"><i class="${x.v < 0 ? 'neg' : 'pos'}${x.current ? ' current' : ''}" style="height:${(Math.abs(x.v) / max) * 100}%"></i><span>${esc(x.label)}</span></div>`
+      : `<div class="bar" data-tip="${esc(x.label)}: no expenses recorded"><i class="zero" style="height:0"></i><span>${esc(x.label)}</span></div>`).join('');
+    const total = shown.filter(x => !x.current).reduce((a, x) => a + x.v, 0);
+    $('#savings-note').textContent = `Green bars are money saved and red bars are overspending. This month's bar is an estimate. Past months use your current budget of ${money(m.budget)}${shown.length > 1 ? `, for a total of ${money(total)} saved in earlier months` : ''}.`;
   }
 
   function renderDonut(cats, total) {

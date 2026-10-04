@@ -260,3 +260,33 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
 }
 .toast.bad { background: var(--bad); color: #fff; }
 @media (prefers-reduced-motion: reduce) { .lock-card.shake { animation: none; } * { transition: none !important; } }
+
+/* Budget & savings */
+.budget-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 18px; }
+.budget-grid > .card { margin-bottom: 18px; }
+.pill { font-size: .78rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--surface-2); margin: 4px 0 10px; }
+.stack i { display: block; height: 100%; }
+.stack .s-spent { background: var(--primary); }
+.stack .s-over { background: var(--bad); }
+.stack .s-left { background: var(--good-soft); }
+.stack .s-goal { background: var(--good); }
+.stack-key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--muted); margin-bottom: 14px; }
+.stack-key span { display: inline-flex; align-items: center; gap: 6px; }
+.stack-key i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.budget-rows { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.budget-rows div { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.budget-rows small { display: block; color: var(--muted); font-size: .78rem; font-weight: 600; }
+.budget-rows b { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.goal-line { margin-top: 14px; font-size: .9rem; }
+.goal-line .meter { height: 8px; }
+.small { font-size: .8rem; }
+.bars.savings { height: 170px; }
+.bars.savings .bar i.neg { background: var(--bad); }
+.bars.savings .bar i.pos { background: var(--good); }
+.bars.savings .bar i.current { outline-color: var(--good); }
+@media (max-width: 900px) { .budget-grid { grid-template-columns: 1fr; gap: 0; } }
+@media (max-width: 640px) { .budget-rows { grid-template-columns: repeat(2, 1fr); } }
