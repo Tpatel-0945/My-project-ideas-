@@ -15,9 +15,10 @@
   --bad-soft: #fde7ef;
   --shadow: 0 1px 2px rgba(20, 30, 60, .06), 0 4px 16px rgba(20, 30, 60, .05);
   --radius: 14px;
+  --overlay: rgba(23, 32, 51, .45);
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0f1420;
     --surface: #171e2d;
     --surface-2: #1f2839;
@@ -33,7 +34,28 @@
     --bad: #ff6b9a;
     --bad-soft: #3d1c29;
     --shadow: none;
+    --overlay: rgba(0, 0, 0, .6);
+    color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+    --bg: #0f1420;
+    --surface: #171e2d;
+    --surface-2: #1f2839;
+    --border: #2a3448;
+    --text: #e6eaf3;
+    --muted: #93a0b8;
+    --primary: #6f8cff;
+    --primary-soft: #232f52;
+    --good: #3fcf8e;
+    --good-soft: #17352a;
+    --warn: #f0b13c;
+    --warn-soft: #3a2f17;
+    --bad: #ff6b9a;
+    --bad-soft: #3d1c29;
+    --shadow: none;
+    --overlay: rgba(0, 0, 0, .6);
+    color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -76,7 +98,7 @@ input:focus, select:focus, .btn:focus-visible, .tab:focus-visible {
 label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: .9rem; }
 
 /* Lock screen */
-.lock { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.lock { min-height: 85vh; display: grid; place-items: center; padding: 16px; }
 .lock-card {
   width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--border);
   border-radius: 20px; padding: 32px 28px; text-align: center; box-shadow: var(--shadow);
@@ -84,7 +106,7 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
 .lock-card h1 { font-size: 1.5rem; margin-top: 14px; }
 .logo {
   width: 56px; height: 56px; margin: 0 auto; border-radius: 16px; display: grid; place-items: center;
-  background: linear-gradient(135deg, var(--primary), #8b5cf6); color: #fff; font-size: 1.6rem; font-weight: 700;
+  background: var(--primary); color: #fff; font-size: 1.6rem; font-weight: 700;
 }
 .logo.small { width: 32px; height: 32px; border-radius: 9px; font-size: 1rem; margin: 0; }
 .pin-dots { display: flex; justify-content: center; gap: 14px; margin: 24px 0 12px; }
@@ -96,7 +118,7 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
 
 /* Top bar */
 .topbar {
-  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 16px;
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; display: flex; align-items: center; gap: 16px;
   padding: 10px 24px; background: var(--surface); border-bottom: 1px solid var(--border);
 }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; white-space: nowrap; }
@@ -148,7 +170,7 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
 .bars { display: flex; align-items: flex-end; gap: 4px; height: 190px; padding-top: 18px; }
 .bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; position: relative; }
 .bar i { display: block; width: 100%; max-width: 38px; background: var(--primary); border-radius: 6px 6px 2px 2px; min-height: 2px; opacity: .85; }
-.bar i.today, .bar i.current { opacity: 1; background: linear-gradient(180deg, #8b5cf6, var(--primary)); }
+.bar i.today, .bar i.current { opacity: 1; outline: 2px solid var(--primary); outline-offset: 2px; }
 .bar i.over { background: var(--bad); }
 .bar span { font-size: .7rem; color: var(--muted); margin-top: 6px; white-space: nowrap; }
 .bar:hover::after {
@@ -224,3 +246,17 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
   #donut { margin: 0 auto; }
 }
 .bar i.zero { min-height: 0; }
+
+.btn:disabled, input:disabled { opacity: .55; cursor: not-allowed; }
+.btn.danger.solid { background: var(--bad); color: #fff; }
+.sync { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 0; }
+.sync .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+.overlay { position: fixed; inset: 0; background: var(--overlay); display: grid; place-items: center; padding: 16px; z-index: 50; }
+.dialog { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; max-width: 400px; width: 100%; box-shadow: var(--shadow); }
+.dialog p { margin: 0 0 16px; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 60;
+  background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; max-width: calc(100% - 32px);
+}
+.toast.bad { background: var(--bad); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .lock-card.shake { animation: none; } * { transition: none !important; } }

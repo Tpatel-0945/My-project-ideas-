@@ -7,7 +7,7 @@
   // SHA-256 of the PIN. The PIN itself is never stored in the code.
   const PIN_HASH = 'f0ecb717168951785022e47f15a7f73dda21056fe9922f43b1fc0b4398e384c3';
   const MAX_ATTEMPTS = 5;
-  const LOCKOUT_MS = 60 * 1000;
+  const LOCKOUT_MS = 30 * 1000;
   const IDLE_LOCK_MS = 5 * 60 * 1000;
   const STORE_KEY = 'pocketMoney.v1';
   const GUARD_KEY = 'pocketMoney.guard';
@@ -86,20 +86,100 @@
   const fmtDate = d => `${DOW[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 
   // ---------- Data ----------
-  let state = load();
+  // Two storage modes:
+  //  - cloud: when hosted on claude.ai, data lives in a private per-user store
+  //    (only the signed-in owner of that data can read it) and syncs across devices.
+  //  - local: anywhere else, data lives in this browser's localStorage.
+  // Cloud layout: collection data/users/<uid> with one doc "settings" and one doc per month "m-YYYY-MM".
+  const DEFAULT_SETTINGS = { budget: 0, goal: 0, currency: '₹' };
+  const cloud = { db: null, uid: null, queues: {} };
+  let state = loadLocal();
 
-  function load() {
+  function loadLocal() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_KEY));
       if (raw && Array.isArray(raw.expenses)) {
-        return { expenses: raw.expenses, settings: Object.assign({ budget: 0, goal: 0, currency: '₹' }, raw.settings) };
+        return { expenses: raw.expenses, settings: Object.assign({}, DEFAULT_SETTINGS, raw.settings) };
       }
     } catch (e) { /* fall through to fresh state */ }
-    return { expenses: [], settings: { budget: 0, goal: 0, currency: '₹' } };
+    return { expenses: [], settings: Object.assign({}, DEFAULT_SETTINGS) };
   }
-  function save() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
-    catch (e) { alert('Could not save — your browser storage may be full or disabled.'); }
+
+  // Persist after a change. `months` lists the 'YYYY-MM' months whose expenses changed.
+  function save(months, settingsChanged) {
+    if (!cloud.db) {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+      catch (e) { toast('Could not save. Your browser storage may be full or turned off.', true); }
+      return;
+    }
+    const col = cloud.db.collection('data/users/' + cloud.uid);
+    [...new Set(months || [])].forEach(m => {
+      const items = state.expenses.filter(e => e.date.startsWith(m));
+      queueWrite('m-' + m, () => items.length ? col.doc('m-' + m).set({ month: m, items }) : col.doc('m-' + m).delete());
+    });
+    if (settingsChanged) queueWrite('settings', () => col.doc('settings').set(Object.assign({}, state.settings)));
+  }
+  // One write at a time per document; a later write to the same doc waits for the earlier one.
+  function queueWrite(id, fn) {
+    const run = () => fn().catch(err => {
+      if (err && err.code === 'unavailable') return new Promise(r => setTimeout(r, 800 + Math.random() * 800)).then(fn);
+      throw err;
+    }).catch(err => {
+      toast(err && err.code === 'quota_exceeded' ? 'Storage is full. Delete old expenses and try again.' : 'Could not sync your last change. Check your connection.', true);
+    });
+    cloud.queues[id] = (cloud.queues[id] || Promise.resolve()).then(run);
+  }
+  const allMonths = () => [...new Set(state.expenses.map(e => e.date.slice(0, 7)))];
+
+  async function initCloud() {
+    if (!window.claude || typeof window.claude.use !== 'function') return;
+    try {
+      const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+      const uid = db && user ? await user.id() : null;
+      if (!db || !uid) return;
+      cloud.db = db; cloud.uid = uid;
+      setSyncStatus('Connecting…');
+      db.collection('data/users/' + uid).onSnapshot(snap => {
+        const next = { expenses: [], settings: Object.assign({}, DEFAULT_SETTINGS) };
+        snap.docs.forEach(d => {
+          const body = d.data() || {};
+          if (d.id === 'settings') Object.assign(next.settings, body);
+          else if (d.id.startsWith('m-') && Array.isArray(body.items)) next.expenses.push(...body.items);
+        });
+        state = next;
+        setSyncStatus(snap.metadata.fromCache ? 'Connecting…' : 'Synced to your account');
+        if (!$('#app').hidden) render();
+      }, () => { setSyncStatus('Sync paused. Reload to reconnect.'); });
+    } catch (e) { /* stay in local mode */ }
+  }
+  function setSyncStatus(text) {
+    $('#sync-status').textContent = text;
+    $('#storage-note').textContent = cloud.db
+      ? 'Your expenses are saved privately to your Claude account, so you see the same data on your phone and laptop. Nobody else who opens this page can read them.'
+      : 'Your expenses are saved only in this browser on this device. Download a backup now and then so you never lose them.';
+  }
+
+  // ---------- Toast & confirm (in-page; browser pop-ups are blocked when hosted) ----------
+  let toastTimer = null;
+  function toast(msg, bad) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.toggle('bad', !!bad);
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
+  }
+  function ask(message, okLabel) {
+    return new Promise(resolve => {
+      const dlg = $('#confirm');
+      $('#confirm-msg').textContent = message;
+      $('#confirm-ok').textContent = okLabel || 'Confirm';
+      dlg.hidden = false;
+      $('#confirm-ok').focus();
+      const done = v => { dlg.hidden = true; $('#confirm-ok').onclick = $('#confirm-cancel').onclick = null; resolve(v); };
+      $('#confirm-ok').onclick = () => done(true);
+      $('#confirm-cancel').onclick = () => done(false);
+    });
   }
 
   const money = (n, dp) => {
@@ -127,9 +207,11 @@
     $('#app').hidden = true;
     $('#lock').hidden = false;
     $('#pin').value = '';
+    $('#lock-error').textContent = '';
     updateDots();
     $('#pin').focus();
     clearTimeout(idleTimer);
+    applyLockout();
   }
   function unlock() {
     $('#lock').hidden = true;
@@ -141,14 +223,38 @@
     const n = $('#pin').value.length;
     $$('.pin-dots span').forEach((s, i) => s.classList.toggle('on', i < n));
   }
+  let lockTicker = null;
+  // While locked out, disable the PIN box and count down; re-enable when the time is up.
+  function applyLockout() {
+    clearInterval(lockTicker);
+    const tick = () => {
+      const left = guard().until - Date.now();
+      const locked = left > 0;
+      $('#pin').disabled = locked;
+      $('#unlock-btn').disabled = locked;
+      if (locked) {
+        $('#lock-error').textContent = `Too many wrong tries. Try again in ${Math.ceil(left / 1000)} s.`;
+      } else {
+        clearInterval(lockTicker);
+        if ($('#lock-error').textContent.startsWith('Too many')) $('#lock-error').textContent = '';
+        $('#pin').focus();
+      }
+    };
+    tick();
+    if (guard().until > Date.now()) lockTicker = setInterval(tick, 500);
+  }
   function tryPin() {
     const g = guard();
     const err = $('#lock-error');
-    if (Date.now() < g.until) {
-      err.textContent = `Too many attempts. Try again in ${Math.ceil((g.until - Date.now()) / 1000)}s.`;
+    if (Date.now() < g.until) { applyLockout(); return; }
+    const pin = $('#pin').value;
+    // Bug fix: an empty or partial PIN used to count as a wrong attempt, so tapping
+    // Unlock a few times locked the app and then rejected even the correct PIN.
+    if (pin.length < 4) {
+      err.textContent = 'Enter all 4 digits of your PIN.';
+      $('#pin').focus();
       return;
     }
-    const pin = $('#pin').value;
     if (sha256(pin) === PIN_HASH) {
       setGuard({ fails: 0, until: 0 });
       err.textContent = '';
@@ -158,7 +264,8 @@
     g.fails += 1;
     if (g.fails >= MAX_ATTEMPTS) { g.until = Date.now() + LOCKOUT_MS; g.fails = 0; }
     setGuard(g);
-    err.textContent = g.until > Date.now() ? 'Too many wrong attempts. Locked for 60 seconds.' : `Incorrect PIN. ${MAX_ATTEMPTS - g.fails} attempt(s) left.`;
+    if (g.until > Date.now()) applyLockout();
+    else err.textContent = `That PIN is wrong. ${MAX_ATTEMPTS - g.fails} ${MAX_ATTEMPTS - g.fails === 1 ? 'try' : 'tries'} left.`;
     const card = $('#lock-form');
     card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
     $('#pin').value = '';
@@ -379,14 +486,16 @@
     const data = { amount, category: chosenCat, note: $('#f-note').value.trim(), date: $('#f-date').value || iso(today()) };
     const id = $('#f-id').value;
     if (id) {
-      Object.assign(state.expenses.find(x => x.id === id), data);
-      save();
+      const e = state.expenses.find(x => x.id === id);
+      const oldMonth = e ? e.date.slice(0, 7) : null;
+      if (e) Object.assign(e, data);
+      save([oldMonth, data.date.slice(0, 7)].filter(Boolean));
       resetForm();
       go('history');
       return;
     }
     state.expenses.push(Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), createdAt: new Date().toISOString() }, data));
-    save();
+    save([data.date.slice(0, 7)]);
     $('#form-msg').textContent = `Saved ${money(amount)} on ${CAT[chosenCat].name}.`;
     const keepDate = $('#f-date').value;
     resetForm();
@@ -402,10 +511,16 @@
     const ed = e.target.closest('[data-edit]');
     const del = e.target.closest('[data-del]');
     if (ed) editExpense(ed.dataset.edit);
-    if (del && confirm('Delete this expense?')) {
-      state.expenses = state.expenses.filter(x => x.id !== del.dataset.del);
-      save();
-      renderHistory();
+    if (del) {
+      const target = state.expenses.find(x => x.id === del.dataset.del);
+      if (!target) return;
+      ask(`Delete ${money(target.amount)} on ${(CAT[target.category] || CAT.other).name}?`, 'Delete').then(ok => {
+        if (!ok) return;
+        state.expenses = state.expenses.filter(x => x.id !== target.id);
+        save([target.date.slice(0, 7)]);
+        renderHistory();
+        toast('Expense deleted.');
+      });
     }
   });
 
@@ -594,46 +709,60 @@
     const goal = Math.max(0, parseFloat($('#s-goal').value) || 0);
     if (budget && goal >= budget) { $('#settings-msg').textContent = 'Savings goal must be smaller than your budget.'; return; }
     state.settings = { budget, goal, currency: $('#s-currency').value };
-    save();
+    save([], true);
     render();
     $('#settings-msg').textContent = 'Settings saved.';
   });
-  $('#export').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  $('#export').addEventListener('click', async () => {
+    const filename = `pocket-money-backup-${iso(today())}.json`;
+    const json = JSON.stringify(state, null, 2);
+    const downloads = window.claude && typeof window.claude.use === 'function' ? await window.claude.use('downloads') : null;
+    if (downloads) {
+      try { await downloads.save({ filename, data: json }); toast('Backup saved.'); }
+      catch (err) { if (err && err.code !== 'declined') toast('Could not save the backup here.', true); }
+      return;
+    }
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `pocket-money-backup-${iso(today())}.json`;
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    a.download = filename;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
   $('#import').addEventListener('change', e => {
     const file = e.target.files[0];
+    e.target.value = '';
     if (!file) return;
     const r = new FileReader();
-    r.onload = () => {
+    r.onload = async () => {
+      let clean, data;
       try {
-        const data = JSON.parse(r.result);
+        data = JSON.parse(r.result);
         if (!Array.isArray(data.expenses)) throw new Error('bad file');
-        const clean = data.expenses.filter(x => x && x.id && x.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(x.date))
+        clean = data.expenses.filter(x => x && x.id && x.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(x.date))
           .map(x => ({ id: String(x.id), amount: +x.amount, category: CAT[x.category] ? x.category : 'other', note: String(x.note || ''), date: x.date, createdAt: String(x.createdAt || '') }));
-        if (!confirm(`Restore ${clean.length} expenses? This replaces the data currently in this browser.`)) return;
-        state = { expenses: clean, settings: Object.assign({ budget: 0, goal: 0, currency: '₹' }, data.settings) };
-        save();
-        render();
-        alert('Backup restored.');
-      } catch (err) { alert('That file is not a valid Pocket Money backup.'); }
-      e.target.value = '';
+      } catch (err) { toast('That file is not a Pocket Money backup.', true); return; }
+      if (!await ask(`Restore ${clean.length} expenses from this backup? It replaces everything saved now.`, 'Restore')) return;
+      const before = allMonths();
+      const s = data.settings || {};
+      state = { expenses: clean, settings: { budget: +s.budget || 0, goal: +s.goal || 0, currency: typeof s.currency === 'string' ? s.currency.slice(0, 3) : '₹' } };
+      save(before.concat(allMonths()), true);
+      render();
+      toast('Backup restored.');
     };
     r.readAsText(file);
   });
-  $('#wipe').addEventListener('click', () => {
-    if (!confirm('Delete ALL expenses and settings? This cannot be undone. Download a backup first if unsure.')) return;
-    state = { expenses: [], settings: { budget: 0, goal: 0, currency: state.settings.currency } };
-    save();
+  $('#wipe').addEventListener('click', async () => {
+    if (!await ask('Delete all expenses and settings? This cannot be undone. Download a backup first if you are unsure.', 'Delete everything')) return;
+    const before = allMonths();
+    state = { expenses: [], settings: Object.assign({}, DEFAULT_SETTINGS, { currency: state.settings.currency }) };
+    save(before, true);
     render();
+    toast('All data deleted.');
   });
 
   // ---------- Start ----------
   resetForm();
+  setSyncStatus('Saved on this device');
   showLock();
+  initCloud();
 })();

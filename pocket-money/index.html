@@ -18,7 +18,7 @@
       <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4"
              aria-label="4-digit PIN" autofocus>
       <p id="lock-error" class="error" role="alert"></p>
-      <button type="submit" class="btn primary block">Unlock</button>
+      <button type="submit" id="unlock-btn" class="btn primary block">Unlock</button>
     </form>
   </main>
 
@@ -165,8 +165,9 @@
           <p id="settings-msg" class="success" role="status"></p>
         </form>
         <div class="card">
-          <h3>Backup</h3>
-          <p class="muted">Your data is stored only in this browser on this device. Download a backup now and then so you never lose it.</p>
+          <h3>Your data</h3>
+          <p class="sync"><span class="dot"></span><span id="sync-status"></span></p>
+          <p class="muted" id="storage-note"></p>
           <div class="row actions left">
             <button id="export" class="btn">Download backup</button>
             <label class="btn">Restore backup<input id="import" type="file" accept="application/json" hidden></label>
@@ -176,6 +177,17 @@
       </section>
     </div>
   </div>
+
+  <div id="confirm" class="overlay" hidden>
+    <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
+      <p id="confirm-msg"></p>
+      <div class="row actions">
+        <button id="confirm-cancel" class="btn ghost" type="button">Cancel</button>
+        <button id="confirm-ok" class="btn danger solid" type="button">Confirm</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="app.js"></script>
 </body>
