@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4f46e5">
+  <title>EndSem Focus</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AF%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Lock screen -->
+  <div id="lock" class="lock" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
+    <div class="lock-card" id="lockCard">
+      <div class="lock-icon" aria-hidden="true">🔒</div>
+      <h1 id="lockTitle">EndSem Focus</h1>
+      <p class="muted">Enter your 4-digit PIN to continue</p>
+      <div class="pin-dots" id="pinDots" aria-live="polite">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <p class="lock-msg" id="lockMsg" role="alert"></p>
+      <div class="keypad" id="keypad">
+        <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+        <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+        <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+        <button type="button" data-k="clear" aria-label="Clear">C</button><button type="button" data-k="0">0</button><button type="button" data-k="back" aria-label="Delete">⌫</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div id="app" class="app" hidden>
+    <header class="topbar">
+      <div class="brand"><span aria-hidden="true">🎯</span> EndSem Focus</div>
+      <div class="top-actions">
+        <span class="chip" id="countdownChip"></span>
+        <button type="button" class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">🌓</button>
+        <button type="button" class="icon-btn" id="lockBtn" title="Lock" aria-label="Lock app">🔒</button>
+      </div>
+    </header>
+
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <button type="button" data-tab="today" class="active"><span>✅</span><b>Today</b></button>
+      <button type="button" data-tab="plan"><span>🗓️</span><b>Plan</b></button>
+      <button type="button" data-tab="syllabus"><span>📚</span><b>Syllabus</b></button>
+      <button type="button" data-tab="progress"><span>📈</span><b>Progress</b></button>
+      <button type="button" data-tab="settings"><span>⚙️</span><b>Settings</b></button>
+    </nav>
+
+    <div id="storageWarn" class="banner warn" hidden>⚠️ Your browser is blocking storage (private mode?). Progress will not be saved.</div>
+
+    <main>
+      <section id="tab-today" class="tab-panel"></section>
+      <section id="tab-plan" class="tab-panel" hidden></section>
+      <section id="tab-syllabus" class="tab-panel" hidden></section>
+      <section id="tab-progress" class="tab-panel" hidden></section>
+      <section id="tab-settings" class="tab-panel" hidden></section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="confetti" class="confetti" aria-hidden="true"></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
