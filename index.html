@@ -20,12 +20,14 @@
     <div class="wrap">
       <a href="#/" class="logo">AURA<b>//</b>MONITOR</a>
       <nav class="dock" id="dock" aria-label="Main">
-        <a href="#/"><i>◈</i><span>Dashboard</span></a>
-        <a href="#/log"><i>✚</i><span>Check-in</span></a>
-        <a href="#/scan"><i>◉</i><span>Scan</span></a>
-        <a href="#/trends"><i>∿</i><span>Trends</span></a>
-        <a href="#/routine"><i>☰</i><span>Routine</span></a>
-        <a href="#/me"><i>◎</i><span>Me</span></a>
+        <a href="#/" title="Dashboard"><i>◈</i><span>Home</span></a>
+        <a href="#/log" title="Daily check-in"><i>✚</i><span>Log</span></a>
+        <a href="#/scan" title="Photo scan"><i>◉</i><span>Scan</span></a>
+        <a href="#/trends" title="Trends"><i>∿</i><span>Trends</span></a>
+        <a href="#/fuel" title="Nutrition & hydration"><i>◍</i><span>Fuel</span></a>
+        <a href="#/sleep" title="Sleep monitor"><i>☾</i><span>Sleep</span></a>
+        <a href="#/routine" title="Routine"><i>☰</i><span>Routine</span></a>
+        <a href="#/me" title="Profile & reminders"><i>◎</i><span>Me</span></a>
       </nav>
     </div>
   </header>
@@ -39,6 +41,20 @@
     </div>
   </footer>
 
+  <div class="night hidden" id="night" role="dialog" aria-label="Sleep mode">
+    <div class="night-inner">
+      <div class="nlbl">☾ Sleep tracking</div>
+      <div class="nclock num" id="nclock">--:--</div>
+      <div class="nsub" id="nsub"></div>
+      <div class="row" style="justify-content:center;margin-top:30px">
+        <button class="btn primary" data-act="wake">I'm awake</button>
+        <button class="btn" id="nSnooze" data-act="snooze" hidden>Snooze 9 min</button>
+        <button class="btn ghost" data-act="hideNight">Minimise</button>
+        <button class="btn ghost" data-act="cancelSleep">Cancel night</button>
+      </div>
+      <p class="nnote">Keep this tab open and your phone charging. Keep your phone's own alarm as a backup.</p>
+    </div>
+  </div>
   <div class="toast" id="toast" role="status"></div>
   <div class="modal hidden" id="modal" role="dialog" aria-modal="true"><div class="modal-card"><div class="modal-body"></div><div class="row modal-foot" style="justify-content:flex-end;margin-top:16px"></div></div></div>
 

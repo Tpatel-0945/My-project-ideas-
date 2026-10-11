@@ -58,11 +58,17 @@ const App = (() => {
     { id: 'r2', label: 'Night routine + daily check-in', time: '22:00', days: [0, 1, 2, 3, 4, 5, 6], on: true },
     { id: 'r3', label: 'Weekly photo scan', time: '10:00', days: [0], on: true },
   ];
-  const fresh = () => ({ v: 1, profile: { name: '', skinType: 'Combination', hairType: 'Wavy' }, logs: {}, scans: [], routine: structuredClone(DEFAULT_ROUTINE), reminders: structuredClone(DEFAULT_REM), demo: false });
+  const DEMO_V = 2;
+  const fresh = () => ({
+    v: 2, logs: {}, scans: [], routine: structuredClone(DEFAULT_ROUTINE), reminders: structuredClone(DEFAULT_REM), demo: false,
+    profile: { name: '', skinType: 'Combination', hairType: 'Wavy', sex: 'female', age: 25, weight: 60, height: 162, activity: 'light', goal: 'maintain' },
+    sleep: { alarm: '07:00', alarmOn: true, days: [0, 1, 2, 3, 4, 5, 6], need: 8, sessions: [], active: null },
+    plate: { items: { paneer: 1, sabzi: 1, salad: 1, millet: 1, chaas: 1 } },
+  });
   const newLog = () => ({
     skin: { oil: 3, dry: 2, red: 1, sens: 1, breakouts: 0, zones: [] },
     hair: { fall: 70, itch: 1, flakes: 1, oil: 3, frizz: 3, wash: false },
-    life: { sleep: 7, water: 6, stress: 4, sun: 30, junk: false, period: false, workout: false },
+    life: { sleep: 7, water: 6, stress: 4, sun: 30, junk: false, period: false, workout: false, hot: false, protein: null, meals: { b: true, l: true, d: true } },
     done: { am: [], pm: [] }, flags: [], note: '',
   });
 
@@ -86,7 +92,8 @@ const App = (() => {
     flakes: { label: 'Scalp flakes', color: '#d5c2ff', get: (l) => l.hair?.flakes, max: 10, lowerBetter: true },
     sleep: { label: 'Sleep (h)', color: '#9dff6a', get: (l) => l.life?.sleep, max: 11 },
     stress: { label: 'Stress', color: '#ff9de2', get: (l) => l.life?.stress, max: 10, lowerBetter: true },
-    water: { label: 'Water (glasses)', color: '#6bb8ff', get: (l) => l.life?.water, max: 12 },
+    water: { label: 'Water (glasses)', color: '#6bb8ff', get: (l) => l.life?.water, max: 'auto' },
+    protein: { label: 'Protein (g)', color: '#ffd27a', get: (l) => l.life?.protein ?? null, max: 'auto' },
     routine: { label: 'Routine done %', color: '#e9edff', get: (l) => { const a = adherence(l); return a == null ? null : Math.round(a * 100); }, max: 100 },
   };
   const series = (key, dates) => dates.map((d) => (db.logs[d] ? METRICS[key].get(db.logs[d]) ?? null : null));
@@ -96,6 +103,23 @@ const App = (() => {
     let d = db.logs[today()] ? today() : addDays(today(), -1), n = 0;
     while (db.logs[d]) { n++; d = addDays(d, -1); }
     return n;
+  }
+  const meals = (l) => l?.life?.meals || { b: true, l: true, d: true };
+
+  /* Daily targets from published reference values:
+     energy = Mifflin-St Jeor BMR x activity; protein g/kg (ICMR-NIN 2020 RDA 0.83 g/kg, more when active or losing weight);
+     fat 30% of energy and carbs the remainder (IOM ranges: fat 20-35%, carbs 45-65%); ICMR-NIN 2024 suggests cereals stay near 45%;
+     fibre 14 g per 1000 kcal (IOM);
+     water from drinks = ~80% of EFSA adequate total intake (women 2.0 L, men 2.5 L), +0.5 L for a workout or a hot day. */
+  function targets(p = db.profile, l = db.logs[today()]) {
+    const male = p.sex === 'male', w = +p.weight || 60, h = +p.height || 162, a = +p.age || 25;
+    const bmr = 10 * w + 6.25 * h - 5 * a + (male ? 5 : -161);
+    const act = { sedentary: 1.2, light: 1.375, moderate: 1.55, very: 1.725 }[p.activity] || 1.375;
+    const tdee = bmr * act, kcal = p.goal === 'lose' ? Math.max(bmr * 1.1, tdee * 0.85) : tdee;
+    const pk = p.goal === 'lose' ? 1.2 : p.activity === 'very' ? 1.4 : p.activity === 'moderate' ? 1.2 : 1.0;
+    const protein = w * pk, fat = (kcal * 0.3) / 9, carbs = Math.max(0, kcal - protein * 4 - fat * 9) / 4, fiber = (kcal / 1000) * 14;
+    const waterBase = male ? 2.0 : 1.6, extra = (l?.life?.workout ? 0.5 : 0) + (l?.life?.hot ? 0.5 : 0), water = waterBase + extra;
+    return { bmr, tdee, kcal, pk, protein, carbs, fat, fiber, waterBase, extra, water, glasses: Math.ceil(water / 0.25) };
   }
   const lastLogDate = () => Object.keys(db.logs).sort().at(-1) || null;
 
@@ -114,6 +138,8 @@ const App = (() => {
     { id: 'sun', label: 'Over 1 hour in the sun', test: (l) => l.life.sun > 60 },
     { id: 'water', label: 'Under 6 glasses of water', test: (l) => l.life.water < 6 },
     { id: 'pm', label: 'Skipped night routine', test: (l) => (doneShare(l, 'pm') ?? 1) < 0.5 },
+    { id: 'lunch', label: 'Skipped lunch', test: (l) => !meals(l).l },
+    { id: 'protein', label: 'Low protein (under 60% of target)', test: (l) => (l.life.protein == null ? null : l.life.protein < targets().protein * 0.6) },
   ];
   const TARGETS = [['breakouts', 'breakouts'], ['fall', 'hair fall'], ['red', 'redness']];
 
@@ -122,7 +148,7 @@ const App = (() => {
     const out = [];
     for (const f of FACTORS) for (const [k, name] of TARGETS) {
       const w = [], wo = [];
-      logs.forEach((l) => { const v = METRICS[k].get(l); if (v == null) return; (f.test(l) ? w : wo).push(v); });
+      logs.forEach((l) => { const v = METRICS[k].get(l), tv = f.test(l); if (v == null || tv == null) return; (tv ? w : wo).push(v); });
       if (w.length < 3 || wo.length < 3) continue;
       const a = avg(w), b = avg(wo), base = Math.max(b, k === 'fall' ? 20 : 0.5);
       out.push({ f, k, name, with: a, without: b, nWith: w.length, nWithout: wo.length, effect: (a - b) / base });
@@ -151,6 +177,14 @@ const App = (() => {
       lv: 'info', ic: '∿', t: `More ${c.name} on days with ${c.f.label.toLowerCase()}`,
       p: `${round(c.with, 1)} vs ${round(c.without, 1)} on other days (${c.nWith} vs ${c.nWithout} days logged). A pattern, not proof.`,
     }));
+    const tg = targets(), sl7 = avgOver('sleep', 7);
+    if (sl7 != null && sl7 < 7) out.push({ lv: 'warn', ic: '☾', t: `Averaging ${round(sl7, 1)} h of sleep this week`, p: `Adults need 7 hours or more (AASM/SRS). For your ${esc(db.sleep.alarm)} alarm, aim for bed by ${bedFor(db.sleep.need)}. <a href="#/sleep">Sleep →</a>` });
+    const w7 = avgOver('water', 7);
+    if (w7 != null && w7 < tg.glasses * 0.7) out.push({ lv: 'info', ic: '💧', t: `Water averaging ${round(w7, 1)} of ${tg.glasses} glasses`, p: 'Small, regular glasses through the day are easier than catching up at night. <a href="#/fuel">Hydration →</a>' });
+    const pr7 = avg(lastDays(7).map((d) => db.logs[d]?.life.protein ?? null));
+    if (pr7 != null && pr7 < tg.protein * 0.7) out.push({ lv: 'warn', ic: '◍', t: `Protein averaging ${Math.round(pr7)} g, target ${Math.round(tg.protein)} g`, p: 'Hair is built from protein. Low intake and crash dieting can trigger shedding 2–3 months later. <a href="#/fuel">Food ideas →</a>' });
+    const sk7 = lastDays(7).filter((d) => db.logs[d] && !meals(db.logs[d]).l).length;
+    if (sk7 >= 4) out.push({ lv: 'info', ic: '◍', t: `Lunch skipped ${sk7} of the last 7 days`, p: 'That is fine only if breakfast and dinner cover your protein and iron. A lower-carb lunch is a safer middle ground. <a href="#/fuel">Plate builder →</a>' });
     const ad = avg(lastDays(7).map((d) => adherence(db.logs[d])));
     if (ad != null && ad >= 0.85) out.push({ lv: 'good', ic: '☰', t: `Routine done ${Math.round(ad * 100)}% this week`, p: 'Consistency is what makes actives work.' });
     else if (ad != null && ad < 0.5) out.push({ lv: 'warn', ic: '☰', t: `Routine done only ${Math.round(ad * 100)}% this week`, p: 'Try a shorter routine you can keep. Three steps done daily beat seven done sometimes.' });
@@ -259,17 +293,20 @@ const App = (() => {
       const date = addDays(end, -i), t = 44 - i;
       const sleep = Math.round((5 + r() * 3.5) * 2) / 2, stress = Math.round(2 + r() * 7), junk = r() < 0.28, period = (t + 6) % 28 < 4;
       const water = Math.round(4 + r() * 6), sun = Math.round((10 + r() * 110) / 10) * 10, workout = r() < 0.4;
+      const lunch = r() > 0.38, protein = Math.round(clamp(42 + r() * 38 - (lunch ? 0 : 16) + t * 0.25, 20, 110));
       const br = Math.max(0, Math.round(0.6 + (sleep < 6.5 ? 2 : 0) + (junk ? 1.6 : 0) + (period ? 2.4 : 0) + (stress >= 7 ? 1 : 0) + r() * 1.8 - t * 0.03));
       const zonePool = period ? ['chin', 'jawL', 'jawR'] : ['forehead', 'nose', 'cheekL', 'cheekR'];
       const zones = br ? zonePool.filter(() => r() < 0.55) : [];
       if (br && !zones.length) zones.push(zonePool[0]);
       d.logs[date] = {
         skin: { oil: Math.round(clamp(3 + (sun > 80 ? 1.5 : 0) + r() * 3, 0, 10)), dry: Math.round(r() * 3), red: Math.round(clamp(br * 0.7 + r() * 2, 0, 10)), sens: Math.round(r() * 3), breakouts: br, zones },
-        hair: { fall: Math.round(clamp(118 - t * 1.1 + (stress >= 7 ? 28 : 0) + r() * 30, 30, 260)), itch: Math.round(r() * 3 + (t < 15 ? 2 : 0)), flakes: Math.round(r() * 3 + (t < 15 ? 2.5 : 0)), oil: Math.round(3 + r() * 4), frizz: Math.round(2 + r() * 5), wash: r() < 0.4 },
-        life: { sleep, water, stress, sun, junk, period, workout },
+        hair: { fall: Math.round(clamp(112 - t * 1.1 + (stress >= 7 ? 28 : 0) + (protein < 50 ? 18 : 0) + r() * 30, 30, 260)), itch: Math.round(r() * 3 + (t < 15 ? 2 : 0)), flakes: Math.round(r() * 3 + (t < 15 ? 2.5 : 0)), oil: Math.round(3 + r() * 4), frizz: Math.round(2 + r() * 5), wash: r() < 0.4 },
+        life: { sleep, water, stress, sun, junk, period, workout, hot: sun > 80, protein, meals: { b: r() < 0.9, l: lunch, d: true } },
         done: { am: d.routine.am.filter(() => r() < 0.88).map((s) => s.id), pm: d.routine.pm.filter(() => r() < (sleep < 6 ? 0.45 : 0.8)).map((s) => s.id) },
         flags: [], note: '',
       };
+      const end2 = parse(date); end2.setHours(6, 40 + Math.round(r() * 50), 0, 0);
+      d.sleep.sessions.push({ id: 'n' + i, start: end2.getTime() - sleep * 36e5, end: end2.getTime(), quality: Math.round(clamp(sleep - 3.5 + r() * 1.5, 1, 5)) });
     }
     [42, 35, 28, 21, 14, 7, 0].forEach((ago, k) => {
       const date = addDays(end, -ago);
@@ -278,12 +315,15 @@ const App = (() => {
       const hc = demoHair(30 - k * 2.4, 60 - k * 8, 200 + k), hs = analyzeHair(hc.getContext('2d'), 240, 240);
       d.scans.push({ id: 'dh' + k, date, kind: 'hair', img: hc.toDataURL('image/jpeg', 0.75), scores: hs.scores });
     });
-    d.demo = true;
+    d.demo = true; d.demoV = DEMO_V;
   }
   function loadDb() {
-    const saved = store.get('db', null);
-    if (saved) return { ...fresh(), ...saved };
-    const d = fresh(); seedDemo(d); store.set('db', d); return d;
+    const saved = store.get('db', null), f = fresh();
+    let d;
+    if (saved && !(saved.demo && saved.demoV !== DEMO_V)) d = { ...f, ...saved, profile: { ...f.profile, ...saved.profile }, sleep: { ...f.sleep, ...saved.sleep }, plate: saved.plate || f.plate };
+    else { d = f; if (saved) Object.assign(d, { routine: saved.routine || d.routine, reminders: saved.reminders || d.reminders, profile: { ...d.profile, ...saved.profile } }); seedDemo(d); }
+    Object.values(d.logs).forEach((l) => { const n = newLog(); l.skin = { ...n.skin, ...l.skin }; l.hair = { ...n.hair, ...l.hair }; l.life = { ...n.life, ...l.life }; l.done ||= n.done; l.flags ||= []; });
+    store.set('db', d); return d;
   }
 
   /* ================= visual building blocks ================= */
@@ -435,6 +475,8 @@ const App = (() => {
       ['hairScore', 'Hair score', '', h7, hPrev, 0],
       ['fall', 'Hair fall', '/day', f7, avgOver('fall', 7, addDays(today(), -7)), 0],
       ['breakouts', 'Breakouts', '/day', avgOver('breakouts', 7), avgOver('breakouts', 7, addDays(today(), -7)), 1],
+      ['sleep', 'Sleep', ' h', avgOver('sleep', 7), avgOver('sleep', 7, addDays(today(), -7)), 1],
+      ['water', 'Water', ' glasses', avgOver('water', 7), avgOver('water', 7, addDays(today(), -7)), 1],
     ];
     const recentScans = db.scans.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
     return `
@@ -452,6 +494,8 @@ const App = (() => {
           <span class="pill skin">Skin 7-day avg ${s7 == null ? '—' : Math.round(s7)}</span>
           <span class="pill hair">Hair 7-day avg ${h7 == null ? '—' : Math.round(h7)}</span>
           <span class="pill">Routine ${ad == null ? '—' : Math.round(ad * 100) + '%'}</span>
+          <a class="pill" href="#/sleep">☾ Bed by ${bedFor(db.sleep.need)} for ${db.sleep.need} h</a>
+          <a class="pill" href="#/fuel">💧 ${tl?.life.water ?? 0} of ${targets().glasses} glasses today</a>
         </div>
       </div>
       <div class="stage" aria-hidden="true">
@@ -464,7 +508,7 @@ const App = (() => {
       </div>
     </section>
 
-    <div class="grid g4 section">${cards.map(([k, label, unit, cur, prev, dp]) => `
+    <div class="grid g3 section">${cards.map(([k, label, unit, cur, prev, dp]) => `
       <a class="card tilt metric" href="#/trends" style="color:inherit;text-decoration:none">
         <h3><span style="width:8px;height:8px;border-radius:50%;background:${METRICS[k].color}"></span>${label}</h3>
         <div class="v num">${cur == null ? '—' : round(cur, dp)}<small>${unit}</small></div>
@@ -515,7 +559,7 @@ const App = (() => {
 
   pages.log = (date) => {
     if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) logDate = date > today() ? today() : date;
-    const l = draft(), logged = !!db.logs[logDate];
+    const l = draft(), logged = !!db.logs[logDate], tg = targets(db.profile, l);
     return `${demoBanner()}
     <div class="page-head row between" style="align-items:flex-end">
       <div><span class="eyebrow">Daily check-in</span><h1>${logDate === today() ? 'How is today going?' : fmtDay(logDate)}</h1>
@@ -555,12 +599,21 @@ const App = (() => {
 
       <div class="card"><h3><span style="color:var(--good)">◌</span> Lifestyle</h3>
         ${slider('life.sleep', 'Sleep last night', 3, 11, 0.5, '#9dff6a', null, ' h')}
-        <label>Water (glasses)</label>
-        <div class="water">${Array.from({ length: 12 }, (_, i) => `<button class="${i < l.life.water ? 'on' : ''}" data-act="water" data-v="${i + 1}" aria-label="${i + 1} glasses"></button>`).join('')}</div>
-        <p class="tiny muted" style="margin:4px 0 14px"><span class="num">${l.life.water}</span> glasses</p>
+        <p class="tiny muted" style="margin:-8px 0 14px">Filled in automatically when you use <a href="#/sleep">Sleep mode</a>.</p>
         ${slider('life.stress', 'Stress', 0, 10, 1, '#ff9de2', ['Calm', 'Overwhelmed'])}
         ${slider('life.sun', 'Time in the sun', 0, 240, 10, '#ffc24b', null, ' min')}
-        <div class="row">${toggle('life.junk', 'Junk / sugary food')}${toggle('life.period', 'On my period')}${toggle('life.workout', 'Worked out')}</div>
+        <div class="row">${toggle('life.junk', 'Junk / sugary food')}${toggle('life.period', 'On my period')}${toggle('life.workout', 'Worked out')}${toggle('life.hot', 'Hot / sweaty day')}</div>
+      </div>
+
+      <div class="card"><h3><span style="color:#ffd27a">◍</span> Food & water</h3>
+        <label>Meals eaten</label>
+        <div class="row">${toggle('life.meals.b', 'Breakfast')}${toggle('life.meals.l', 'Lunch')}${toggle('life.meals.d', 'Dinner')}</div>
+        <label class="mt">Protein today (approx. grams) · target ${Math.round(tg.protein)} g</label>
+        <div class="stepper"><button data-act="step" data-path="life.protein" data-d="-5" aria-label="Minus 5 grams">−</button><span class="n num">${l.life.protein ?? '—'}</span><button data-act="step" data-path="life.protein" data-d="5" aria-label="Plus 5 grams">+</button></div>
+        <p class="tiny muted" style="margin-top:6px">Rough guide: 1 katori dal ≈ 7 g · 2 eggs ≈ 13 g · 100 g paneer ≈ 18 g · 1 cup curd ≈ 7 g · 100 g chicken ≈ 31 g</p>
+        <label class="mt">Water (glasses of 250 ml) · target ${tg.glasses}</label>
+        <div class="water">${Array.from({ length: Math.max(12, tg.glasses + 2) }, (_, i) => `<button class="${i < l.life.water ? 'on' : ''}" data-act="water" data-v="${i + 1}" aria-label="${i + 1} glasses"></button>`).join('')}</div>
+        <p class="tiny muted" style="margin:4px 0 0"><span class="num">${l.life.water}</span> of ${tg.glasses} glasses (${round(l.life.water * 0.25, 2)} of ${round(tg.water, 1)} L)</p>
       </div>
 
       <div class="card"><h3>☰ Routine</h3>${routineChecklist(logDate)}</div>
@@ -724,6 +777,336 @@ const App = (() => {
     </div>`;
   };
 
+  /* ---------- fuel: nutrition & hydration ---------- */
+  // Per serving. Carbs exclude fibre (available carbs). Approximate values from IFCT 2017 (NIN) and USDA FoodData Central.
+  const FOODS = [
+    ['roti', 'Whole-wheat roti', '1 medium (30 g atta)', 100, 19, 3.6, 0.5, 3.4, 'Grains'],
+    ['millet', 'Jowar / bajra / ragi roti', '1 (30 g flour)', 100, 20, 3.2, 1, 3, 'Grains'],
+    ['rice', 'White rice', '1 cup cooked (150 g)', 195, 41, 4, 0.4, 0.6, 'Grains'],
+    ['brown', 'Brown rice', '1 cup cooked (150 g)', 165, 32, 3.8, 1.3, 2.7, 'Grains'],
+    ['quinoa', 'Quinoa', '1 cup cooked (185 g)', 222, 34, 8, 3.6, 5, 'Grains'],
+    ['idli', 'Idli', '2 pieces', 116, 24, 4, 0.4, 1, 'Grains'],
+    ['dosa', 'Plain dosa', '1 medium', 150, 25, 3.5, 4, 1, 'Grains'],
+    ['poha', 'Poha', '1 plate (180 g)', 250, 42, 4.5, 7, 2, 'Grains'],
+    ['dal', 'Dal (without tadka)', '1 katori (30 g dry)', 105, 15, 7, 0.5, 3, 'Pulses'],
+    ['rajma', 'Rajma / chole', '1 katori (150 g cooked)', 200, 25, 12, 2.5, 10, 'Pulses'],
+    ['sprouts', 'Moong sprouts', '1 cup (100 g)', 30, 4, 3, 0.2, 1.8, 'Pulses'],
+    ['soya', 'Soya chunks', '30 g dry', 104, 6, 15.5, 0.2, 4, 'Pulses'],
+    ['paneer', 'Paneer', '100 g', 265, 3.5, 18, 20, 0, 'Protein'],
+    ['tofu', 'Tofu (firm)', '100 g', 144, 2, 17, 8.7, 2.3, 'Protein'],
+    ['eggs', 'Eggs, boiled', '2 large', 155, 1, 12.6, 10.6, 0, 'Protein'],
+    ['chicken', 'Chicken breast', '100 g cooked', 165, 0, 31, 3.6, 0, 'Protein'],
+    ['fish', 'Fish', '100 g cooked', 140, 0, 22, 5, 0, 'Protein'],
+    ['curd', 'Curd (dahi)', '1 cup (200 g)', 122, 9.4, 7, 6.6, 0, 'Dairy'],
+    ['greek', 'Hung curd / Greek yogurt', '150 g', 110, 6, 14, 4, 0, 'Dairy'],
+    ['chaas', 'Buttermilk (chaas)', '1 glass', 40, 3, 2, 1.5, 0, 'Dairy'],
+    ['sabzi', 'Mixed veg sabzi', '1 katori, 1 tsp oil', 90, 9, 3, 5, 4, 'Vegetables'],
+    ['greens', 'Palak / leafy sabzi', '1 katori, 1 tsp oil', 80, 5, 3.5, 5, 3, 'Vegetables'],
+    ['salad', 'Salad (cucumber, tomato, onion)', '1 bowl (150 g)', 35, 6, 1.5, 0.2, 2, 'Vegetables'],
+    ['guava', 'Guava', '1 medium (100 g)', 68, 9, 2.6, 1, 5.4, 'Fruit & snacks'],
+    ['apple', 'Apple', '1 medium', 95, 21, 0.5, 0.3, 4.4, 'Fruit & snacks'],
+    ['banana', 'Banana', '1 medium', 105, 24, 1.3, 0.4, 3, 'Fruit & snacks'],
+    ['chana', 'Roasted chana', '30 g', 110, 13, 6, 1.8, 5, 'Fruit & snacks'],
+    ['almonds', 'Almonds', '10 (12 g)', 70, 1, 2.5, 6, 1.5, 'Fruit & snacks'],
+  ].map(([id, name, serving, kcal, c, p, f, fib, group]) => ({ id, name, serving, kcal, c, p, f, fib, group }));
+  const FOOD = Object.fromEntries(FOODS.map((f) => [f.id, f]));
+  const PLATES = {
+    low: ['Lower-carb lunch', { paneer: 1, sabzi: 1, salad: 1, millet: 1, chaas: 1 }],
+    thali: ['Dal-roti thali', { roti: 2, dal: 1, sabzi: 1, curd: 1, salad: 1 }],
+    rice: ['Rice-heavy lunch', { rice: 2, dal: 1, sabzi: 1 }],
+    nonveg: ['Chicken & greens', { chicken: 1, greens: 1, salad: 1, roti: 1 }],
+    tiffin: ['Quick desk tiffin', { greek: 1, chana: 1, guava: 1, sprouts: 1 }],
+  };
+  const NUTRIENTS = [
+    ['Protein', (t) => `${Math.round(t.protein)} g/day (${t.pk} g per kg)`, 'Hair is made mostly of keratin, a protein. Very low intake and crash diets can trigger shedding 2–3 months later.', 'Dal, rajma, chana, paneer, curd, eggs, fish, chicken, soya'],
+    ['Iron', (t, p) => (p.sex === 'male' ? '19 mg' : '29 mg'), 'Low iron stores (ferritin) are linked with hair shedding, especially in women. Plant iron absorbs better with vitamin C; keep tea and coffee an hour away from meals.', 'Rajma, chana, dal, leafy greens, eggs, fish, meat, with amla, guava or lemon'],
+    ['Zinc', (t, p) => (p.sex === 'male' ? '17 mg' : '13.2 mg'), 'Needed for hair growth and skin repair. Low zinc is linked with hair loss and slow wound healing.', 'Pumpkin seeds, chickpeas, cashews, dairy, eggs, meat'],
+    ['Vitamin D', () => '600 IU (15 µg)', 'Deficiency is very common in India and is associated with hair loss. Get tested before taking high-dose supplements.', 'Midday sun on arms and legs, fatty fish, egg yolk, fortified milk'],
+    ['Vitamin B12', () => '2.5 µg', 'Deficiency causes fatigue and can affect hair. Vegetarians and vegans are at higher risk.', 'Milk, curd, paneer, eggs, fish, meat; a supplement if vegan'],
+    ['Vitamin C', (t, p) => (p.sex === 'male' ? '80 mg' : '65 mg'), 'Needed to build collagen, and it helps you absorb plant iron.', 'Amla, guava, oranges, capsicum, tomato, lemon'],
+    ['Omega-3', () => '≈250 mg EPA + DHA (EFSA)', 'May help dryness and inflammation. Evidence for skin is moderate.', 'Fish (mackerel, salmon, rohu), flaxseed, walnuts, chia'],
+    ['Biotin', () => '40 µg', 'Deficiency is rare. Extra biotin does not grow hair if you are not deficient, and high doses can distort thyroid and other blood tests.', 'Eggs, nuts, seeds, pulses'],
+  ];
+  const plateTotals = (items) => { const t = { kcal: 0, c: 0, p: 0, f: 0, fib: 0 }; Object.entries(items).forEach(([id, q]) => { const f = FOOD[id]; if (f && q) for (const k in t) t[k] += f[k] * q; }); return t; };
+  let plateMode = 'low';
+  const tbar = (label, v, target, unit, color, invert) => {
+    const pc = target ? v / target : 0, over = invert ? pc > 1.15 : pc < 0.8;
+    return `<div class="meter-row"><div class="row between small" style="flex-wrap:nowrap"><span>${label}</span><span class="num">${round(v, 0)} / ${Math.round(target)} ${unit}</span></div><div class="bar"><i style="width:${clamp(pc * 100, 0, 100)}%;--c:${over ? 'var(--warn)' : color}"></i></div></div>`;
+  };
+
+  pages.fuel = () => {
+    const p = db.profile, t = targets(), tl = db.logs[today()], water = tl?.life.water ?? 0;
+    const items = db.plate.items, tot = plateTotals(items);
+    const lunchC = plateMode === 'low' ? 30 : t.carbs * 0.3, lunchP = Math.max(25, t.protein * 0.3), lunchFib = Math.max(8, t.fiber * 0.3), lunchK = t.kcal * 0.3;
+    const ratio = tot.fib ? tot.c / tot.fib : tot.c ? Infinity : 0;
+    const notes = [];
+    if (!tot.kcal) notes.push(['info', 'Add foods on the left to build a lunch.']);
+    else {
+      notes.push(tot.c > lunchC * 1.15 ? ['warn', `Carbs ${Math.round(tot.c)} g, above your ${Math.round(lunchC)} g target. Swap a grain serving for dal, paneer, eggs or extra veg.`] : ['good', `Carbs ${Math.round(tot.c)} g, within your ${Math.round(lunchC)} g ${plateMode === 'low' ? 'lower-carb' : 'balanced'} target.`]);
+      notes.push(tot.p < lunchP * 0.8 ? ['warn', `Protein ${Math.round(tot.p)} g. Aim for about ${Math.round(lunchP)} g: add curd, paneer, eggs, dal or soya.`] : ['good', `Protein ${Math.round(tot.p)} g. Good for hair and keeps you full.`]);
+      notes.push(ratio > 10 ? ['warn', `Carb-to-fibre ratio ${ratio === Infinity ? 'very high' : ratio.toFixed(1) + ':1'}. Under 10:1 means mostly whole, slow carbs; add salad, veg, dal or a whole grain.`] : ['good', `Carb-to-fibre ratio ${ratio.toFixed(1)}:1, under 10:1, so mostly slow carbs.`]);
+    }
+    const d30 = lastDays(30).map((d) => db.logs[d]).filter(Boolean), skip = d30.filter((l) => !meals(l).l), eat = d30.filter((l) => meals(l).l);
+    const cmpRow = (label, k, unit, dp = 0) => { const a = avg(skip.map((l) => METRICS[k].get(l))), b = avg(eat.map((l) => METRICS[k].get(l))); return a == null || b == null ? '' : `<tr><td>${label}</td><td class="num">${round(a, dp)}${unit}</td><td class="num">${round(b, dp)}${unit}</td></tr>`; };
+    const groups = [...new Set(FOODS.map((f) => f.group))];
+    const C = 2 * Math.PI * 52;
+    return `${demoBanner()}<div class="page-head"><span class="eyebrow">Fuel</span><h1>Food & water for <span class="grad-text">skin and hair</span></h1>
+      <p>Targets are calculated from your body and activity using published reference values (sources at the bottom). Update your details to personalise them.</p></div>
+    <div class="split">
+      <div class="card"><h3>Your daily targets</h3>
+        <div class="tiles">
+          <div class="tile"><div class="k">Energy</div><div class="v num">${Math.round(t.kcal)}</div><div class="tiny muted">kcal · BMR ${Math.round(t.bmr)}${p.goal === 'lose' ? ' · gentle 15% deficit' : ''}</div></div>
+          <div class="tile"><div class="k">Protein</div><div class="v num" style="color:#ffd27a">${Math.round(t.protein)} g</div><div class="tiny muted">${t.pk} g per kg body weight</div></div>
+          <div class="tile"><div class="k">Carbs</div><div class="v num">${Math.round(t.carbs)} g</div><div class="tiny muted">${Math.round((t.carbs * 4 / t.kcal) * 100)}% of energy (healthy range 45–65%). Keep rice, roti and other cereals near 45%; get the rest from pulses, veg, fruit and dairy</div></div>
+          <div class="tile"><div class="k">Fat</div><div class="v num">${Math.round(t.fat)} g</div><div class="tiny muted">30% of energy (healthy range 20–35%)</div></div>
+          <div class="tile"><div class="k">Fibre</div><div class="v num" style="color:var(--good)">${Math.round(t.fiber)} g</div><div class="tiny muted">14 g per 1000 kcal</div></div>
+          <div class="tile"><div class="k">Water</div><div class="v num" style="color:#6bb8ff">${round(t.water, 1)} L</div><div class="tiny muted">${t.glasses} glasses from drinks today</div></div>
+        </div>
+        <p class="tiny muted" style="margin:12px 0 0">These are population reference values, not a prescription. If you have diabetes, PCOS, kidney disease or are pregnant, ask a doctor or dietitian for your numbers.</p>
+      </div>
+      <form class="card" data-form="body"><h3>Your details</h3>
+        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          <div><label for="bSex">Sex</label><select id="bSex" name="sex"><option value="female" ${p.sex !== 'male' ? 'selected' : ''}>Female</option><option value="male" ${p.sex === 'male' ? 'selected' : ''}>Male</option></select></div>
+          <div><label for="bAge">Age</label><input type="number" id="bAge" name="age" min="14" max="90" value="${p.age}" required></div>
+          <div><label for="bW">Weight (kg)</label><input type="number" id="bW" name="weight" min="30" max="200" step="0.5" value="${p.weight}" required></div>
+          <div><label for="bH">Height (cm)</label><input type="number" id="bH" name="height" min="120" max="220" value="${p.height}" required></div>
+          <div><label for="bAct">Activity</label><select id="bAct" name="activity">${[['sedentary', 'Desk job, little exercise'], ['light', 'Light (1–3 workouts/week)'], ['moderate', 'Moderate (3–5/week)'], ['very', 'Very active (6–7/week)']].map(([v, l]) => `<option value="${v}" ${p.activity === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+          <div><label for="bGoal">Goal</label><select id="bGoal" name="goal"><option value="maintain" ${p.goal !== 'lose' ? 'selected' : ''}>Maintain weight</option><option value="lose" ${p.goal === 'lose' ? 'selected' : ''}>Lose slowly</option></select></div>
+        </div>
+        <button class="btn primary sm mt">Update targets</button>
+      </form>
+    </div>
+
+    <div class="grid g2 section">
+      <div class="card tilt"><h3>💧 Hydration today</h3>
+        <div class="row" style="gap:22px;flex-wrap:nowrap">
+          <div class="rings" style="width:150px;height:150px;flex:none;margin:0"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(107,184,255,0.14)" stroke-width="10"/><circle class="ring-arc" cx="60" cy="60" r="52" fill="none" stroke="#6bb8ff" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" data-off="${C * (1 - clamp(water / t.glasses, 0, 1))}" style="filter:drop-shadow(0 0 6px #6bb8ff)"/></svg><div class="center"><div><div class="big num" style="font-family:var(--font-display);font-size:1.8rem">${water}<span class="small muted">/${t.glasses}</span></div><div class="tiny muted">glasses</div></div></div></div>
+          <div style="min-width:0"><div class="row"><button class="btn sm" data-act="glass" data-v="-1" aria-label="Remove a glass">−</button><button class="btn primary sm" data-act="glass" data-v="1">+ 1 glass (250 ml)</button></div>
+            <p class="small" style="margin:10px 0 6px">${round(water * 0.25, 2)} of ${round(t.water, 1)} L</p>
+            <div class="row">${['workout', 'hot'].map((k) => `<button class="toggle ${tl?.life[k] ? 'on' : ''}" data-act="flip" data-path="life.${k}" data-today="1">${tl?.life[k] ? '✓' : '○'} ${k === 'hot' ? 'Hot / sweaty day +0.5 L' : 'Workout today +0.5 L'}</button>`).join('')}</div></div>
+        </div>
+        <ul class="clean small mt">
+          <li>EFSA sets adequate total water at <b>2.0 L/day for women and 2.5 L/day for men</b>. About 20% comes from food, so drinks need to supply roughly ${p.sex === 'male' ? '2.0' : '1.6'} L.</li>
+          <li>Sweat losses during exercise range from about 0.5 to 2 L per hour, and Indian summers add more. Drink extra on those days.</li>
+          <li>Pale-yellow urine is a simple, reliable check. Tea, coffee, milk, buttermilk and coconut water all count.</li>
+          <li>Drinking more than you need does not hydrate your skin further; evidence for that is weak. Moisturiser does that job.</li>
+        </ul>
+      </div>
+
+      <div class="card"><h3>◍ Thinking of skipping lunch to avoid carbs?</h3>
+        <ul class="clean small">
+          <li><b>Total carbs and carb quality matter more than one meal.</b> ICMR-NIN's 2024 guidelines suggest keeping cereals to about 45% of calories and filling the rest with pulses, vegetables, fruit, nuts and dairy.</li>
+          <li><b>Skipping is not harmful by itself.</b> In a 12-month trial, time-restricted eating gave similar weight loss to ordinary calorie restriction (Liu et al., NEJM 2022).</li>
+          <li><b>The risk for your hair is under-eating.</b> If skipping lunch means you miss your protein, iron or calories, shedding can follow 2–3 months later.</li>
+          <li><b>For your skin, choose slow carbs rather than zero carbs.</b> A low-glycaemic-load diet reduced acne lesions in a 12-week trial (Smith et al., AJCN 2007).</li>
+        </ul>
+        <div class="insight good"><div class="ic">✓</div><div><b>Better than skipping: a lower-carb lunch</b><p>About ${Math.round(lunchP)} g protein, half a plate of vegetables, and one small serving of a whole grain or millet (about 20–30 g carbs). Try it in the plate builder below.</p></div></div>
+        <p class="small mt" style="margin-bottom:6px">Your last 30 days: lunch skipped on <b>${skip.length}</b> of ${d30.length} logged days.</p>
+        ${skip.length >= 3 && eat.length >= 3 ? `<div class="table-wrap"><table><thead><tr><th>Average</th><th>Lunch skipped</th><th>Lunch eaten</th></tr></thead><tbody>${cmpRow('Protein', 'protein', ' g')}${cmpRow('Hair fall', 'fall', '/day')}${cmpRow('Breakouts', 'breakouts', '', 1)}${cmpRow('Skin score', 'skinScore', '')}</tbody></table></div>` : '<p class="tiny muted">Log meals for a couple of weeks to see how skipping lunch affects you.</p>'}
+      </div>
+    </div>
+
+    <div class="card section"><div class="row between"><h3>Plate builder · lunch</h3><div class="chips"><button class="chip ${plateMode === 'low' ? 'on' : ''}" data-act="plateMode" data-v="low">Lower-carb (≤30 g)</button><button class="chip ${plateMode === 'bal' ? 'on' : ''}" data-act="plateMode" data-v="bal">Balanced (${Math.round(t.carbs * 0.3)} g)</button></div></div>
+      <div class="chips" style="margin-bottom:14px"><span class="small muted" style="align-self:center">Start from:</span>${Object.entries(PLATES).map(([k, [n]]) => `<button class="chip" data-act="platePreset" data-v="${k}">${n}</button>`).join('')}<button class="chip" data-act="platePreset" data-v="">Clear</button></div>
+      <div class="split">
+        <div class="stack" style="gap:14px">${groups.map((g) => `<div><div class="tiny muted" style="letter-spacing:.15em;margin-bottom:6px">${g.toUpperCase()}</div><div class="foods">${FOODS.filter((f) => f.group === g).map((f) => {
+          const q = items[f.id] || 0;
+          return `<div class="food ${q ? 'on' : ''}"><div class="nm"><b>${esc(f.name)}</b><br><span class="tiny muted">${esc(f.serving)} · ${f.c} g carbs · ${f.p} g protein</span></div><div class="q"><button data-act="food" data-id="${f.id}" data-d="-1" aria-label="Less ${esc(f.name)}">−</button><span class="num" style="min-width:14px;text-align:center">${q}</span><button data-act="food" data-id="${f.id}" data-d="1" aria-label="More ${esc(f.name)}">+</button></div></div>`;
+        }).join('')}</div></div>`).join('')}</div>
+        <div class="card" style="position:sticky;top:84px;background:var(--panel-solid)"><h3>This lunch</h3>
+          <div class="v num" style="font-family:var(--font-display);font-size:2rem">${Math.round(tot.kcal)}<span class="small muted"> kcal</span></div>
+          <div class="stack mt">${tbar('Carbs', tot.c, lunchC, 'g', 'var(--skin)', true)}${tbar('Protein', tot.p, lunchP, 'g', '#ffd27a')}${tbar('Fibre', tot.fib, lunchFib, 'g', 'var(--good)')}${tbar('Energy', tot.kcal, lunchK, 'kcal', 'var(--hair)', true)}</div>
+          <div class="stack mt">${notes.map(([lv, txt]) => `<div class="insight ${lv}"><div class="ic">${lv === 'good' ? '✓' : lv === 'warn' ? '!' : 'i'}</div><div><p style="color:var(--text);margin:0">${txt}</p></div></div>`).join('')}</div>
+          <button class="btn primary mt" style="width:100%" data-act="logPlate" ${tot.kcal ? '' : 'disabled'}>Log as today's lunch (+${Math.round(tot.p)} g protein)</button>
+          <p class="tiny muted" style="margin:8px 0 0">Values are approximate per serving (IFCT 2017, USDA). Carbs exclude fibre. Oil, ghee and tadka add about 45 kcal per teaspoon.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card section"><h3>Nutrients that matter for skin & hair</h3>
+      <div class="table-wrap"><table><thead><tr><th>Nutrient</th><th>Your daily target</th><th>Why it matters</th><th>Indian food sources</th></tr></thead><tbody>
+        ${NUTRIENTS.map(([n, fn, why, src]) => `<tr><td><b>${n}</b></td><td class="num" style="white-space:nowrap">${fn(t, p)}</td><td class="small">${why}</td><td class="small muted">${src}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="tiny muted" style="margin:10px 0 0">Targets are ICMR-NIN 2020 RDAs for adults unless marked. Take supplements only for a confirmed deficiency: too much vitamin A or selenium can itself cause hair loss. If you are shedding a lot, ask your doctor for ferritin, vitamin D, B12 and thyroid (TSH) tests.</p>
+    </div>
+
+    <div class="card section"><h3>A day that hits your targets</h3>
+      <div class="table-wrap"><table><thead><tr><th>Meal</th><th>Energy</th><th>Protein</th><th>Example</th></tr></thead><tbody>
+        ${[['Breakfast', 0.25, '2 besan chillas with paneer + 1 cup curd, or 2 eggs + 1 roti + guava'], ['Lunch', 0.3, 'Lower-carb plate: paneer or chicken + sabzi + salad + 1 millet roti + chaas'], ['Snack', 0.15, 'Roasted chana + an apple, or sprouts chaat + buttermilk'], ['Dinner', 0.3, 'Dal or fish + leafy sabzi + 1–2 rotis or ½ cup rice + salad']].map(([m, f, ex]) => `<tr><td><b>${m}</b></td><td class="num">${Math.round(t.kcal * f)} kcal</td><td class="num">${Math.round(t.protein * f)} g</td><td class="small muted">${ex}</td></tr>`).join('')}
+      </tbody></table></div></div>
+
+    <div class="card section"><h3>Sources</h3><ul class="refs">
+      <li>ICMR-NIN (2020). Nutrient Requirements for Indians: Recommended Dietary Allowances and Estimated Average Requirements.</li>
+      <li>ICMR-NIN (2024). Dietary Guidelines for Indians.</li>
+      <li>Mifflin MD et al. (1990). A new predictive equation for resting energy expenditure in healthy individuals. Am J Clin Nutr.</li>
+      <li>Institute of Medicine (2005). Dietary Reference Intakes for Energy, Carbohydrate, Fiber, Fat, Fatty Acids, Cholesterol, Protein, and Amino Acids.</li>
+      <li>EFSA Panel (2010). Scientific Opinion on Dietary Reference Values for water; and for fats, including EPA + DHA.</li>
+      <li>Liu D et al. (2022). Calorie restriction with or without time-restricted eating in weight loss. N Engl J Med.</li>
+      <li>Smith RN et al. (2007). A low-glycemic-load diet improves symptoms in acne vulgaris patients. Am J Clin Nutr.</li>
+      <li>Almohanna HM et al. (2019). The role of vitamins and minerals in hair loss: a review. Dermatol Ther.</li>
+      <li>Longvah T et al. (2017). Indian Food Composition Tables. NIN, Hyderabad.</li>
+    </ul></div>`;
+  };
+
+  /* ---------- sleep monitor ---------- */
+  let ringing = false, missedShown = false, wakeLock = null;
+  const hm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const dur = (ms) => { const m = Math.max(0, Math.round(ms / 60000)); return `${Math.floor(m / 60)} h ${pad(m % 60)} m`; };
+  function alarmToday() { const [h, m] = db.sleep.alarm.split(':').map(Number); const d = new Date(); d.setHours(h, m, 0, 0); return d; }
+  function bedFor(hours, latency = 15) { return hm(new Date(alarmToday().getTime() - hours * 36e5 - latency * 60e3)); }
+  function nextAlarm(from = new Date()) {
+    const s = db.sleep; if (!s.alarmOn || !s.days.length) return null;
+    const [h, m] = s.alarm.split(':').map(Number);
+    for (let i = 0; i < 8; i++) { const d = new Date(from); d.setDate(d.getDate() + i); d.setHours(h, m, 0, 0); if (d > from && s.days.includes(d.getDay())) return d; }
+    return null;
+  }
+  function nightHours(date) {
+    const ss = db.sleep.sessions.filter((x) => iso(new Date(x.end)) === date);
+    if (ss.length) return ss.reduce((a, x) => a + (x.end - x.start) / 36e5, 0);
+    return db.logs[date]?.life.sleep ?? null;
+  }
+  const nightQuality = (date) => db.sleep.sessions.filter((x) => iso(new Date(x.end)) === date && x.quality).at(-1)?.quality ?? null;
+  const alarmSound = {
+    ctx: null, timer: null,
+    unlock() { try { this.ctx ||= new (window.AudioContext || window.webkitAudioContext)(); this.ctx.resume(); } catch { this.ctx = null; } },
+    beep(vol = 0.3) {
+      if (!this.ctx) return; const t0 = this.ctx.currentTime;
+      [0, 0.22, 0.44].forEach((off, k) => {
+        const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type = 'sine'; o.frequency.value = k === 2 ? 1175 : 880;
+        g.gain.setValueAtTime(0.0001, t0 + off); g.gain.exponentialRampToValueAtTime(vol, t0 + off + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.18);
+        o.connect(g).connect(this.ctx.destination); o.start(t0 + off); o.stop(t0 + off + 0.2);
+      });
+    },
+    start() { this.stop(); this.unlock(); let n = 0; const go = () => { this.beep(Math.min(0.7, 0.12 + n * 0.03)); n++; try { navigator.vibrate?.([300, 150, 300]); } catch {} }; go(); this.timer = setInterval(go, 1300); },
+    stop() { clearInterval(this.timer); this.timer = null; try { navigator.vibrate?.(0); } catch {} },
+  };
+  async function keepAwake() { try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { wakeLock = null; } }
+  function showNight() { $('#night').classList.remove('hidden'); updateNight(); }
+  function hideNight() { $('#night').classList.add('hidden'); }
+  function updateNight() {
+    const a = db.sleep.active, n = $('#night'); if (!a || n.classList.contains('hidden')) return;
+    $('#nclock').textContent = hm(new Date());
+    $('#nsub').textContent = ringing ? 'Good morning! Time to wake up.' : a.alarmAt ? `Alarm ${hm(new Date(a.alarmAt))} · rings in ${dur(a.alarmAt - Date.now())}` : `Asleep for ${dur(Date.now() - a.start)} · no alarm set`;
+    $('#nSnooze').hidden = !ringing; n.classList.toggle('ring', ringing);
+  }
+  function startSleep() {
+    alarmSound.unlock();
+    db.sleep.active = { start: Date.now(), alarmAt: nextAlarm()?.getTime() ?? null };
+    missedShown = false; save(); keepAwake(); showNight(); render();
+  }
+  function endSleep(endTs) {
+    const a = db.sleep.active; if (!a) return;
+    alarmSound.stop(); ringing = false; db.sleep.active = null;
+    try { wakeLock?.release(); } catch {} wakeLock = null;
+    hideNight();
+    const hrs = (endTs - a.start) / 36e5;
+    if (hrs < 0.5 || hrs > 16) { save(); toast(hrs < 0.5 ? 'Under 30 minutes, so this night was not saved' : 'Over 16 hours, so this was not saved. Add the night by hand on the Sleep page.'); return render(); }
+    const sess = { id: uid(), start: a.start, end: endTs, quality: null };
+    db.sleep.sessions.push(sess);
+    const date = iso(new Date(endTs)), l = ensureLog(date); l.life.sleep = clamp(Math.round(hrs * 2) / 2, 3, 11);
+    save(); render();
+    setTimeout(() => dialog(`<h3>You slept ${dur(endTs - a.start)}</h3><p class="small muted">Saved to ${fmtDay(date)}'s check-in. How well did you sleep?</p><div class="chips">${['Awful', 'Poor', 'OK', 'Good', 'Great'].map((q, i) => `<button class="chip" data-act="quality" data-id="${sess.id}" data-v="${i + 1}">${q}</button>`).join('')}</div>`, [{ label: 'Skip' }]), 60);
+  }
+  function missedPrompt() {
+    const a = db.sleep.active; hideNight();
+    dialog(`<h3>Good morning</h3><p class="small">You started sleep at <b>${hm(new Date(a.start))}</b> and your alarm was set for <b>${hm(new Date(a.alarmAt))}</b>. The page was closed or the phone was asleep, so it could not ring. When did you get up?</p>`,
+      [{ label: 'Cancel this night', cls: 'ghost', fn: () => { db.sleep.active = null; save(); render(); } },
+        { label: 'Just now', fn: () => { setTimeout(() => endSleep(Date.now()), 0); } },
+        { label: `At ${hm(new Date(a.alarmAt))}`, cls: 'primary', fn: () => { setTimeout(() => endSleep(a.alarmAt), 0); } }]);
+  }
+  function sleepTick() {
+    const now = new Date(), c = $('#clock');
+    if (c) { c.firstChild.nodeValue = hm(now); $('#clockSec').textContent = ':' + pad(now.getSeconds()); }
+    const cd = $('#countdown');
+    if (cd) { const na = db.sleep.active?.alarmAt ? new Date(db.sleep.active.alarmAt) : nextAlarm(); cd.textContent = na ? 'rings in ' + dur(na - now) : ''; }
+    const a = db.sleep.active; if (!a) return;
+    if (a.alarmAt && now >= a.alarmAt && !ringing) {
+      if (now - a.alarmAt < 15 * 60e3) { ringing = true; alarmSound.start(); showNight(); }
+      else if (!missedShown) { missedShown = true; missedPrompt(); }
+    }
+    updateNight();
+  }
+  function sleepBars(dates, vals, need) {
+    const W = 720, H = 220, L = 32, R = 10, T = 12, B = 26, max = 11, n = dates.length, bw = (W - L - R) / n;
+    const y = (v) => T + (1 - v / max) * (H - T - B);
+    let g = `<rect x="${L}" y="${y(9)}" width="${W - L - R}" height="${y(7) - y(9)}" fill="rgba(157,255,106,0.07)"/><text x="${W - R - 4}" y="${y(9) + 13}" text-anchor="end" style="fill:#9dff6a">7–9 h healthy range</text>`;
+    [0, 3, 6, 9].forEach((v) => (g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(130,150,255,0.12)"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v}h</text>`));
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(need)}" y2="${y(need)}" stroke="#a77bff" stroke-dasharray="4 4"/><text x="${L + 4}" y="${y(need) - 4}" style="fill:#a77bff">your goal ${need} h</text>`;
+    dates.forEach((d, i) => {
+      const v = vals[i], x = L + i * bw;
+      if (v != null) { const col = v < 6 ? '#ff5c7a' : v < 7 ? '#ffc24b' : v <= 9 ? '#9dff6a' : '#6bb8ff'; g += `<rect x="${x + bw * 0.18}" y="${y(v)}" width="${bw * 0.64}" height="${y(0) - y(v)}" rx="5" fill="${col}" fill-opacity="0.85"><title>${fmtDay(d)}: ${round(v, 1)} h</title></rect>`; }
+      if (i % 2 === n % 2 || i === n - 1) g += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${fmtShort(d)}</text>`;
+    });
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sleep per night">${g}</svg>`;
+  }
+  pages.sleep = () => {
+    const s = db.sleep, na = nextAlarm(), a = s.active, d14 = lastDays(14);
+    const hrs = d14.map(nightHours), last7 = lastDays(7).map(nightHours), avg7 = avg(last7);
+    const debt = last7.reduce((acc, h) => acc + (h == null ? 0 : Math.max(0, s.need - h)), 0);
+    const starts = s.sessions.filter((x) => x.end > Date.now() - 14 * 864e5).map((x) => { const d = new Date(x.start); let m = d.getHours() * 60 + d.getMinutes(); if (m < 720) m += 1440; return m; });
+    const mean = avg(starts), sd = starts.length > 2 ? Math.sqrt(avg(starts.map((m) => (m - mean) ** 2))) : null;
+    const q = avg(d14.map(nightQuality));
+    const ls = lastDays(60).map((d) => db.logs[d]).filter(Boolean), good = ls.filter((l) => l.life.sleep >= 7), bad = ls.filter((l) => l.life.sleep < 6.5);
+    const cmp = (k) => [avg(good.map((l) => METRICS[k].get(l))), avg(bad.map((l) => METRICS[k].get(l)))];
+    const [gs, bs] = cmp('skinScore'), [gf, bf] = cmp('fall');
+    const now = new Date();
+    return `${demoBanner()}<div class="page-head"><span class="eyebrow">Sleep</span><h1>Sleep <span class="grad-text">monitor</span></h1>
+      <p>Set your alarm here and tap <b>Start sleep</b> at bedtime. The monitor rings at your alarm time, records how long you slept, and fills in your daily check-in automatically.</p></div>
+    <div class="split">
+      <div class="card tilt"><span class="eyebrow">Now · ${fmtDay(today())}</span>
+        <div class="bigclock num" id="clock">${hm(now)}<span id="clockSec">:${pad(now.getSeconds())}</span></div>
+        <p style="margin:6px 0 2px">${a ? `Sleeping since <b>${hm(new Date(a.start))}</b>` : na ? `Next alarm <b>${hm(na)}</b> ${iso(na) === today() ? 'today' : na.toLocaleDateString('en-IN', { weekday: 'long' })}` : 'Alarm is off'}</p>
+        <div class="small muted num" id="countdown"></div>
+        <div class="row mt">${a ? '<button class="btn primary" data-act="showNight">Open sleep mode</button>' : '<button class="btn primary" data-act="startSleep">☾ Start sleep now</button>'}<button class="btn" data-act="testSound">Test alarm sound</button></div>
+        <p class="tiny muted" style="margin:14px 0 0">Keep this tab open and your phone charging overnight. Phones can pause pages in the background, so keep your phone's own alarm as a backup. If the page could not ring, it asks you in the morning and uses your alarm time as your wake time.</p>
+      </div>
+      <form class="card" data-form="alarm"><h3>Alarm</h3>
+        <div class="row"><button type="button" class="toggle ${s.alarmOn ? 'on' : ''}" data-act="alarmOn">${s.alarmOn ? '✓ Alarm on' : '○ Alarm off'}</button></div>
+        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px">
+          <div><label for="alarmTime">Wake-up time</label><input type="time" id="alarmTime" name="alarm" value="${s.alarm}" required></div>
+          <div><label for="sleepNeed">Sleep goal</label><select id="sleepNeed" name="need">${[7, 7.5, 8, 8.5, 9].map((h) => `<option value="${h}" ${s.need === h ? 'selected' : ''}>${h} hours</option>`).join('')}</select></div>
+        </div>
+        <label class="mt">Repeat on</label>
+        <div class="chips">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dd, i) => `<button type="button" class="chip ${s.days.includes(i) ? 'on' : ''}" data-act="alarmDay" data-v="${i}">${dd}</button>`).join('')}</div>
+        <div class="row mt"><button class="btn primary sm">Save alarm</button><a class="btn sm ghost" target="_blank" rel="noopener" href="${calLink('Wake up ☀', s.alarm, 'FREQ=WEEKLY;BYDAY=' + s.days.map((d) => ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][d]).join(','))}">📅 Backup in Google Calendar</a></div>
+      </form>
+    </div>
+
+    <div class="card section"><h3>Bedtime calculator</h3>
+      <p class="small muted">Sleep runs in cycles of roughly 90 minutes (anywhere from 70 to 120), so waking at the end of one can feel easier. Allowing about 15 minutes to fall asleep, for your <b>${s.alarm}</b> alarm go to bed at:</p>
+      <div class="grid g4">${[[6, 9], [5, 7.5], [4, 6]].map(([cy, h]) => `<div class="tile" style="${h >= 7 ? '' : 'opacity:.65'}"><div class="k">${cy} cycles · ${h} h</div><div class="v num" style="color:${h >= 7 ? 'var(--good)' : 'var(--bad)'}">${bedFor(h)}</div><div class="tiny muted">${h >= 7 ? 'Meets the 7+ hour guideline' : 'Too short for regular use'}</div></div>`).join('')}
+        <div class="tile"><div class="k">Your goal · ${s.need} h</div><div class="v num" style="color:var(--hair)">${bedFor(s.need)}</div><div class="tiny muted">Lights out by this time</div></div></div>
+    </div>
+
+    <div class="grid g4 section">
+      <div class="card tilt metric"><h3>Average, 7 nights</h3><div class="v num" style="color:${avg7 == null ? 'inherit' : avg7 >= 7 ? 'var(--good)' : 'var(--warn)'}">${avg7 == null ? '—' : round(avg7, 1)}<small> h</small></div></div>
+      <div class="card tilt metric"><h3>Sleep debt, 7 nights</h3><div class="v num">${round(debt, 1)}<small> h short</small></div><span class="tiny muted">vs your ${s.need} h goal</span></div>
+      <div class="card tilt metric"><h3>Bedtime consistency</h3><div class="v num">${sd == null ? '—' : '±' + Math.round(sd)}<small> min</small></div><span class="tiny muted">${sd == null ? 'needs tracked nights' : sd <= 30 ? 'steady, good for your body clock' : 'try to keep it within ±30 min'}</span></div>
+      <div class="card tilt metric"><h3>Sleep quality</h3><div class="v num">${q == null ? '—' : round(q, 1)}<small> / 5</small></div><span class="tiny muted">your morning rating</span></div>
+    </div>
+
+    <div class="card section"><h3>Last 14 nights</h3>${sleepBars(d14, hrs, s.need)}</div>
+
+    <div class="grid g2 section">
+      <form class="card" data-form="night"><h3>Add or fix a night</h3>
+        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          <div><label for="nDate">Morning you woke up</label><input type="date" id="nDate" name="date" value="${today()}" max="${today()}" required></div>
+          <div><label for="nQ">Quality</label><select id="nQ" name="quality">${['Awful', 'Poor', 'OK', 'Good', 'Great'].map((t, i) => `<option value="${i + 1}" ${i === 3 ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+          <div><label for="nBed">Went to sleep</label><input type="time" id="nBed" name="bed" value="23:00" required></div>
+          <div><label for="nWake">Woke up</label><input type="time" id="nWake" name="wake" value="${s.alarm}" required></div>
+        </div><button class="btn primary sm mt">Save night</button></form>
+      <div class="card"><h3>Sleep, skin & hair</h3>
+        ${gs != null && bs != null && good.length >= 3 && bad.length >= 3 ? `<div class="table-wrap"><table><thead><tr><th>Your average</th><th>After 7 h+</th><th>After under 6.5 h</th></tr></thead><tbody><tr><td>Skin score</td><td class="num">${Math.round(gs)}</td><td class="num">${Math.round(bs)}</td></tr><tr><td>Hair fall</td><td class="num">${Math.round(gf)}/day</td><td class="num">${Math.round(bf)}/day</td></tr></tbody></table></div>` : '<p class="small muted">After a couple of weeks of tracked nights, this compares your skin and hair after good and short sleep.</p>'}
+        <ul class="clean small mt">
+          <li>Adults need <b>7 hours or more</b> on a regular basis (AASM & Sleep Research Society consensus, Watson et al., 2015).</li>
+          <li>Keep the same wake time every day, weekends included, and get daylight soon after waking.</li>
+          <li>Caffeine taken even 6 hours before bed cut sleep by about an hour (Drake et al., 2013). Make your last tea or coffee by ${bedFor(s.need + 6, 0)}.</li>
+          <li>In a small study, poor sleepers showed more signs of skin ageing and slower skin-barrier recovery (Oyetakin-White et al., 2015).</li>
+          <li>Loud snoring, gasping at night, or daytime sleepiness despite enough hours are worth discussing with a doctor.</li>
+        </ul></div>
+    </div>`;
+  };
+
   /* ---------- me / settings ---------- */
   const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   function calLink(title, hm, rrule) {
@@ -780,14 +1163,33 @@ const App = (() => {
   function act(el) {
     const a = el.dataset.act, d = el.dataset;
     switch (a) {
-      case 'step': { const l = ensureLog(); setPath(l, d.path, clamp(getPath(l, d.path) + +d.d, 0, d.path === 'hair.fall' ? 500 : 50)); persist(); return render(); }
+      case 'step': { const l = ensureLog(); setPath(l, d.path, clamp((getPath(l, d.path) ?? 0) + +d.d, 0, d.path === 'hair.fall' ? 500 : d.path === 'life.protein' ? 300 : 50)); persist(); return render(); }
       case 'set': { const l = ensureLog(); setPath(l, d.path, +d.v); persist(); return render(); }
-      case 'flip': { const l = ensureLog(); setPath(l, d.path, !getPath(l, d.path)); persist(); return render(); }
+      case 'flip': { const l = d.today ? ensureLog(today()) : ensureLog(); setPath(l, d.path, !getPath(l, d.path)); persist(); return render(); }
       case 'water': { const l = ensureLog(); l.life.water = l.life.water === +d.v ? +d.v - 1 : +d.v; persist(); return render(); }
       case 'zone': { const l = ensureLog(), z = l.skin.zones, i = z.indexOf(d.z); i >= 0 ? z.splice(i, 1) : z.push(d.z); if (z.length && !l.skin.breakouts) l.skin.breakouts = 1; persist(); return render(); }
       case 'flag': { const l = ensureLog(), i = l.flags.indexOf(d.id); i >= 0 ? l.flags.splice(i, 1) : l.flags.push(d.id); persist(); return render(); }
       case 'done': { const l = ensureLog(d.date), arr = l.done[d.w], i = arr.indexOf(d.id); i >= 0 ? arr.splice(i, 1) : arr.push(d.id); persist(); return render(); }
       case 'day': return go('#/log/' + addDays(logDate, +d.d));
+      case 'glass': { const l = ensureLog(today()); l.life.water = clamp(l.life.water + +d.v, 0, 24); save(); return render(); }
+      case 'food': db.plate.items[d.id] = clamp((db.plate.items[d.id] || 0) + +d.d, 0, 6); save(); return render();
+      case 'plateMode': plateMode = d.v; return render();
+      case 'platePreset': db.plate.items = d.v ? { ...PLATES[d.v][1] } : {}; save(); return render();
+      case 'logPlate': {
+        const tot = plateTotals(db.plate.items), l = ensureLog(today());
+        l.life.meals.l = true; l.life.protein = Math.round((l.life.protein || 0) + tot.p); save();
+        toast(`Lunch logged: +${Math.round(tot.p)} g protein today`); return render();
+      }
+      case 'startSleep': return startSleep();
+      case 'showNight': return showNight();
+      case 'hideNight': return hideNight();
+      case 'wake': return endSleep(Date.now());
+      case 'snooze': db.sleep.active.alarmAt = Date.now() + 9 * 60e3; ringing = false; alarmSound.stop(); save(); return updateNight();
+      case 'cancelSleep': return askConfirm('Stop tracking tonight without saving it?', () => { db.sleep.active = null; alarmSound.stop(); ringing = false; try { wakeLock?.release(); } catch {} save(); hideNight(); render(); }, 'Cancel night');
+      case 'testSound': alarmSound.unlock(); alarmSound.beep(0.4); return toast('If you heard three beeps, the alarm sound works');
+      case 'alarmOn': db.sleep.alarmOn = !db.sleep.alarmOn; save(); return render();
+      case 'alarmDay': { const v = +d.v, ds = db.sleep.days; db.sleep.days = ds.includes(v) ? ds.filter((x) => x !== v) : [...ds, v].sort(); save(); return render(); }
+      case 'quality': { const x = db.sleep.sessions.find((q) => q.id === d.id); if (x) x.quality = +d.v; save(); $('#modal').classList.add('hidden'); toast('Thanks, saved'); return render(); }
       case 'heatKey': heatKey = d.v; return render();
       case 'scanKind': scanKind = d.v; cmp = []; lastScan = null; return render();
       case 'overlay': return overlay(d.v);
@@ -837,6 +1239,18 @@ const App = (() => {
     const fd = Object.fromEntries(new FormData(form));
     if (form.dataset.form === 'addStep') { db.routine[fd.when].push({ id: uid(), name: fd.name.trim(), kind: fd.kind }); toast('Step added'); }
     if (form.dataset.form === 'profile') { Object.assign(db.profile, fd); toast('Profile saved'); }
+    if (form.dataset.form === 'body') { Object.assign(db.profile, { sex: fd.sex, age: +fd.age, weight: +fd.weight, height: +fd.height, activity: fd.activity, goal: fd.goal }); toast('Targets updated'); }
+    if (form.dataset.form === 'alarm') { db.sleep.alarm = fd.alarm; db.sleep.need = +fd.need; if (db.sleep.active && !ringing) db.sleep.active.alarmAt = nextAlarm(new Date(db.sleep.active.start))?.getTime() ?? null; toast('Alarm saved for ' + fd.alarm); }
+    if (form.dataset.form === 'night') {
+      const end = new Date(fd.date + 'T' + fd.wake), start = new Date(fd.date + 'T' + fd.bed);
+      if (start >= end) start.setDate(start.getDate() - 1);
+      const h = (end - start) / 36e5;
+      if (h < 1 || h > 16) { toast('That night is ' + round(h, 1) + ' h long. Check the times.'); return; }
+      db.sleep.sessions = db.sleep.sessions.filter((x) => iso(new Date(x.end)) !== fd.date);
+      db.sleep.sessions.push({ id: uid(), start: start.getTime(), end: end.getTime(), quality: +fd.quality });
+      const l = ensureLog(fd.date); l.life.sleep = clamp(Math.round(h * 2) / 2, 3, 11);
+      toast(`Saved ${round(h, 1)} h for ${fmtDay(fd.date)}`);
+    }
     if (form.dataset.form === 'addRem') { db.reminders.push({ id: uid(), label: fd.label, time: fd.time, days: [0, 1, 2, 3, 4, 5, 6], on: true }); toast('Reminder added'); }
     save(); render();
   }
@@ -921,6 +1335,8 @@ const App = (() => {
     [/^\/log(?:\/([\d-]+))?$/, (m) => pages.log(m[1]), '/log'],
     [/^\/scan$/, () => pages.scan(), '/scan'],
     [/^\/trends$/, () => pages.trends(), '/trends'],
+    [/^\/fuel$/, () => pages.fuel(), '/fuel'],
+    [/^\/sleep$/, () => pages.sleep(), '/sleep'],
     [/^\/routine$/, () => pages.routine(), '/routine'],
     [/^\/me$/, () => pages.me(), '/me'],
   ];
@@ -989,6 +1405,9 @@ const App = (() => {
     render();
     fx.init();
     setInterval(remTick, 20000); remTick();
+    setInterval(sleepTick, 1000);
+    if (db.sleep.active) showNight();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && db.sleep.active) { keepAwake(); sleepTick(); } });
   }
   document.addEventListener('DOMContentLoaded', init);
 
