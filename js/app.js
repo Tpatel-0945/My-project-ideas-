@@ -2105,6 +2105,7 @@ const App = (() => {
     return `<div class="page-head"><span class="eyebrow">Me</span><h1>Account, profile & <span class="grad-text">reminders</span></h1></div>
     <div class="grid g2">
       ${lockCard()}
+      ${installCard()}
       <div class="card derma-card"><h3><span class="d-orb sm" aria-hidden="true"><i></i></span> Derma · AI coach</h3>
         <p class="small">${derma.key ? `Connected to Google Gemini (<b>${esc(derma.model)}</b>). Derma knows your scans, check-ins, sleep, routine and your muesli lunch.` : 'Chat with Derma about your skin, hair, sleep and food. It runs on Google Gemini using your own free API key, which stays on this device.'}</p>
         <div class="row"><button class="btn sm primary" data-act="askDerma">${derma.key ? 'Open chat' : 'Connect Google API key'}</button>${derma.key ? '<button class="btn sm" data-act="dSettings">Derma settings</button>' : ''}</div></div>
@@ -2120,7 +2121,7 @@ const App = (() => {
 
       <div class="card"><h3>Your data</h3>
         <p class="small">${n} days logged · ${db.scans.length} photo scans${db.demo ? ' · <span class="pill warn">sample data</span>' : ''}</p>
-        <p class="tiny muted">Everything is stored only in this browser. Copy a backup to move it to another device.</p>
+        <p class="tiny muted">${cloud.user ? 'Saved on this device and in your account, so it is on every device you sign in to. A backup copy is still handy to keep.' : 'Stored in this browser. Sign in (above) to keep it safe on every device, or copy a backup to move it.'}</p>
         <div class="row"><button class="btn sm" data-act="export">Copy backup</button><button class="btn sm" data-act="import">Restore backup</button>
           ${db.demo ? '<button class="btn sm primary" data-act="startFresh">Remove sample data</button>' : '<button class="btn sm ghost" data-act="loadDemo">Load sample data</button>'}
           ${db.scans.length ? '<button class="btn sm danger" data-act="delAllScans">Delete all scans</button>' : ''}<button class="btn sm danger" data-act="wipe">Delete everything</button></div></div>
@@ -2156,10 +2157,19 @@ const App = (() => {
      Sign-in keeps your data in your own Firebase project so it follows you to every device.
      Configure it in js/firebase-config.js (see README). Without a config the app stays local-only. */
   const FB_VER = '10.12.2';
-  const cloud = { status: 'off', authKnown: false, user: null, err: '', sent: new Set(), unsubs: [], pushT: null, device: Math.random().toString(36).slice(2, 10) };
+  /* Layout in your Firestore (only you can read or write it; see firestore.rules):
+       users/{uid}                  settings: profile, routine, reminders, sleep, food plans  (one small document)
+       users/{uid}/logs/{date}      one document per day, so years of check-ins never hit size limits
+       users/{uid}/scans/{id}       one document per photo scan (thumbnail + scores)
+       users/{uid}/chat/main        your conversation with Derma
+       users/{uid}/private/settings PIN lock (hash only) and, if you choose, your Gemini key
+     Writes are saved to the device first (offline cache) and sync when there is a connection. */
+  const cloud = { status: 'off', authKnown: false, user: null, err: '', sent: new Set(), logU: {}, metaJ: '', chatJ: '', privJ: '', unsubs: [], pushT: null, lastSync: 0, offline: !navigator.onLine, device: Math.random().toString(36).slice(2, 10) };
   let authMode = 'in';
   const fbConfig = () => (window.AURA_FIREBASE_CONFIG && window.AURA_FIREBASE_CONFIG.apiKey ? window.AURA_FIREBASE_CONFIG : null);
   const loadScript = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
+  addEventListener('online', () => { cloud.offline = false; if (cloud.user) cloudPush(); renderAcct(); });
+  addEventListener('offline', () => { cloud.offline = true; renderAcct(); });
   async function cloudInit() {
     if (!fbConfig()) { cloud.status = 'unconfigured'; return renderAcct(); }
     cloud.status = 'loading'; renderAcct();
@@ -2167,87 +2177,170 @@ const App = (() => {
       for (const m of ['app', 'auth', 'firestore']) await loadScript(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-${m}-compat.js`);
       firebase.initializeApp(fbConfig());
       cloud.auth = firebase.auth(); cloud.fs = firebase.firestore();
-      cloud.auth.getRedirectResult().catch((e) => { cloud.err = authMsg(e); render(); });
+      try { await cloud.fs.enablePersistence({ synchronizeTabs: true }); } catch {}   // offline cache; fails harmlessly in private mode
+      cloud.auth.getRedirectResult().then((r) => { if (r?.user) { lock.locked = false; gateCheck(); } }).catch((e) => { cloud.err = authMsg(e); render(); });
       cloud.auth.onAuthStateChanged((u) => onUser(u));
       cloud.status = 'ready';
     } catch { cloud.status = 'blocked'; cloud.err = 'The sign-in service could not be reached. Check your connection.'; }
     renderAcct(); if (route === '/me') render();
   }
   const userRef = () => cloud.fs.collection('users').doc(cloud.user.uid);
-  function mergeRemote(r) {
+  const META_KEYS = ['profile', 'routine', 'reminders', 'sleep', 'plate', 'bowl'];
+  function mergeMeta(r) {
     if (!r) return;
-    for (const [d, l] of Object.entries(r.logs || {})) { const mine = db.logs[d]; if (!mine || (l.u || 0) > (mine.u || 0)) db.logs[d] = l; }
-    if ((r.metaAt || 0) > (db.metaAt || 0)) for (const k of ['profile', 'routine', 'reminders', 'sleep', 'plate', 'bowl', 'chat']) if (r[k]) db[k] = r[k];
+    const mine = db.sleep.sessions || [];
+    if ((r.metaAt || 0) > (db.metaAt || 0)) {
+      const f = fresh();
+      for (const k of META_KEYS) if (r[k]) db[k] = k === 'profile' || k === 'sleep' ? { ...f[k], ...r[k], sessions: k === 'sleep' ? r.sleep.sessions || [] : undefined } : r[k];
+      delete db.profile.sessions; db.metaAt = r.metaAt;
+    }
+    // nights recorded on different devices are kept from both
+    const ids = new Set(db.sleep.sessions.map((x) => x.id));
+    [...mine, ...(r.sleep?.sessions || [])].forEach((x) => { if (x?.id && !ids.has(x.id)) { db.sleep.sessions.push(x); ids.add(x.id); } });
+    db.sleep.sessions.sort((a, b) => a.start - b.start);
     db.demo = false;
+  }
+  function mergeLog(date, j, u) {
+    let l; try { l = typeof j === 'string' ? JSON.parse(j) : j; } catch { return false; }
+    const mine = db.logs[date];
+    cloud.logU[date] = Math.max(cloud.logU[date] || 0, u || 1);
+    if (mine && (mine.u || 0) >= (u || 0)) return false;
+    const n = newLog(); db.logs[date] = { ...l, skin: { ...n.skin, ...l.skin }, hair: { ...n.hair, ...l.hair }, life: { ...n.life, ...l.life }, done: l.done || n.done, flags: l.flags || [] };
+    return true;
+  }
+  function mergeChat(list) {
+    if (!Array.isArray(list)) return false;
+    const key = (m) => m.r + m.at, have = new Set((db.chat || []).map(key)); let ch = false;
+    list.forEach((m) => { if (m?.at && !have.has(key(m))) { (db.chat ||= []).push(m); ch = true; } });
+    if (ch) { db.chat.sort((a, b) => a.at - b.at); db.chat = db.chat.slice(-40); }
+    return ch;
+  }
+  function mergePrivate(p) {
+    if (!p) return false;
+    let ch = false;
+    if (p.lock && (p.lock.at || 0) > (lock.cfg?.at || 0)) {
+      const bio = lock.cfg?.hash === p.lock.hash ? lock.cfg?.bio : null;
+      lock.cfg = p.lock.off ? null : { ...p.lock, bio, after: p.lock.after ?? lock.cfg?.after ?? 5 };
+      store.set('lock', p.lock.off ? { off: true, at: p.lock.at } : lock.cfg); ch = true;
+    }
+    if (p.gkey && !derma.key && store.get('gsync', true)) { Object.assign(derma, { key: p.gkey, model: p.gmodel || derma.model || 'gemini-2.5-flash' }); store.set('gkey', p.gkey); store.set('gmodel', derma.model); ch = true; }
+    return ch;
   }
   function mergeScan(sc) { if (sc?.id && !db.scans.some((x) => x.id === sc.id)) db.scans.push(sc); cloud.sent.add(sc.id); }
   async function onUser(u) {
-    cloud.unsubs.forEach((f) => f()); cloud.unsubs = []; cloud.user = u; cloud.sent = new Set(); cloud.authKnown = true;
+    cloud.unsubs.forEach((f) => f()); cloud.unsubs = []; cloud.user = u; cloud.authKnown = true;
+    Object.assign(cloud, { sent: new Set(), logU: {}, metaJ: '', chatJ: '', privJ: '' });
     if (!u) { cloud.status = 'ready'; renderAcct(); if (route === '/me') render(); return; }
+    if (lock.authFlow) { lock.locked = false; lock.authFlow = false; }   // you just proved who you are; no PIN needed this time
     cloud.status = 'syncing'; renderAcct();
     try {
-      const ref = userRef(), snap = await ref.get();
+      const ref = userRef();
       if (db.demo) {   // drop the sample data but keep anything you did yourself (edited logs carry a timestamp; sample scans have fixed ids)
         const mine = Object.fromEntries(Object.entries(db.logs).filter(([, l]) => l.u));
-        db = { ...fresh(), profile: db.profile, routine: db.routine, reminders: db.reminders, sleep: { ...db.sleep, sessions: db.sleep.sessions.filter((x) => !/^n\d+$/.test(x.id)) }, plate: db.plate, logs: mine, scans: db.scans.filter((x) => !/^d[sh]\d+$/.test(x.id)), demo: false };
+        db = { ...fresh(), profile: db.profile, routine: db.routine, reminders: db.reminders, sleep: { ...db.sleep, sessions: db.sleep.sessions.filter((x) => !/^n\d+$/.test(x.id)) }, plate: db.plate, bowl: db.bowl, chat: db.chat, logs: mine, scans: db.scans.filter((x) => !/^d[sh]\d+$/.test(x.id)), demo: false };
       }
-      if (snap.exists) mergeRemote(JSON.parse(snap.data().db || '{}'));
-      (await ref.collection('scans').get()).forEach((d) => mergeScan(d.data()));
+      const [snap, logs, scans, chat, priv] = await Promise.all([ref.get(), ref.collection('logs').get(), ref.collection('scans').get(), ref.collection('chat').doc('main').get(), ref.collection('private').doc('settings').get()]);
+      if (snap.exists) {
+        const d = snap.data();
+        if (d.db) {   // older single-document layout: merge it in; it is rewritten in the new layout below
+          const r = JSON.parse(d.db || '{}'); mergeMeta(r);
+          Object.entries(r.logs || {}).forEach(([dt, l]) => mergeLog(dt, l, l.u || 1)); mergeChat(r.chat);
+          Object.keys(r.logs || {}).forEach((dt) => { cloud.logU[dt] = 0; });   // force them into their own documents
+        } else if (d.meta) mergeMeta(JSON.parse(d.meta));
+      }
+      logs.forEach((doc) => mergeLog(doc.id, doc.data().j, doc.data().u));
+      scans.forEach((doc) => mergeScan(doc.data()));
+      if (chat.exists) mergeChat(JSON.parse(chat.data().j || '[]'));
+      if (priv.exists) mergePrivate(priv.data());
       db.scans.sort((a, b) => a.date.localeCompare(b.date));
-      save(true); await pushAll();
-      cloud.unsubs.push(ref.onSnapshot((s2) => {
-        if (s2.metadata.hasPendingWrites || !s2.exists || s2.data().by === cloud.device) return;
-        mergeRemote(JSON.parse(s2.data().db || '{}')); save(true); render();
-      }));
-      cloud.unsubs.push(ref.collection('scans').onSnapshot((qs) => {
-        let changed = false;
-        qs.docChanges().forEach((ch) => {
-          if (ch.type === 'removed') { if (db.scans.some((x) => x.id === ch.doc.id)) { db.scans = db.scans.filter((x) => x.id !== ch.doc.id); changed = true; } cloud.sent.delete(ch.doc.id); }
-          else if (!db.scans.some((x) => x.id === ch.doc.id)) { mergeScan(ch.doc.data()); changed = true; }
+      save(true); pushAll();
+      const live = (snapCb) => (s) => { if (!s.metadata?.hasPendingWrites) snapCb(s); };
+      cloud.unsubs.push(ref.onSnapshot(live((s) => {
+        if (!s.exists || s.data().by === cloud.device || !s.data().meta) return;
+        cloud.metaJ = ''; mergeMeta(JSON.parse(s.data().meta)); save(true); render();
+      })));
+      cloud.unsubs.push(ref.collection('logs').onSnapshot(live((qs) => {
+        let ch = false;
+        qs.docChanges().forEach((c) => {
+          if (c.type === 'removed') { if (db.logs[c.doc.id]) { delete db.logs[c.doc.id]; ch = true; } delete cloud.logU[c.doc.id]; }
+          else if (c.doc.data().by !== cloud.device && mergeLog(c.doc.id, c.doc.data().j, c.doc.data().u)) ch = true;
         });
-        if (changed) { save(true); if (route === '/scan' || route === '/') render(); }
-      }));
-      cloud.status = 'synced'; cloud.err = '';
+        if (ch) { save(true); render(); }
+      })));
+      cloud.unsubs.push(ref.collection('scans').onSnapshot(live((qs) => {
+        let changed = false;
+        qs.docChanges().forEach((c) => {
+          if (c.type === 'removed') { if (db.scans.some((x) => x.id === c.doc.id)) { db.scans = db.scans.filter((x) => x.id !== c.doc.id); changed = true; } cloud.sent.delete(c.doc.id); }
+          else if (!db.scans.some((x) => x.id === c.doc.id)) { mergeScan(c.doc.data()); changed = true; }
+        });
+        if (changed) { db.scans.sort((a, b) => a.date.localeCompare(b.date)); save(true); if (route === '/scan' || route === '/') render(); }
+      })));
+      cloud.unsubs.push(ref.collection('chat').doc('main').onSnapshot(live((s) => { if (s.exists && s.data().by !== cloud.device && mergeChat(JSON.parse(s.data().j || '[]'))) { save(true); dermaRender(); } })));
+      cloud.unsubs.push(ref.collection('private').doc('settings').onSnapshot(live((s) => { if (s.exists && s.data().by !== cloud.device && mergePrivate(s.data())) { renderAcct(); if (route === '/me') render(); } })));
+      cloud.err = '';
     } catch (e) { cloud.status = 'error'; cloud.err = 'Sync failed: ' + (e.message || e); }
-    renderAcct(); render();
+    renderAcct(); render(); dermaRender();
   }
   function cloudPush() { if (!cloud.user) return; clearTimeout(cloud.pushT); cloud.status = 'syncing'; renderAcct(); cloud.pushT = setTimeout(pushAll, 1200); }
-  async function pushAll() {
+  const syncLock = () => { const s = store.get('lock', null); if (s?.off) return { off: true, at: s.at || Date.now() }; if (!lock.cfg?.hash || lock.cfg.preset) return null; const { bio, preset, ...c } = lock.cfg; return c; };
+  // Writes go to the offline cache at once and reach the server when online, so we don't wait for each one.
+  function pushAll() {
     if (!cloud.user) return;
-    try {
-      const { scans, ...rest } = db, ref = userRef();
-      await ref.set({ db: JSON.stringify(rest), by: cloud.device, at: firebase.firestore.FieldValue.serverTimestamp() });
-      for (const sc of scans) if (!cloud.sent.has(sc.id)) { await ref.collection('scans').doc(sc.id).set(sc); cloud.sent.add(sc.id); }
-      cloud.status = 'synced'; cloud.err = '';
-    } catch (e) { cloud.status = 'error'; cloud.err = 'Could not save to your account: ' + (e.message || e); }
-    renderAcct();
+    const ref = userRef(), stamp = firebase.firestore.FieldValue.serverTimestamp(), writes = [];
+    const meta = Object.fromEntries([...META_KEYS, 'metaAt'].map((k) => [k, db[k]])), metaJ = JSON.stringify(meta);
+    if (metaJ !== cloud.metaJ) { writes.push(ref.set({ v: 2, meta: metaJ, by: cloud.device, at: stamp })); cloud.metaJ = metaJ; }
+    const dirty = Object.entries(db.logs).filter(([d, l]) => (l.u || 1) > (cloud.logU[d] || 0));
+    for (let i = 0; i < dirty.length; i += 400) {
+      const b = cloud.fs.batch();
+      dirty.slice(i, i + 400).forEach(([d, l]) => { b.set(ref.collection('logs').doc(d), { j: JSON.stringify(l), u: l.u || 1, by: cloud.device }); cloud.logU[d] = l.u || 1; });
+      writes.push(b.commit());
+    }
+    for (const sc of db.scans) if (!cloud.sent.has(sc.id)) { writes.push(ref.collection('scans').doc(sc.id).set(sc)); cloud.sent.add(sc.id); }
+    const chatJ = JSON.stringify(db.chat || []);
+    if (chatJ !== cloud.chatJ) { writes.push(ref.collection('chat').doc('main').set({ j: chatJ, by: cloud.device, at: stamp })); cloud.chatJ = chatJ; }
+    const priv = { lock: syncLock(), gkey: store.get('gsync', true) ? derma.key || null : null, gmodel: derma.model || null }, privJ = JSON.stringify(priv);
+    if (privJ !== cloud.privJ) { writes.push(ref.collection('private').doc('settings').set({ ...priv, by: cloud.device, at: stamp })); cloud.privJ = privJ; }
+    cloud.status = cloud.offline ? 'offline' : 'syncing'; renderAcct();
+    Promise.all(writes).then(() => { cloud.status = 'synced'; cloud.err = ''; cloud.lastSync = Date.now(); renderAcct(); if (route === '/me') render(); })
+      .catch((e) => { cloud.status = 'error'; cloud.err = 'Could not save to your account: ' + (e.message || e); Object.assign(cloud, { metaJ: '', chatJ: '', privJ: '' }); renderAcct(); });
   }
   function cloudDeleteScans(ids) { if (!cloud.user) return; ids.forEach((id) => { userRef().collection('scans').doc(id).delete().catch(() => {}); cloud.sent.delete(id); }); }
-  const authMsg = (e) => ({ 'auth/invalid-credential': 'Wrong email or password.', 'auth/wrong-password': 'Wrong email or password.', 'auth/user-not-found': 'No account with that email. Create one instead.', 'auth/email-already-in-use': 'An account with that email already exists. Sign in instead.', 'auth/weak-password': 'Use a password with at least 6 characters.', 'auth/invalid-email': 'That email address doesn\'t look right.', 'auth/unauthorized-domain': 'This website address is not authorised in Firebase. Add it under Authentication → Settings → Authorized domains.', 'auth/popup-closed-by-user': 'Sign-in window was closed.' }[e?.code] || e?.message || 'Sign-in failed.');
+  async function cloudWipe() {   // "Delete everything": remove every document in your account
+    if (!cloud.user) return;
+    const ref = userRef();
+    for (const c of ['logs', 'scans', 'chat']) { const qs = await ref.collection(c).get(); const b = cloud.fs.batch(); qs.forEach((d) => b.delete(d.ref || ref.collection(c).doc(d.id))); await b.commit(); }
+    Object.assign(cloud, { sent: new Set(), logU: {}, metaJ: '', chatJ: '' });
+  }
+  const authMsg = (e) => ({ 'auth/invalid-credential': 'Wrong email or password.', 'auth/wrong-password': 'Wrong email or password.', 'auth/user-not-found': 'No account with that email. Create one instead.', 'auth/email-already-in-use': 'An account with that email already exists. Sign in instead.', 'auth/weak-password': 'Use a password with at least 6 characters.', 'auth/invalid-email': 'That email address doesn\'t look right.', 'auth/unauthorized-domain': 'This website address is not authorised in Firebase. Add it under Authentication → Settings → Authorized domains.', 'auth/popup-closed-by-user': 'Sign-in window was closed.', 'auth/network-request-failed': 'No connection. Check your internet and try again.', 'auth/too-many-requests': 'Too many attempts. Wait a few minutes and try again.' }[e?.code] || e?.message || 'Sign-in failed.');
+  const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   async function cloudGoogle() {
-    const prov = new firebase.auth.GoogleAuthProvider();
+    const prov = new firebase.auth.GoogleAuthProvider(); prov.setCustomParameters?.({ prompt: 'select_account' });
+    lock.authFlow = true;
+    // installed iPhone/iPad apps can't open pop-ups reliably, so they use a full-page redirect
+    if (standalone() && /iphone|ipad|ipod|macintosh/i.test(navigator.userAgent) && 'ontouchend' in document) return cloud.auth.signInWithRedirect(prov);
     try { await cloud.auth.signInWithPopup(prov); }
-    catch (e) { if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/cancelled-popup-request'].includes(e.code)) await cloud.auth.signInWithRedirect(prov); else { cloud.err = authMsg(e); render(); } }
+    catch (e) { if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/cancelled-popup-request'].includes(e.code)) await cloud.auth.signInWithRedirect(prov); else { lock.authFlow = false; cloud.err = authMsg(e); render(); } }
   }
   async function cloudEmail(fd) {
+    lock.authFlow = true;
     try {
       if (authMode === 'up') await cloud.auth.createUserWithEmailAndPassword(fd.email, fd.password);
       else await cloud.auth.signInWithEmailAndPassword(fd.email, fd.password);
       cloud.err = '';
-    } catch (e) { cloud.err = authMsg(e); render(); }
+    } catch (e) { lock.authFlow = false; cloud.err = authMsg(e); render(); }
   }
   async function cloudReset() {
     const email = ($('#authEmail') || $('#gEmail'))?.value.trim(); if (!email) return toast('Type your email first');
     try { await cloud.auth.sendPasswordResetEmail(email); toast('Password reset email sent'); } catch (e) { cloud.err = authMsg(e); render(); }
   }
   async function cloudSignOut(wipe) {
-    await pushAll(); await cloud.auth.signOut();
+    pushAll(); await cloud.auth.signOut();
     if (wipe) { db = fresh(); db.scanWipe = 1; current = null; save(true); }
     toast('Signed out'); render();
   }
   function renderAcct() {
     const el = $('#acct'); if (!el) return;
-    const st = cloud.user ? { synced: '☁ Synced', syncing: '☁ Syncing…', error: '☁ Sync error' }[cloud.status] || '☁ Signed in' : 'Sign in';
+    const st = cloud.user ? (cloud.offline ? '☁ Offline · saved here' : { synced: '☁ Synced', syncing: '☁ Syncing…', offline: '☁ Offline · saved here', error: '☁ Sync error' }[cloud.status] || '☁ Signed in') : 'Sign in';
     el.textContent = st; el.classList.toggle('on', !!cloud.user); el.classList.toggle('err', cloud.status === 'error');
     $('#lockBtn')?.toggleAttribute('hidden', !lock.cfg?.hash);
     gateCheck();
@@ -2256,7 +2349,9 @@ const App = (() => {
     const err = cloud.err ? `<div class="insight bad" style="margin-bottom:10px"><div class="ic">!</div><div><p style="color:var(--text);margin:0">${esc(cloud.err)}</p></div></div>` : '';
     if (cloud.user) return `<div class="card account"><h3>☁ Account</h3>${err}
       <div class="row" style="flex-wrap:nowrap"><span class="avatar-dot">${esc((cloud.user.displayName || cloud.user.email || '?')[0].toUpperCase())}</span><div style="min-width:0"><b>${esc(cloud.user.displayName || cloud.user.email)}</b><div class="small muted">${esc(cloud.user.email || '')}</div></div></div>
-      <p class="small" style="margin:12px 0">${cloud.status === 'synced' ? '✓ Everything is saved to your account. Sign in on your phone or iPad with the same account to see it there.' : cloud.status === 'syncing' ? 'Saving…' : 'There was a problem saving. It will retry on your next change.'}</p>
+      <p class="small" style="margin:12px 0">${cloud.offline ? '◌ You are offline. Changes are saved on this device and upload automatically when you reconnect.' : cloud.status === 'synced' ? '✓ Everything is saved to your account. Sign in on your phone or iPad with the same account to see it there.' : cloud.status === 'syncing' ? 'Saving…' : 'There was a problem saving. It will retry on your next change.'}</p>
+      <div class="sync-stats"><div><b class="num">${Object.keys(db.logs).length}</b><span>days</span></div><div><b class="num">${db.scans.length}</b><span>scans</span></div><div><b class="num">${db.sleep.sessions.length}</b><span>nights</span></div><div><b class="num">${(db.chat || []).length}</b><span>chats</span></div></div>
+      <p class="tiny muted" style="margin:0 0 12px">${cloud.lastSync ? 'Last synced ' + hm(new Date(cloud.lastSync)) + ' · ' : ''}Stored in your own Firebase project; only your account can read it.</p>
       <div class="row"><button class="btn sm" data-act="logout">Sign out</button><button class="btn sm ghost" data-act="logoutWipe">Sign out & remove from this device</button></div></div>`;
     if (cloud.status === 'unconfigured') return `<div class="card account"><h3>☁ Account & sync</h3>
       <p class="small">Signing in keeps your logs, routine and scans in sync on your phone, iPad and computer. It needs a free Firebase project linked to your deployed site, which takes about 10 minutes to set up once.</p>
@@ -2428,8 +2523,9 @@ The app's photo scores are colour-based estimates that change with lighting and 
         <ol class="small steps"><li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → API keys</a> and sign in with your Google account.</li><li>Tap <b>Create API key</b> and copy it.</li><li>Paste it here.</li></ol>
         ${err}<form class="stack" data-form="gkey"><div><label for="gKey">Gemini API key</label><input id="gKey" name="key" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…" required></div>
         <label class="dcheck"><input type="checkbox" name="remember" checked> Remember on this device</label>
+        ${cloud.user ? `<label class="dcheck"><input type="checkbox" name="sync" ${store.get('gsync', true) ? 'checked' : ''}> Also keep it in my account, so Derma works on all my devices</label>` : ''}
         <button class="btn primary" ${derma.busy ? 'disabled' : ''}>${derma.busy ? 'Checking…' : 'Connect'}</button></form>
-        <div class="d-note tiny muted"><b>Privacy.</b> Your key stays in this browser only. It is never synced to your account or saved in the website's code. When you chat, your message and a short summary of your logs (scores, today's check-in, targets, routine) go to Google. On the free tier Google may use them to improve its products; a paid (billing-enabled) key keeps them private.<br><br><b>Protect the key:</b> in Google Cloud Console → APIs & Services → Credentials, restrict it to your website's address (HTTP referrer) and to the Generative Language API.</div></div>`;
+        <div class="d-note tiny muted"><b>Privacy.</b> Your key is kept in this browser${cloud.user ? ' and, if you tick the box, in your own account (readable only by you)' : ''}. It is never saved in the website's code. When you chat, your message and a short summary of your logs (scores, today's check-in, targets, routine) go to Google. On the free tier Google may use them to improve its products; a paid (billing-enabled) key keeps them private.<br><br><b>Protect the key:</b> in Google Cloud Console → APIs & Services → Credentials, restrict it to your website's address (HTTP referrer) and to the Generative Language API.</div></div>`;
     } else if (derma.view === 'settings') {
       body = `<div class="d-pane"><h3>Derma settings</h3>${err}
         <label for="gModel">Model</label><select id="gModel" data-dmodel>${(derma.models.length ? derma.models : [derma.model]).map((m) => `<option ${m === derma.model ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select>
@@ -2471,11 +2567,20 @@ The app's photo scores are colour-based estimates that change with lighting and 
      A PIN (PBKDF2-hashed, kept only on this device) and optional Face ID / fingerprint (WebAuthn, on-device) lock the app on open
      and after it sits in the background. With Firebase configured, signing in is required as well.
      This keeps casual eyes out on a shared device; your synced data is protected by your account and the Firestore rules. */
-  const lock = { cfg: store.get('lock', null), locked: false, mode: null, entry: '', first: '', len: 6, fails: 0, until: 0, hiddenAt: 0, busy: false, bioOK: false, orb: null, setup: false };
+  // The default PIN comes from js/lock-config.js (a salted hash only). A PIN you set in the app overrides it and follows your account.
+  const PIN_IT = 600000;   // PBKDF2-SHA256 rounds (OWASP 2023 guidance), about half a second on a phone
+  function lockLoad() {
+    const s = store.get('lock', null), pre = window.AURA_LOCK?.hash ? window.AURA_LOCK : null;
+    if (s?.off) return null;
+    if (s?.hash) return s;
+    return pre ? { ...pre, preset: true, at: pre.at || 0, after: s?.after ?? pre.after ?? 5, bio: s?.bio || null } : null;
+  }
+  const lock = { cfg: lockLoad(), locked: false, mode: null, entry: '', first: '', len: 6, fails: 0, until: 0, hiddenAt: 0, busy: false, bioOK: false, orb: null, setup: false, authFlow: false };
   lock.locked = !!lock.cfg?.hash;
+  function lockSave(c, sync = true) { lock.cfg = c; store.set('lock', c?.preset ? { after: c.after, bio: c.bio } : c || { off: true, at: Date.now() }); if (sync) cloudPush(); renderAcct(); }
   const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))), unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   const randBytes = (n) => crypto.getRandomValues(new Uint8Array(n));
-  async function pinHash(pin, salt, it = 150000) {
+  async function pinHash(pin, salt, it = PIN_IT) {
     const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
     return b64(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unb64(salt), iterations: it }, k, 256));
   }
@@ -2483,7 +2588,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
   async function bioRegister() {
     try {
       const cred = await navigator.credentials.create({ publicKey: { challenge: randBytes(32), rp: { name: 'AURA Monitor' }, user: { id: randBytes(16), name: 'aura-owner', displayName: db.profile.name || 'AURA owner' }, pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }], authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' }, timeout: 60000, attestation: 'none' } });
-      lock.cfg.bio = b64(cred.rawId); store.set('lock', lock.cfg); toast('Face ID / fingerprint unlock is on'); return true;
+      lock.cfg.bio = b64(cred.rawId); lockSave(lock.cfg, false); toast('Face ID / fingerprint unlock is on'); return true;
     } catch (e) { toast(e.name === 'NotAllowedError' ? 'Cancelled' : 'This device or page can\'t use Face ID / fingerprint'); return false; }
   }
   async function bioUnlock() {
@@ -2495,7 +2600,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
     if (fbConfig() && !cloud.user && !['blocked', 'unconfigured'].includes(cloud.status)) return cloud.authKnown ? 'auth' : 'loading';
     if (lock.setup) return 'setup';
     if (lock.cfg?.hash && lock.locked) return 'pin';
-    if (!store.get('gateSeen', false)) return 'welcome';
+    if (!lock.cfg?.hash && !store.get('gateSeen', false)) return 'welcome';
     return null;
   }
   const greet = () => { const h = new Date().getHours(); return h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; };
@@ -2551,14 +2656,14 @@ The app's photo scores are colour-based estimates that change with lighting and 
       if (pin !== lock.first) { lock.first = ''; lock.entry = ''; lock.busy = false; lock.shake = true; lock.orb?.shake(); toast('The PINs didn\'t match. Choose again.'); return gateRender(); }
       if (!crypto.subtle) { lock.busy = false; return toast('A PIN lock needs a secure (https) page'); }
       const salt = b64(randBytes(16));
-      lock.cfg = { salt, hash: await pinHash(pin, salt), it: 150000, len, bio: null, after: lock.cfg?.after ?? 5 };
-      store.set('lock', lock.cfg); store.set('gateSeen', true);
+      lockSave({ salt, hash: await pinHash(pin, salt), it: PIN_IT, len, bio: null, after: lock.cfg?.after ?? 5, at: Date.now() }); store.set('gateSeen', true);
       lock.setup = false; lock.first = ''; lock.entry = ''; lock.busy = false; lock.locked = false;
       toast('PIN lock is on');
       if (lock.bioOK) dialog('<h3>Unlock with Face ID or fingerprint?</h3><p class="small muted">Use your device\'s own biometrics instead of typing the PIN. Your face or fingerprint never leaves the device.</p>', [{ label: 'Not now', cls: 'ghost' }, { label: 'Turn on', cls: 'primary', fn: () => { bioRegister(); } }]);
       lock.orb?.burst(); setTimeout(() => gateCheck(), 350); if (route === '/me') render(); return;
     }
-    const ok = (await pinHash(pin, lock.cfg.salt, lock.cfg.it)) === lock.cfg.hash;
+    $('#gateBox .g-sub') && ($('#gateBox .g-sub').textContent = 'Checking…');
+    const ok = (await pinHash(pin, lock.cfg.salt, lock.cfg.it || 150000)) === lock.cfg.hash;
     lock.busy = false; lock.entry = '';
     if (ok) return unlockOK();
     lock.fails++; lock.shake = true; lock.orb?.shake();
@@ -2580,10 +2685,11 @@ The app's photo scores are colour-based estimates that change with lighting and 
   function lockCard() {
     const c = lock.cfg;
     return `<div class="card"><h3>⬢ Privacy lock</h3>${c?.hash ? `<p class="small">AURA asks for your ${c.len}-digit PIN${c.bio ? ' or Face ID / fingerprint' : ''} when it opens${c.after >= 0 ? ` and after ${c.after ? c.after + ' min' : 'any time'} in the background` : ''}.</p>
+      <p class="tiny muted" style="margin:-4px 0 10px">${c.preset ? 'Using your default PIN from setup. Change it here any time.' : `Using the PIN you chose${fbConfig() ? '; it follows your account to every device' : ''}.`}</p>
       <label for="lockAfter">Lock again after</label><select id="lockAfter" data-lockafter>${[[0, 'Immediately when I leave'], [1, '1 minute away'], [5, '5 minutes away'], [15, '15 minutes away'], [-1, 'Only when I reopen the site']].map(([v, l]) => `<option value="${v}" ${c.after === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <div class="row mt"><button class="btn sm primary" data-act="lockNow">Lock now</button><button class="btn sm" data-act="pinSetup">Change PIN</button>${lock.bioOK ? `<button class="btn sm" data-act="${c.bio ? 'bioOff' : 'bioOn'}">${c.bio ? 'Turn off Face ID / fingerprint' : 'Add Face ID / fingerprint'}</button>` : ''}<button class="btn sm ghost" data-act="pinOff">Remove lock</button></div>`
       : `<p class="small">Lock AURA with a PIN${lock.bioOK ? ' and Face ID / fingerprint' : ''} so nobody else can open your scans and logs on this device.</p><button class="btn sm primary" data-act="pinSetup">Set up a PIN</button>`}
-      <p class="tiny muted" style="margin:10px 0 0">The PIN is stored as a salted PBKDF2 hash on this device only and is never synced. It keeps the app private from people using your device; anyone with full access to the browser's storage could still read local data${fbConfig() ? '. Your synced data is protected by your account' : ''}.</p></div>`;
+      <p class="tiny muted" style="margin:10px 0 0">Only a salted PBKDF2 hash of the PIN is kept${fbConfig() ? ' (on this device and in your account, so a changed PIN follows you)' : ' on this device'}; the PIN itself is never stored. It keeps the app private from people using your device; anyone with full access to the browser's storage could still read local data${fbConfig() ? '. Your synced data is protected by your account' : ''}.</p></div>`;
   }
   // the glowing, breathing orb on the lock screen (reacts to the pointer and to each key press)
   function mountOrb(el) {
@@ -2628,6 +2734,26 @@ The app's photo scores are colour-based estimates that change with lighting and 
         dispose() { alive = false; cancelAnimationFrame(raf); removeEventListener('pointermove', mv); disposeAll(scene, r); el.innerHTML = ''; },
       };
     } catch (e) { console.warn('orb unavailable', e); return null; }
+  }
+
+  /* ================= installable app (PWA) ================= */
+  let installEvt = null;
+  addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; if (route === '/me') render(); });
+  addEventListener('appinstalled', () => { installEvt = null; toast('AURA is on your home screen'); if (route === '/me') render(); });
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  function installCard() {
+    if (standalone()) return `<div class="card install"><h3>▣ App</h3><p class="small">✓ You're using AURA as an installed app. It opens from your home screen, works offline and syncs when you're back online.</p></div>`;
+    const how = isIOS()
+      ? `<ol class="small steps"><li>Open this site in <b>Safari</b>.</li><li>Tap <b>Share</b> <span class="kbd">⬆</span> at the bottom (top-right on iPad).</li><li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li></ol>`
+      : installEvt ? '' : `<ol class="small steps"><li>Open this site in <b>Chrome</b> (Android) or Chrome / Edge (computer).</li><li>Tap the menu <span class="kbd">⋮</span> → <b>Install app</b> (or <b>Add to Home screen</b>).</li></ol>`;
+    return `<div class="card install"><h3>▣ Install as an app</h3><div class="row" style="flex-wrap:nowrap;gap:14px"><img src="icons/icon-192.png" alt="" class="app-icon"><div><b>AURA</b><div class="small muted">Home-screen icon, full screen, works offline, opens straight to your lock screen.</div></div></div>
+      ${installEvt ? '<button class="btn primary mt" data-act="install">Install AURA</button>' : how}</div>`;
+  }
+  function registerSW() {
+    if (!('serviceWorker' in navigator) || window.top !== window.self || !/^https:$|^http:$/.test(location.protocol) || (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname))) return;
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      reg.addEventListener('updatefound', () => { const w = reg.installing; w?.addEventListener('statechange', () => { if (w.state === 'activated' && navigator.serviceWorker.controller) toast('AURA updated'); }); });
+    }).catch(() => {});
   }
 
   /* ================= actions ================= */
@@ -2702,6 +2828,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
       case 'delScan': return askConfirm('Delete this scan photo?', () => { db.scans = db.scans.filter((x) => x.id !== d.id); cloudDeleteScans([d.id]); cmp = cmp.filter((x) => x !== d.id); if (current?.id === d.id) current = null; save(); render(); });
       case 'delAllScans': return askConfirm(`Delete all ${db.scans.length} scans and their photos${cloud.user ? ' on every device' : ''}?`, () => { cloudDeleteScans(db.scans.map((x) => x.id)); db.scans = []; cmp = []; current = null; save(); toast('All scans deleted'); render(); }, 'Delete all scans');
       case 'gLogin': return cloudGoogle();
+      case 'install': if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; render(); }); } return;
       case 'derma': derma.open = !derma.open; if (derma.open) return dermaOpen(); try { speechSynthesis.cancel(); } catch {} return dermaRender();
       case 'askDerma': return dermaOpen(d.q);
       case 'dSettings': derma.view = 'settings'; return dermaOpen();
@@ -2712,7 +2839,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
       }
       case 'dView': derma.view = d.v; derma.err = ''; return dermaRender();
       case 'dClear': return askConfirm('Clear the whole conversation with Derma?', () => { db.chat = []; save(); dermaRender(); }, 'Clear chat');
-      case 'dForget': store.set('gkey', ''); store.set('gmodels', []); Object.assign(derma, { key: '', models: [], view: 'key' }); toast('Key removed from this device'); return dermaRender();
+      case 'dForget': store.set('gkey', ''); store.set('gmodels', []); Object.assign(derma, { key: '', models: [], view: 'key' }); cloudPush(); toast('Key removed'); return dermaRender();
       case 'dSpeak': derma.speak = !derma.speak; store.set('dspeak', derma.speak); if (!derma.speak) try { speechSynthesis.cancel(); } catch {} return dermaRender();
       case 'dCopy': return copyText(db.chat[+d.i]?.t || '');
       case 'dSay': return speakOut(db.chat[+d.i]?.t || '');
@@ -2728,12 +2855,13 @@ The app's photo scores are colour-based estimates that change with lighting and 
       case 'lockNow': return lockNow();
       case 'bioUnlock': return bioUnlock();
       case 'bioOn': return bioRegister().then(() => render());
-      case 'bioOff': lock.cfg.bio = null; store.set('lock', lock.cfg); toast('Face ID / fingerprint unlock is off'); return render();
-      case 'pinOff': return askConfirm('Remove the PIN lock from this device?', () => { lock.cfg = null; store.set('lock', null); lock.locked = false; renderAcct(); render(); toast('Lock removed'); }, 'Remove lock');
-      case 'pinForgot': return askConfirm(fbConfig() ? 'Reset the lock? For your privacy this also removes your data from this device and signs you out. Sign in again and it all comes back from your account.' : 'Reset the lock? For your privacy this erases all AURA data stored on this device. This cannot be undone.', async () => {
-        lock.cfg = null; store.set('lock', null); lock.locked = false; lock.fails = 0; lock.until = 0;
+      case 'bioOff': lock.cfg.bio = null; lockSave(lock.cfg, false); toast('Face ID / fingerprint unlock is off'); return render();
+      case 'pinOff': return askConfirm('Remove the PIN lock from this device?', () => { lockSave(null); lock.locked = false; render(); toast('Lock removed'); }, 'Remove lock');
+      case 'pinForgot': return askConfirm(fbConfig() ? 'Reset the PIN? For your privacy this removes your data from this device and signs you out. Sign in again, choose a new PIN, and everything comes back from your account.' : 'Reset the lock? For your privacy this erases all AURA data stored on this device. This cannot be undone.', async () => {
+        store.set('lock', null); lock.cfg = fbConfig() ? lockLoad() : null; lock.locked = false; lock.fails = 0; lock.until = 0;
         db = fresh(); current = null; save(true); store.set('gkey', ''); Object.assign(derma, { key: '', models: [] });
         if (cloud.user) await cloud.auth.signOut();
+        Object.assign(lock, { setup: true, first: '', entry: '', len: 6 });   // choose a new PIN (after signing in again, if you use an account)
         gateCheck(true); render();
       }, 'Reset');
       case 'logout': return askConfirm('Sign out? Your data stays safe in your account. This device keeps a copy unless you remove it.', () => cloudSignOut(false), 'Sign out');
@@ -2754,7 +2882,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
       case 'import':
         return dialog(`<h3>Restore backup</h3><p class="small muted">Paste your backup text, or choose a backup file.</p><textarea id="importBox" rows="8"></textarea><input type="file" id="importFile" accept="application/json,.json,.txt" class="mt">`,
           [{ label: 'Cancel', cls: 'ghost' }, { label: 'Restore', cls: 'primary', fn: () => { restore(); return false; } }]);
-      case 'wipe': return askConfirm(`Delete all logs, photos, routine and settings${cloud.user ? ' on every device and in your account' : ' on this device'}? This cannot be undone.`, () => { cloudDeleteScans(db.scans.map((x) => x.id)); db = fresh(); current = null; save(); toast('Everything deleted'); go('#/'); }, 'Delete everything');
+      case 'wipe': return askConfirm(`Delete all logs, photos, routine and settings${cloud.user ? ' on every device and in your account' : ' on this device'}? This cannot be undone.`, async () => { cloudDeleteScans(db.scans.map((x) => x.id)); db = fresh(); current = null; try { await cloudWipe(); } catch {} save(); toast('Everything deleted'); go('#/'); }, 'Delete everything');
       case 'startFresh': return askConfirm('Remove the sample data and start tracking your own? Your routine, reminders and profile stay.', () => {
         db = { ...fresh(), profile: db.profile, routine: db.routine, reminders: db.reminders, demo: false }; save(); toast('Ready. Log your first day!'); go('#/log');
       }, 'Start fresh');
@@ -2773,7 +2901,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(form));
     if (form.dataset.form === 'derma') return dermaSend(fd.q);
-    if (form.dataset.form === 'gkey') return dermaConnect(fd.key, !!fd.remember);
+    if (form.dataset.form === 'gkey') { if (cloud.user) store.set('gsync', !!fd.sync); return dermaConnect(fd.key, !!fd.remember).then(() => cloudPush()); }
     if (form.dataset.form === 'addStep') { db.routine[fd.when].push({ id: uid(), name: fd.name.trim(), kind: fd.kind }); toast('Step added'); }
     if (form.dataset.form === 'profile') { if (fd.skinType !== db.profile.skinType) db.profile.skinTypeManual = true; Object.assign(db.profile, fd); toast('Profile saved'); }
     if (form.dataset.form === 'body') { Object.assign(db.profile, { sex: fd.sex, age: +fd.age, weight: +fd.weight, height: +fd.height, activity: fd.activity, goal: fd.goal, diet: fd.diet, lunch: fd.lunch }); lunchTab = null; toast('Targets updated'); }
@@ -3267,7 +3395,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
     if (pendingFile && route === '/scan') { const f = pendingFile; pendingFile = null; runScan(f); }
     $('#logDate')?.addEventListener('change', (e) => e.target.value && go('#/log/' + e.target.value));
     $('#baRange')?.addEventListener('input', (e) => e.target.parentElement.style.setProperty('--pos', e.target.value + '%'));
-    $('[data-lockafter]')?.addEventListener('change', (e) => { lock.cfg.after = +e.target.value; store.set('lock', lock.cfg); toast('Saved'); });
+    $('[data-lockafter]')?.addEventListener('change', (e) => { lock.cfg.after = +e.target.value; lockSave(lock.cfg, !lock.cfg.preset); toast('Saved'); });
     $$('[data-rem-time]').forEach((el) => el.addEventListener('change', () => { db.reminders.find((r) => r.id === el.dataset.remTime).time = el.value; save(); render(); }));
   }
 
@@ -3305,7 +3433,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
     addEventListener('popstate', () => go(readHash(), false));
     addEventListener('hashchange', () => { const h = readHash(); if (h !== route) go(h, false); });
     render();
-    gateCheck(); dermaRender();
+    gateCheck(); dermaRender(); registerSW();
     fx.init();
     setInterval(remTick, 20000); remTick();
     setInterval(sleepTick, 1000);

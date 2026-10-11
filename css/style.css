@@ -690,3 +690,15 @@ body.locked #app, body.locked footer, body.locked .topbar, body.locked .derma-fa
 .lock-btn svg { width: 17px; height: 17px; }
 @media (max-width: 860px) { .top-right { margin-left: auto; } }
 @media (max-height: 880px) { .gate-orb { width: 200px; height: 200px; margin-bottom: -18px; } .keypad { grid-template-columns: repeat(3, 60px); } .keypad button { width: 60px; height: 60px; } .g-time { font-size: 2.4rem; } }
+
+/* ================= installed app & sync ================= */
+.app-icon { width: 56px; height: 56px; border-radius: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08); flex: none; }
+.sync-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 10px; }
+.sync-stats div { padding: 10px 8px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); text-align: center; }
+.sync-stats b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.2rem; }
+.sync-stats span { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.04em; }
+@media (display-mode: standalone) {
+  .topbar { top: 0; padding-top: env(safe-area-inset-top, 0px); }
+  .gate { padding-top: calc(24px + env(safe-area-inset-top, 0px)); }
+  body { overscroll-behavior-y: none; }
+}

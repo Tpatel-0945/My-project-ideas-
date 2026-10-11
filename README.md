@@ -37,16 +37,12 @@ Everything is stored in your browser's `localStorage` (`auram.db`). Photos are a
 
 Not medical advice. Photo scores are colour-based estimates and change with lighting.
 
-## Deploy with sign-in (data synced across phone, iPad and computer)
+## Backend, sign-in and the phone app
 
-Without setup the app saves data on each device separately. To sign in and keep everything in sync:
+AURA syncs through **your own Firebase project** (Google's Authentication + Cloud Firestore), so you sign in on any phone, iPad or computer and see everything you've recorded. Data is stored one document per day, per scan and per conversation, so it keeps scaling for years. Every device keeps an offline copy; changes made offline upload when you reconnect, and changes from other devices appear live. `firestore.rules` lets only your account read or write your data.
 
-1. **Host the site.** Push this repo to GitHub, then in the repo go to *Settings → Pages*, choose your branch and the `/ (root)` folder, and save. Your site will be at `https://<username>.github.io/<repo>/`.
-2. **Create a Firebase project** (free Spark plan) at <https://console.firebase.google.com> → *Add project*.
-3. **Add a web app:** *Project settings → Your apps → Web (</>)*. Copy the `firebaseConfig` values into `js/firebase-config.js` (`apiKey`, `authDomain`, `projectId`, `appId`). These are not secrets.
-4. **Turn on sign-in:** *Build → Authentication → Get started → Sign-in method*: enable **Google** and **Email/Password**.
-5. **Authorise your site:** *Authentication → Settings → Authorized domains → Add domain*: `<username>.github.io`.
-6. **Create the database:** *Build → Firestore Database → Create database* (production mode, a region near you, e.g. `asia-south1` for India). Then open the *Rules* tab, paste the contents of `firestore.rules`, and *Publish*.
-7. Commit `js/firebase-config.js` and push. Open the site, go to **Me → Sign in**, and sign in with the same account on each device.
+The lock screen asks for your PIN on every device. The default PIN is set in `js/lock-config.js`, which holds only a salted PBKDF2-SHA256 hash; make a new one with `node tools/pin-hash.mjs 123456`. A PIN changed in the app follows your account. Right after a fresh sign-in the PIN isn't asked; on later opens it is.
 
-What is stored: your logs, routine, profile, reminders, sleep and scan thumbnails (small JPEGs), in `users/<your uid>` in your own Firestore. The rules let only you read or write it. Deleting a scan or using *Delete everything* removes it from your account too.
+It installs as an app (manifest + service worker): home-screen icon, full screen, offline start. Icons are made from any square image with `python3 tools/make_icons.py your-icon.png`.
+
+**Step-by-step setup, publishing on Firebase Hosting and installing on your phone: see [DEPLOY.md](DEPLOY.md).**

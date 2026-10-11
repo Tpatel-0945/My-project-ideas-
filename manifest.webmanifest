@@ -1,0 +1,25 @@
+{
+  "name": "AURA Monitor",
+  "short_name": "AURA",
+  "description": "Personal skin & hair lab: 3D face scans, check-ins, nutrition, sleep and Derma, your AI coach.",
+  "id": "./",
+  "start_url": "./#/",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#05060a",
+  "theme_color": "#05060a",
+  "categories": ["health", "lifestyle", "medical"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Scan my face", "short_name": "Scan", "url": "./#/scan", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Daily check-in", "short_name": "Log", "url": "./#/log", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Food & water", "short_name": "Fuel", "url": "./#/fuel", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Sleep & alarm", "short_name": "Sleep", "url": "./#/sleep", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
