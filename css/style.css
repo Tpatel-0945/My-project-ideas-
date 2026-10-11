@@ -413,3 +413,19 @@ ul.clean li::before { content: '▹'; position: absolute; left: 0; color: var(--
 @media (max-width: 719px) {
   .tour { position: relative; left: auto; bottom: auto; transform: none; width: auto; margin: 10px 4px 4px; }
 }
+
+/* ---------- Account & auto-filled data ---------- */
+.acct { margin-left: 8px; padding: 7px 12px; border-radius: 12px; border: 1px solid var(--line-strong); color: var(--text); font-size: 0.8rem; white-space: nowrap; }
+.acct:hover { text-decoration: none; border-color: var(--skin); }
+.acct.on { border-color: rgba(157, 255, 106, 0.5); color: var(--good); }
+.acct.err { border-color: rgba(255, 92, 122, 0.6); color: var(--bad); }
+@media (max-width: 860px) { .acct { margin-left: auto; } }
+.btn.google { width: 100%; background: #fff; color: #1f1f1f; border: 0; }
+.btn.google .g { font-weight: 800; color: #4285f4; }
+.or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.75rem; margin: 14px 0; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.avatar-dot { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--grad); color: #06071a; font-weight: 800; flex: none; }
+.filled { padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(60, 240, 255, 0.35); background: rgba(60, 240, 255, 0.05); }
+.filled-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px 14px; margin-top: 10px; }
+.filled-grid div { display: flex; flex-direction: column; min-width: 0; }
+.filled-grid b { font-size: 0.95rem; }

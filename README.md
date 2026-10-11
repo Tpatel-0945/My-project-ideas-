@@ -2,7 +2,7 @@
 
 A personal skin & hair monitor with a floating, pointer-reactive interface. Plain HTML/CSS/JS, no build step, no backend.
 
-Open `index.html` in a browser, or host the folder on GitHub Pages.
+Open `index.html` through a local web server (for example `python3 -m http.server`), or deploy it (steps below).
 
 ## Pages
 
@@ -12,13 +12,15 @@ Open `index.html` in a browser, or host the folder on GitHub Pages.
   - **Face photos** run through MediaPipe Face Landmarker (478 3D landmarks, on-device). The landmarks give a real 3D face mesh textured with your photo (rotatable, depth slider, mesh view) and exact regions for analysis: **wrinkles** (forehead, frown lines, crow's feet, under-eye, smile lines; Hessian valley filter with orientation checks, scored by line length and depth), **dark spots** (CIELAB darkness vs surrounding skin, must be darker on all sides, sized in mm using the ~63 mm average pupil distance), red/inflamed spots and shine. Eyes, brows, lips, nostrils and nose creases are excluded.
   - **Hair-parting photos** and faces the model can't find fall back to colour analysis with a 3D relief view.
   - The 3D face opens on a **problem map**: each area (forehead, between brows, eye corners, under-eyes, smile lines, cheeks, nose, chin) is outlined red or amber by how many problems it holds. Label cards beside the face point to each spot with a leader line, and **"Show me each problem"** rotates and zooms the camera to each one with what it is and how to fix it. Mouse-wheel / + − zoom.
+  - **Acne:** pimples (redder than the skin around them) appear as raised red bumps on the 3D face, white-headed ones with a white tip; blackheads on the nose are counted (approximate: very small, limited by photo resolution); an overall grade (clear / mild / moderate / severe) is shown.
+  - **Auto-fill:** each scan fills today's check-in: oiliness, redness, pimples and where, white heads, blackheads, dark spots, lines score, tone evenness, plus estimated dryness and sensitivity, and suggests a skin type.
   - Every finding is numbered on the 3D model and in a list; each problem gets an evidence-based fix plan (morning/night steps, habits, timeline, when to see a dermatologist) that can be added to the routine. Results fill in today's check-in. History, trend chart and before/after compare.
   - Model files live in `vendor/mediapipe/` (see its README); the JS bundle loads from jsDelivr. Serve the folder over http (not `file://`) for face mode.
 - **Trends**: interactive chart (hover or drag to read any day), period-vs-period comparison, patterns found in your own logs (for example, breakouts vs short sleep), and a 13-week calendar.
 - **Fuel**: daily targets for energy, protein, carbs, fat, fibre and water calculated from your sex, age, weight, height, activity and goal (Mifflin-St Jeor, ICMR-NIN 2020/2024, IOM, EFSA). Hydration tracker, an evidence summary on skipping lunch to avoid carbs, a lunch plate builder with Indian foods (carbs, protein, fibre, carb-to-fibre ratio), a skin & hair nutrient table and a sample day. Sources are listed on the page.
 - **Sleep**: set a wake-up alarm, tap "Start sleep" at bedtime; the page rings at the alarm time (snooze, sleep-mode screen), records the night and fills in the check-in. If the page was closed, it asks in the morning and uses the alarm time. Bedtime calculator, 14-night chart, sleep debt, bedtime consistency, quality ratings, and skin/hair after good vs short sleep. A website cannot read your phone's own alarm app, so keep that alarm as a backup.
 - **Routine**: AM/PM checklist, streak, per-step consistency, skin score on nights the routine was done vs skipped, and conflict warnings (retinoid + acid, BPO + vitamin C, missing sunscreen).
-- **Me**: profile, reminders (with Google Calendar links), backup and restore, privacy and safety notes.
+- **Me**: account (sign in with Google or email to sync across devices), profile, reminders (with Google Calendar links), backup and restore, privacy and safety notes.
 
 ## Alerts
 
@@ -29,3 +31,17 @@ The monitor raises a "see a dermatologist" alert when you tick a warning sign (c
 Everything is stored in your browser's `localStorage` (`auram.db`). Photos are analysed on-device and saved only as small thumbnails. The first visit shows 45 days of sample data; use "Start tracking my own data" to clear it.
 
 Not medical advice. Photo scores are colour-based estimates and change with lighting.
+
+## Deploy with sign-in (data synced across phone, iPad and computer)
+
+Without setup the app saves data on each device separately. To sign in and keep everything in sync:
+
+1. **Host the site.** Push this repo to GitHub, then in the repo go to *Settings → Pages*, choose your branch and the `/ (root)` folder, and save. Your site will be at `https://<username>.github.io/<repo>/`.
+2. **Create a Firebase project** (free Spark plan) at <https://console.firebase.google.com> → *Add project*.
+3. **Add a web app:** *Project settings → Your apps → Web (</>)*. Copy the `firebaseConfig` values into `js/firebase-config.js` (`apiKey`, `authDomain`, `projectId`, `appId`). These are not secrets.
+4. **Turn on sign-in:** *Build → Authentication → Get started → Sign-in method*: enable **Google** and **Email/Password**.
+5. **Authorise your site:** *Authentication → Settings → Authorized domains → Add domain*: `<username>.github.io`.
+6. **Create the database:** *Build → Firestore Database → Create database* (production mode, a region near you, e.g. `asia-south1` for India). Then open the *Rules* tab, paste the contents of `firestore.rules`, and *Publish*.
+7. Commit `js/firebase-config.js` and push. Open the site, go to **Me → Sign in**, and sign in with the same account on each device.
+
+What is stored: your logs, routine, profile, reminders, sleep and scan thumbnails (small JPEGs), in `users/<your uid>` in your own Firestore. The rules let only you read or write it. Deleting a scan or using *Delete everything* removes it from your account too.

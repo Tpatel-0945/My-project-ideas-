@@ -60,20 +60,20 @@ const App = (() => {
   ];
   const DEMO_V = 2;
   const fresh = () => ({
-    v: 2, logs: {}, scans: [], routine: structuredClone(DEFAULT_ROUTINE), reminders: structuredClone(DEFAULT_REM), demo: false,
+    v: 2, scanWipe: 1, logs: {}, scans: [], routine: structuredClone(DEFAULT_ROUTINE), reminders: structuredClone(DEFAULT_REM), demo: false,
     profile: { name: '', skinType: 'Combination', hairType: 'Wavy', sex: 'female', age: 25, weight: 60, height: 162, activity: 'light', goal: 'maintain' },
     sleep: { alarm: '07:00', alarmOn: true, days: [0, 1, 2, 3, 4, 5, 6], need: 8, sessions: [], active: null },
     plate: { items: { paneer: 1, sabzi: 1, salad: 1, millet: 1, chaas: 1 } },
   });
   const newLog = () => ({
-    skin: { oil: 3, dry: 2, red: 1, sens: 1, breakouts: 0, zones: [] },
+    skin: { oil: 3, dry: 2, red: 1, sens: 1, breakouts: 0, zones: [], pustules: null, blackheads: null, spots: null, lines: null, even: null },
     hair: { fall: 70, itch: 1, flakes: 1, oil: 3, frizz: 3, wash: false },
     life: { sleep: 7, water: 6, stress: 4, sun: 30, junk: false, period: false, workout: false, hot: false, protein: null, meals: { b: true, l: true, d: true } },
     done: { am: [], pm: [] }, flags: [], note: '',
   });
 
   let db;
-  const save = () => store.set('db', db);
+  const save = (localOnly) => { db.metaAt = Date.now(); const ok = store.set('db', db); if (!localOnly) cloudPush(); return ok; };
 
   /* ================= scoring ================= */
   const skinScore = (l) => { const s = l?.skin; if (!s) return null; return Math.round(clamp(100 - Math.min(35, s.breakouts * 3.5) - s.red * 2 - s.sens * 1.5 - s.oil * 1.3 - s.dry * 1.5)); };
@@ -94,6 +94,8 @@ const App = (() => {
     stress: { label: 'Stress', color: '#ff9de2', get: (l) => l.life?.stress, max: 10, lowerBetter: true },
     water: { label: 'Water (glasses)', color: '#6bb8ff', get: (l) => l.life?.water, max: 'auto' },
     protein: { label: 'Protein (g)', color: '#ffd27a', get: (l) => l.life?.protein ?? null, max: 'auto' },
+    darkSpots: { label: 'Dark spots (scan)', color: '#ff4fd8', get: (l) => l.skin?.spots ?? null, max: 'auto', lowerBetter: true },
+    lines: { label: 'Lines score (scan)', color: '#7fd3ff', get: (l) => l.skin?.lines ?? null, max: 100, lowerBetter: true },
     routine: { label: 'Routine done %', color: '#e9edff', get: (l) => { const a = adherence(l); return a == null ? null : Math.round(a * 100); }, max: 100 },
   };
   const series = (key, dates) => dates.map((d) => (db.logs[d] ? METRICS[key].get(db.logs[d]) ?? null : null));
@@ -326,6 +328,7 @@ const App = (() => {
     let d;
     if (saved && !(saved.demo && saved.demoV !== DEMO_V)) d = { ...f, ...saved, profile: { ...f.profile, ...saved.profile }, sleep: { ...f.sleep, ...saved.sleep }, plate: saved.plate || f.plate };
     else { d = f; if (saved) Object.assign(d, { routine: saved.routine || d.routine, reminders: saved.reminders || d.reminders, profile: { ...d.profile, ...saved.profile } }); seedDemo(d); }
+    if (saved && saved.scanWipe !== 1) { d.scans = []; d.scanWipe = 1; }   // one-time clear of all earlier scans (requested)
     Object.values(d.logs).forEach((l) => { const n = newLog(); l.skin = { ...n.skin, ...l.skin }; l.hair = { ...n.hair, ...l.hair }; l.life = { ...n.life, ...l.life }; l.done ||= n.done; l.flags ||= []; });
     store.set('db', d); return d;
   }
@@ -550,7 +553,7 @@ const App = (() => {
   const getPath = (o, p) => p.split('.').reduce((a, k) => a?.[k], o);
   const setPath = (o, p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((a, k) => a[k], o)[last] = v; };
   const draft = () => db.logs[logDate] || newLog();
-  const ensureLog = (date = logDate) => (db.logs[date] ||= newLog());
+  const ensureLog = (date = logDate) => { const l = (db.logs[date] ||= newLog()); l.u = Date.now(); return l; };
 
   function slider(path, label, min, max, step, color, ends, unit = '') {
     const v = getPath(draft(), path);
@@ -570,6 +573,7 @@ const App = (() => {
       <p class="small" style="margin:0">${logged ? '<span class="pill good">✓ Logged</span>' : '<span class="pill warn">Not logged yet</span> <span class="muted">Change anything to start this day\'s entry.</span>'} <span class="saved" id="saved">● saved</span></p></div>
       <div class="datebar"><button class="btn sm" data-act="day" data-d="-1" aria-label="Previous day">◀</button><input type="date" id="logDate" value="${logDate}" max="${today()}" aria-label="Date"><button class="btn sm" data-act="day" data-d="1" ${logDate >= today() ? 'disabled' : ''} aria-label="Next day">▶</button></div>
     </div>
+    ${l.filled ? `<div class="card filled" style="margin-bottom:18px"><div class="row between"><h3 style="margin:0">⚡ Filled in from your photo scan</h3><a class="small" href="#/scan">Scan again →</a></div><div class="filled-grid">${Object.values(l.filled).flat().map(([k, v]) => `<div><span class="tiny muted">${esc(k)}</span><b class="num">${esc(v)}</b></div>`).join('')}</div><p class="tiny muted" style="margin:8px 0 0">Adjust anything below if it looks off. Dryness and sensitivity are estimates from the photo.</p></div>` : ''}
     ${l.flags.length ? `<div class="insight bad" style="margin-bottom:18px"><div class="ic">⚕</div><div><b>Please see a dermatologist soon</b><p>You ticked a warning sign. These need an in-person check; this tracker can't assess them. For swelling of the face or trouble breathing, call 112.</p></div></div>` : ''}
     <div class="card" style="margin-bottom:18px"><div class="score-live">
       <div class="metric"><span class="tiny muted">SKIN SCORE</span><span class="v num" id="liveSkin" style="color:var(--skin)">${skinScore(l)}</span></div>
@@ -643,11 +647,11 @@ const App = (() => {
 
   /* ---------- photo scan: auto-detect, 3D relief model, findings & fix plan ---------- */
   const SCAN_LABELS = {
-    skin: [['wrinkles', 'Lines', '#7fd3ff'], ['spots', 'Dark spots', '#ff4fd8'], ['redness', 'Redness', '#ff5c7a'], ['shine', 'Shine / oil', '#ffc24b'], ['evenness', 'Tone evenness', '#9dff6a']],
+    skin: [['acne', 'Acne', '#ff3b5c'], ['wrinkles', 'Lines', '#7fd3ff'], ['spots', 'Dark spots', '#ff4fd8'], ['redness', 'Redness', '#ff5c7a'], ['shine', 'Shine / oil', '#ffc24b'], ['evenness', 'Tone evenness', '#9dff6a']],
     hair: [['scalp', 'Scalp visible', '#3cf0ff'], ['density', 'Coverage', '#a77bff'], ['flakes', 'Flakes', '#ff4fd8']],
   };
   const FTYPE = {
-    acne: ['Inflamed spot', '#ff3b5c'], spots: ['Dark spot', '#ff4fd8'], oil: ['Oily zone', '#ffc24b'], wrinkles: ['Lines', '#7fd3ff'],
+    acne: ['Pimple', '#ff3b5c'], blackheads: ['Blackheads', '#c08cff'], spots: ['Dark spot', '#ff4fd8'], oil: ['Oily zone', '#ffc24b'], wrinkles: ['Lines', '#7fd3ff'],
     thin: ['Thinner area', '#3cf0ff'], flakes: ['Flakes', '#ff4fd8'],
   };
   // Fix plans: first-line, evidence-based options. Not a prescription.
@@ -818,14 +822,32 @@ const App = (() => {
     const findings = kind === 'skin' ? skinFindings(res, W, H) : hairFindings(res, W, H);
     return { kind, W, H, base: ctx.getImageData(0, 0, W, H), masks: res.masks, skin: res.skin, bbox: res.bbox, scores: res.scores, findings, issues: issuesFrom(kind, res.scores, findings), thumb: toThumb(cv) };
   }
+  // the scan fills in today's check-in (and suggests a skin type) so nothing needs typing
   function applyScanToLog(cur) {
-    const l = ensureLog(today());
+    const l = ensureLog(today()), filled = [];
+    const put = (path, v, label, txt) => { setPath(l, path, v); filled.push([label, txt ?? v]); };
     if (cur.kind === 'skin') {
-      const acne = cur.findings.filter((f) => f.type === 'acne');
-      l.skin.breakouts = acne.length; l.skin.zones = [...new Set(acne.map((f) => LOG_ZONE[f.zone] || f.zone).filter((z) => ZONES.some((x) => x[0] === z)))];
-      l.skin.red = Math.round(clamp(cur.scores.redness / 10, 0, 10)); l.skin.oil = Math.round(clamp(cur.scores.shine / 10, 0, 10));
-    } else l.hair.flakes = Math.round(clamp(cur.scores.flakes / 10, 0, 10));
-    l.auto = { ...(l.auto || {}), [cur.kind]: Date.now() };
+      const acne = cur.findings.filter((f) => f.type === 'acne'), sc = cur.scores;
+      put('skin.oil', Math.round(clamp(sc.shine / 10, 0, 10)), 'Oiliness', `${Math.round(clamp(sc.shine / 10, 0, 10))}/10`);
+      put('skin.red', Math.round(clamp(sc.redness / 10, 0, 10)), 'Redness', `${Math.round(clamp(sc.redness / 10, 0, 10))}/10`);
+      put('skin.breakouts', acne.length, 'Pimples');
+      l.skin.zones = [...new Set(acne.map((f) => LOG_ZONE[f.zone] || f.zone).filter((z) => ZONES.some((x) => x[0] === z)))];
+      if (l.skin.zones.length) filled.push(['Breakout areas', l.skin.zones.map((z) => ZONE_NAME[z]).join(', ')]);
+      if (cur.est) { put('skin.dry', cur.est.dry, 'Dryness (estimate)', `${cur.est.dry}/10`); put('skin.sens', cur.est.sens, 'Sensitivity (estimate)', `${cur.est.sens}/10`); }
+      if (cur.acne) { put('skin.pustules', cur.acne.pustules, 'White heads'); put('skin.blackheads', cur.acne.blackheads, 'Blackheads'); filled.push(['Acne grade', cur.acne.grade]); }
+      put('skin.spots', cur.findings.filter((f) => f.type === 'spots').length, 'Dark spots');
+      if (sc.wrinkles != null) put('skin.lines', sc.wrinkles, 'Lines score', `${sc.wrinkles}/100`);
+      if (sc.evenness != null) put('skin.even', sc.evenness, 'Tone evenness', `${sc.evenness}/100`);
+      if (!db.profile.skinTypeManual) {
+        const t = sc.shine >= 45 && (cur.est?.dry ?? 0) <= 3 ? 'Oily' : (cur.est?.sens ?? 0) >= 7 ? 'Sensitive' : (cur.est?.dry ?? 0) >= 6 ? 'Dry' : sc.shine >= 22 ? 'Combination' : 'Normal';
+        db.profile.skinType = t; db.profile.skinTypeAuto = true; filled.push(['Skin type', t + ' (suggested)']);
+      }
+    } else {
+      put('hair.flakes', Math.round(clamp(cur.scores.flakes / 10, 0, 10)), 'Flakes', `${Math.round(clamp(cur.scores.flakes / 10, 0, 10))}/10`);
+      l.hair.scalpVis = cur.scores.scalp; filled.push(['Scalp visible', cur.scores.scalp + '%']);
+    }
+    l.auto = { ...(l.auto || {}), [cur.kind]: Date.now() }; l.filled = { ...(l.filled || {}), [cur.kind]: filled };
+    return filled;
   }
 
   /* height map + texture for the 3D model */
@@ -1025,22 +1047,35 @@ const App = (() => {
       return k >= 13;
     };
     const maxSpot = Math.PI * (pxMm * 3.5) ** 2;
-    const acneC = comps(red, aw, ah, minA, maxSpot).filter(round_).filter(ringOnSkin).filter((c) => surrounded(c, Aa, -1, 3)).sort((a, b) => b.n - a.n).slice(0, 10);
+    // pimples: redder than the skin around them on (nearly) every side; a bright centre means a white head (pustule)
+    const acneC = comps(red, aw, ah, Math.PI * (pxMm * 0.6) ** 2, Math.PI * (pxMm * 4) ** 2).filter((c) => Math.max(c.bw, c.bh) / Math.max(1, Math.min(c.bw, c.bh)) < 2.6 && c.n / (c.bw * c.bh) > 0.35).filter(ringOnSkin).filter((c) => surrounded(c, Aa, -1, 2.5)).sort((a, b) => b.n - a.n).slice(0, 14);
+    acneC.forEach((c) => {   // white head: the centre is brighter than the surrounding skin (it isn't red, so look at the centre, not the red area)
+      const r0 = Math.max(1.5, Math.sqrt(c.n / Math.PI) * 0.45); let sum = 0, k = 0;
+      for (let y = Math.round(c.y - r0); y <= c.y + r0; y++) for (let x = Math.round(c.x - r0); x <= c.x + r0; x++) if (x >= 0 && y >= 0 && x < aw && y < ah && Math.hypot(x - c.x, y - c.y) <= r0) { sum += L[y * aw + x] - Lb[y * aw + x]; k++; }
+      c.head = k > 0 && sum / k > 4;
+    });
+    // blackheads: tiny, very dark dots on the nose
+    const nosePoly = hull([168, 6, 197, 195, 5, 4, 1, 19, 94, 2, 98, 327, 129, 358, 49, 279].map((i) => Q[i]));
+    const noseM = maskFrom(aw, ah, (x) => { x.fillStyle = '#fff'; pathPoly(x, nosePoly); x.fill(); });
+    const bh = new Uint8Array(N); for (let i = 0; i < N; i++) if (noseM[i] && Lb[i] - L[i] > 9) bh[i] = 1;
+    const blackheads = comps(bh, aw, ah, 2, Math.PI * (pxMm * 0.8) ** 2).filter((c) => Math.max(c.bw, c.bh) / Math.max(1, Math.min(c.bw, c.bh)) < 2.2);
     const spotC = comps(dark, aw, ah, minA, maxSpot).filter(round_).filter(ringOnSkin).filter((c) => surrounded(c, L, 1, 4.5)).filter((c) => !acneC.some((a) => Math.hypot(a.x - c.x, a.y - c.y) < Math.sqrt(a.n) + Math.sqrt(c.n))).sort((a, b) => b.n - a.n).slice(0, 12);
     const spotPx = spotC.reduce((a, c) => a + c.n, 0);
     const mm = (c) => round((2 * Math.sqrt(c.n / Math.PI)) / pxMm, 1);
     const findings = [];
-    acneC.forEach((c) => { const p = toImg(c); findings.push({ ...p, n: c.n, type: 'acne', zone: zoneAt(p.x, p.y), mm: mm(c), detail: `${mm(c)} mm · red` }); });
+    acneC.forEach((c) => { const p = toImg(c); findings.push({ ...p, n: c.n, type: 'acne', head: c.head, label: c.head ? 'Pimple with white head' : 'Pimple', zone: zoneAt(p.x, p.y), mm: mm(c), detail: `${mm(c)} mm · ${c.head ? 'pustule' : 'red, inflamed'}` }); });
+    if (blackheads.length >= 3) { const c = nosePoly.reduce((a, q) => ({ x: a.x + q.x / nosePoly.length, y: a.y + q.y / nosePoly.length }), { x: 0, y: 0 }); findings.push({ x: cx0 + c.x / s, y: cy0 + c.y / s, n: blackheads.length, type: 'blackheads', zone: 'nose', label: 'Blackheads', detail: `about ${blackheads.length} on the nose` }); }
     spotC.forEach((c) => { const p = toImg(c), brown = stat(c, Bb, bb) > 1.5; findings.push({ ...p, n: c.n, type: 'spots', zone: zoneAt(p.x, p.y), mm: mm(c), detail: `${mm(c)} mm · ${brown ? 'brown' : 'dark'} · ${round(stat(c, Lb, L), 0)} ΔL` }); });
 
     /* wrinkles: dark, thin, elongated valleys found with a Hessian (second-derivative) filter inside landmark-defined regions */
     const sig = Math.max(1, Math.round(fw / 220)), Gs = boxBlur(boxBlur(L, aw, ah, sig), aw, ah, sig), h = Math.max(1, sig + 1);
-    const ridge = new Float32Array(N), ang = new Float32Array(N), vals = [];
+    const ridge = new Float32Array(N), ang = new Float32Array(N), vals = []; let rough = 0, aSum = 0, rN = 0;
     for (let y = h; y < ah - h; y++) for (let x = h; x < aw - h; x++) {
       const i = y * aw + x; if (!mask[i]) continue;
       const Ixx = Gs[i + h] - 2 * Gs[i] + Gs[i - h], Iyy = Gs[i + h * aw] - 2 * Gs[i] + Gs[i - h * aw];
       const Ixy = (Gs[i + h + h * aw] - Gs[i + h - h * aw] - Gs[i - h + h * aw] + Gs[i - h - h * aw]) / 4;
       const tr = Ixx + Iyy, dt = Math.sqrt((Ixx - Iyy) ** 2 + 4 * Ixy * Ixy), l1 = (tr + dt) / 2, l2 = (tr - dt) / 2;
+      rough += Math.abs(L[i] - Gs[i]); aSum += Aa[i]; rN++;
       if (l1 > 0 && Math.abs(l2) < l1 * 0.5) { ridge[i] = l1 - Math.abs(l2); ang[i] = 0.5 * Math.atan2(2 * Ixy, Ixx - Iyy) + Math.PI / 2; vals.push(ridge[i]); }
     }
     vals.sort((a, b) => a - b);
@@ -1089,7 +1124,7 @@ const App = (() => {
     const zones = Object.entries(ZPOLY).map(([key, poly]) => {
       const items = findings.map((f, i) => [f, i]).filter(([f]) => (f.type === 'wrinkles' ? f.zone === key : toMap[f.zone] === key));
       let score = regions.find((r) => r.key === key)?.score || 0;
-      items.forEach(([f]) => { score += f.type === 'acne' ? 26 : f.type === 'spots' ? 20 : f.type === 'oil' ? 15 : 0; });
+      items.forEach(([f]) => { score += f.type === 'acne' ? 26 : f.type === 'blackheads' ? 15 : f.type === 'spots' ? 20 : f.type === 'oil' ? 15 : 0; });
       score = Math.round(clamp(score));
       return { key, label: ZLABEL[key], poly, score, level: score < 15 ? 'ok' : score < 45 ? 'watch' : 'problem', items: items.map(([, i]) => i) };
     });
@@ -1098,14 +1133,18 @@ const App = (() => {
       shine: Math.round(clamp((shineN / mN) * 1500)), redness: Math.round(clamp((redN / mN) * 1800)),
       spots: Math.round(clamp((spotPx / mN) * 2500 + spotC.length * 3)), evenness: Math.round(clamp(100 - (dev / mN) * 12)),
       wrinkles: rs.length ? Math.round(clamp(0.6 * Math.max(...rs) + 0.4 * avg(rs))) : 0,
+      acne: Math.round(clamp(acneC.length * 7 + (redN / mN) * 600 + blackheads.length)),
     };
+    // estimates for the check-in: dryness from fine surface roughness, sensitivity from overall redness (a*)
+    const est = { dry: Math.round(clamp(((rough / Math.max(1, rN)) - 1.1) * 4 - scores.shine / 25, 0, 10)), sens: Math.round(clamp((aSum / Math.max(1, rN) - 13) / 1.5, 0, 10)) };
+    const grade = acneC.length === 0 ? 'clear' : acneC.length <= 5 ? 'mild' : acneC.length <= 20 ? 'moderate' : 'severe';
     const issues = [];
-    if (acneC.length >= 2 || scores.redness >= 40) issues.push('acne');
+    if (acneC.length >= 2 || scores.redness >= 40 || blackheads.length >= 5) issues.push('acne');
     if (spotC.length >= 2 || scores.spots >= 35) issues.push('spots');
     if (scores.wrinkles >= 25 || regions.some((r) => r.score >= 38)) issues.push('wrinkles');
     if (scores.shine >= 40) issues.push('oil');
     if (scores.redness >= 55) issues.push('red');
-    return { kind: 'skin', mesh: true, W: FW, H: FH, full, P, crop: { cx0, cy0, s, aw, ah }, ov: { red, dark: spotMaskOf(spotC, N), wr, shine }, regions, zones, scores, findings, issues, pxMm, thumb: toThumb(full, 480) };
+    return { kind: 'skin', mesh: true, W: FW, H: FH, full, P, crop: { cx0, cy0, s, aw, ah }, ov: { red, dark: spotMaskOf(spotC, N), wr, shine, bh: spotMaskOf(blackheads, N) }, regions, zones, scores, est, acne: { count: acneC.length, pustules: acneC.filter((c) => c.head).length, blackheads: blackheads.length, grade }, findings, issues, pxMm, thumb: toThumb(full, 480) };
   }
   function spotMaskOf(cs, N) { const m = new Uint8Array(N); cs.forEach((c) => c.px.forEach((p) => (m[p] = 1))); return m; }
 
@@ -1119,6 +1158,7 @@ const App = (() => {
     if (on('oil')) paint(cur.ov.shine, [255, 194, 75], 120);
     if (on('acne')) paint(cur.ov.red, [255, 40, 80], 170);
     if (on('spots')) paint(cur.ov.dark, [255, 79, 216], 190);
+    if (on('blackheads') && cur.ov.bh) paint(cur.ov.bh, [192, 140, 255], 230);
     if (on('wrinkles')) paint(cur.ov.wr, [127, 211, 255], 235);
     ox.putImageData(im, 0, 0);
     if (lay === 'map' && cur.zones) {
@@ -1146,6 +1186,7 @@ const App = (() => {
 
   const TIPS = {
     acne: 'Benzoyl peroxide 2.5% on the spot at night, or adapalene over the whole area. Do not squeeze it.',
+    blackheads: 'Salicylic acid 2% (BHA) 3 nights a week dissolves them. Avoid squeezing and frequent pore strips.',
     spots: 'Fade it with daily SPF 50 plus azelaic acid or niacinamide. Expect 8–12 weeks.',
     oil: 'Gel moisturiser and niacinamide here; blot during the day instead of washing.',
     thin: 'Rescan this parting every 2 weeks; ask a doctor for ferritin, vitamin D, B12 and thyroid tests.',
@@ -1157,7 +1198,7 @@ const App = (() => {
     nasoL: 'A natural fold that deepens with sun damage. SPF and retinol help; deep folds are a dermatologist question.', nasoR: 'A natural fold that deepens with sun damage. SPF and retinol help; deep folds are a dermatologist question.',
   };
   const findTip = (f) => (f.type === 'wrinkles' ? TIPS[f.zone] : TIPS[f.type]) || '';
-  const priority = (f) => (f.type === 'acne' ? 80 + f.n / 50 : f.type === 'spots' ? 60 + (f.mm || 0) * 3 : f.type === 'wrinkles' ? f.n : f.type === 'thin' ? 70 + f.n / 10 : f.type === 'flakes' ? 40 : 20);
+  const priority = (f) => (f.type === 'acne' ? 80 + f.n / 50 : f.type === 'blackheads' ? 55 : f.type === 'spots' ? 60 + (f.mm || 0) * 3 : f.type === 'wrinkles' ? f.n : f.type === 'thin' ? 70 + f.n / 10 : f.type === 'flakes' ? 40 : 20);
   const Viewer = {
     raf: 0,
     setFocus(i) {
@@ -1229,7 +1270,15 @@ const App = (() => {
         m.add(ringM); group.add(m);
         const lab = document.createElement('button'); lab.className = 'mk'; lab.style.setProperty('--c', FTYPE[f.type][1]); lab.textContent = k + 1; lab.dataset.act = 'focusFind'; lab.dataset.i = k; lab.title = f.label || FTYPE[f.type][0];
         el.appendChild(lab);
-        return { m, ringM, f, lab, w: surf(f.x, f.y) };
+        let dome = null;
+        if (f.type === 'acne') {   // pimples rise out of the skin as red bumps
+          const pxFull = (cur.pxMm || 3) / (cur.crop?.s || 1), r = Math.max(0.014, (((f.mm || 2.5) / 2) * pxFull) / S * 1.6);
+          dome = new T.Mesh(new T.SphereGeometry(r, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), new T.MeshStandardMaterial({ color: 0xd8283f, emissive: 0x5a0715, roughness: 0.35, metalness: 0.05, transparent: true, opacity: 0.92 }));
+          dome.rotation.x = Math.PI / 2; dome.scale.set(1, 0.7, 1);
+          if (f.head) { const hd = new T.Mesh(new T.SphereGeometry(r * 0.38, 12, 8), new T.MeshStandardMaterial({ color: 0xfff6e8, roughness: 0.4 })); hd.position.y = r * 0.62; dome.add(hd); }
+          group.add(dome);
+        }
+        return { m, ringM, f, lab, dome, w: surf(f.x, f.y) };
       });
       // callout cards beside the face, joined to their spot by a leader line
       const faceCx = (Math.min(...xs) + Math.max(...xs)) / 2, cardW = 200;
@@ -1261,7 +1310,7 @@ const App = (() => {
         const p = geo.attributes.position;
         for (let i = 0; i < NV; i++) p.setZ(i, zBase[i] * relief * depth);
         p.needsUpdate = true; geo.computeVertexNormals();
-        markers.forEach(({ m, w: wts }) => { let x = 0, y = 0, z = 0; wts.forEach(([i, t]) => { x += pos[i * 3] * t; y += pos[i * 3 + 1] * t; z += p.getZ(i) * t; }); m.position.set(x, y, z + 0.025); });
+        markers.forEach(({ m, dome, w: wts }) => { let x = 0, y = 0, z = 0; wts.forEach(([i, t]) => { x += pos[i * 3] * t; y += pos[i * 3 + 1] * t; z += p.getZ(i) * t; }); m.position.set(x, y, z + (dome ? 0.045 : 0.025)); dome?.position.set(x, y, z - 0.002); });
       };
       Object.assign(this, { renderer, geo, tex, applyZ, markers, scene, camera, group });
       let tx = 0, ty = 0, rx = 0, ry = 0, drag = null, last = 0, yawOff = 0;
@@ -1424,7 +1473,8 @@ const App = (() => {
           <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px">${labels.map(([k, t, c]) => `<div><div class="gauge" style="--v:${cur.scores[k]};--c:${c}"><span>${cur.scores[k]}</span></div><div class="tiny" style="text-align:center">${t}${prev?.scores?.[k] != null ? `<br><span class="muted">last ${prev.scores[k]}</span>` : ''}</div></div>`).join('')}</div>
           <h3 class="mt">Found ${cur.findings.length ? cur.findings.length + ' area' + (cur.findings.length > 1 ? 's' : '') : 'nothing that stands out'}</h3>
           <div class="stack" style="gap:6px;max-height:300px;overflow:auto">${cur.findings.slice(0, 12).map((f, k) => `<button class="find" data-act="focusFind" data-i="${k}"><span class="mk static" style="--c:${FTYPE[f.type][1]}">${k + 1}</span><span><b>${f.label || FTYPE[f.type][0]}</b> <span class="muted">${f.type === 'wrinkles' ? '' : '· ' + (ZONE_NAME[f.zone] || '')}</span></span><span class="tiny muted" style="margin-left:auto;text-align:right">${f.detail || (f.type === 'thin' ? f.n + '% scalp' : f.type === 'oil' ? 'zone' : f.n > 80 ? 'larger' : 'small')}</span></button>`).join('') || '<p class="small muted">Nothing stands out in this photo.</p>'}</div>
-          <div class="insight info mt"><div class="ic">✓</div><div><b>Saved and filled in</b><p>${cur.fromHistory ? 'Opened from your history.' : `Added to your history, and today's check-in was filled in${cur.kind === 'skin' ? ` (${cur.findings.filter((f) => f.type === 'acne').length} spots, redness, oiliness)` : ' (flakes)'}. Nothing to type.`}</p></div></div>
+          ${cur.acne ? `<div class="insight ${cur.acne.grade === 'clear' ? 'good' : cur.acne.grade === 'mild' ? 'warn' : 'bad'} mt"><div class="ic">◉</div><div><b>Acne: ${cur.acne.grade}</b><p>${cur.acne.count} pimple${cur.acne.count === 1 ? '' : 's'} (${cur.acne.pustules} with a white head) · ${cur.acne.blackheads} blackheads on the nose. Pimples show as raised red bumps on the 3D face.</p></div></div>` : ''}
+          ${cur.fromHistory ? '<p class="small muted mt">Opened from your history.</p>' : `<div class="filled mt"><div class="row between"><b class="small">✓ Filled in today's check-in for you</b><a class="small" href="#/log">Review →</a></div><div class="filled-grid">${(cur.filled || []).map(([k, v]) => `<div><span class="tiny muted">${esc(k)}</span><b class="num">${esc(v)}</b></div>`).join('')}</div></div>`}
           ${cur.fromHistory ? '' : `<button class="btn sm ghost mt" data-act="delScan" data-id="${cur.id}">Delete this scan</button>`}
         </div>
       </div>
@@ -1457,7 +1507,7 @@ const App = (() => {
       ${drop}
       <div id="scanStage" class="hidden"></div>
       ${body}
-      ${allList.length ? `<div class="section"><div class="row between"><h2 style="margin:0">History</h2><span class="small muted">Tap a scan to open it in 3D · ✓ two to compare</span></div>
+      ${allList.length ? `<div class="section"><div class="row between"><h2 style="margin:0">History</h2><span class="row"><span class="small muted">Tap a scan to open it in 3D · ✓ two to compare</span><button class="btn sm danger" data-act="delAllScans">Delete all scans</button></span></div>
         ${list.length > 1 ? `<div class="card mt">${lineChart('scanChart', list.map((s) => s.date), SCAN_LABELS[current?.kind || 'skin'].map(([k, t, c]) => ({ label: t, color: c, vals: list.map((s) => s.scores?.[k] ?? null), max: 100 })), { h: 200 })}</div>` : ''}
         ${a && b ? `<div class="card mt"><div class="row between"><h3>Compare ${fmtShort(a.date)} → ${fmtShort(b.date)}</h3><button class="btn sm ghost" data-act="cmpClear">Close</button></div>
           <div class="ba mt" style="--pos:50%"><div class="layer"><img src="${a.img}" alt="Earlier scan"></div><div class="layer after"><img src="${b.img}" alt="Later scan"></div><span class="tag" style="left:10px">${fmtShort(a.date)}</span><span class="tag" style="right:10px">${fmtShort(b.date)}</span><div class="handle"></div>
@@ -1500,7 +1550,7 @@ const App = (() => {
       res.id = uid();
       db.scans.push({ id: res.id, date: today(), kind: res.kind, img: res.thumb, scores: res.scores, issues: res.issues, count: res.findings.length });
       while (JSON.stringify(db).length > 4.2e6 && db.scans.length > 8) db.scans.shift();   // keep localStorage under its ~5 MB limit
-      applyScanToLog(res);
+      res.filled = applyScanToLog(res);
       if (save()) toast(`Scan saved · ${res.findings.length} area${res.findings.length === 1 ? '' : 's'} found`);
     }
     current = res; layer = res.mesh ? 'map' : 'all'; Viewer.focus = null;
@@ -1932,12 +1982,13 @@ const App = (() => {
   }
   pages.me = () => {
     const p = db.profile, n = Object.keys(db.logs).length;
-    return `<div class="page-head"><span class="eyebrow">Me</span><h1>Profile & <span class="grad-text">reminders</span></h1></div>
+    return `<div class="page-head"><span class="eyebrow">Me</span><h1>Account, profile & <span class="grad-text">reminders</span></h1></div>
     <div class="grid g2">
+      ${accountCard()}
       <form class="card" data-form="profile"><h3>Profile</h3>
         <label for="pName">Name</label><input type="text" id="pName" name="name" value="${esc(p.name)}" placeholder="What should we call you?">
         <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px">
-          <div><label for="pSkin">Skin type</label><select id="pSkin" name="skinType">${['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive'].map((t) => `<option ${p.skinType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+          <div><label for="pSkin">Skin type${p.skinTypeAuto && !p.skinTypeManual ? ' <span class="pill skin">from scan</span>' : ''}</label><select id="pSkin" name="skinType">${['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive'].map((t) => `<option ${p.skinType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
           <div><label for="pHair">Hair type</label><select id="pHair" name="hairType">${['Straight', 'Wavy', 'Curly', 'Coily'].map((t) => `<option ${p.hairType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
         <button class="btn primary sm mt">Save profile</button></form>
 
@@ -1946,7 +1997,7 @@ const App = (() => {
         <p class="tiny muted">Everything is stored only in this browser. Copy a backup to move it to another device.</p>
         <div class="row"><button class="btn sm" data-act="export">Copy backup</button><button class="btn sm" data-act="import">Restore backup</button>
           ${db.demo ? '<button class="btn sm primary" data-act="startFresh">Remove sample data</button>' : '<button class="btn sm ghost" data-act="loadDemo">Load sample data</button>'}
-          <button class="btn sm danger" data-act="wipe">Delete everything</button></div></div>
+          ${db.scans.length ? '<button class="btn sm danger" data-act="delAllScans">Delete all scans</button>' : ''}<button class="btn sm danger" data-act="wipe">Delete everything</button></div></div>
 
       <div class="card"><h3>Reminders</h3>
         <p class="tiny muted">They pop up here while the page is open. Tap 📅 to add one to Google Calendar so your phone reminds you too.</p>
@@ -1960,7 +2011,7 @@ const App = (() => {
       </div>
 
       <div class="card"><h3>Privacy & safety</h3>
-        <p class="small">Your logs and photos never leave this device. Nothing is sent to a server or used to train any model. Clearing your browser data removes them.</p>
+        <p class="small">${cloud.user ? 'You are signed in, so your logs and scan photos are also stored in your private Firebase account (only you can read them) to sync your devices.' : 'While you are signed out, your logs and photos stay on this device only.'} Photos are analysed on your device and never used to train any model.</p>
         <p class="small">AURA Monitor shows patterns in what you log; it cannot diagnose. Photo scores are colour-based estimates that change with lighting.</p>
         <div class="insight bad"><div class="ic">⚕</div><div><b>See a dermatologist if…</b><p>a mole changes, itches or bleeds · hair comes out in clumps or patches · acne is painful, deep or scarring · a rash spreads, blisters or comes with fever · nothing improves after 8 weeks.</p></div></div>
       </div>
@@ -1973,6 +2024,129 @@ const App = (() => {
     if (!due.length) return;
     store.set('remFired', key);
     due.forEach((d) => toast('⏰ ' + d));
+  }
+
+  /* ================= account & sync (Firebase Auth + Cloud Firestore) =================
+     Sign-in keeps your data in your own Firebase project so it follows you to every device.
+     Configure it in js/firebase-config.js (see README). Without a config the app stays local-only. */
+  const FB_VER = '10.12.2';
+  const cloud = { status: 'off', user: null, err: '', sent: new Set(), unsubs: [], pushT: null, device: Math.random().toString(36).slice(2, 10) };
+  let authMode = 'in';
+  const fbConfig = () => (window.AURA_FIREBASE_CONFIG && window.AURA_FIREBASE_CONFIG.apiKey ? window.AURA_FIREBASE_CONFIG : null);
+  const loadScript = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
+  async function cloudInit() {
+    if (!fbConfig()) { cloud.status = 'unconfigured'; return renderAcct(); }
+    cloud.status = 'loading'; renderAcct();
+    try {
+      for (const m of ['app', 'auth', 'firestore']) await loadScript(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-${m}-compat.js`);
+      firebase.initializeApp(fbConfig());
+      cloud.auth = firebase.auth(); cloud.fs = firebase.firestore();
+      cloud.auth.getRedirectResult().catch((e) => { cloud.err = authMsg(e); render(); });
+      cloud.auth.onAuthStateChanged((u) => onUser(u));
+      cloud.status = 'ready';
+    } catch { cloud.status = 'blocked'; cloud.err = 'The sign-in service could not be reached. Check your connection.'; }
+    renderAcct(); if (route === '/me') render();
+  }
+  const userRef = () => cloud.fs.collection('users').doc(cloud.user.uid);
+  function mergeRemote(r) {
+    if (!r) return;
+    for (const [d, l] of Object.entries(r.logs || {})) { const mine = db.logs[d]; if (!mine || (l.u || 0) > (mine.u || 0)) db.logs[d] = l; }
+    if ((r.metaAt || 0) > (db.metaAt || 0)) for (const k of ['profile', 'routine', 'reminders', 'sleep', 'plate']) if (r[k]) db[k] = r[k];
+    db.demo = false;
+  }
+  function mergeScan(sc) { if (sc?.id && !db.scans.some((x) => x.id === sc.id)) db.scans.push(sc); cloud.sent.add(sc.id); }
+  async function onUser(u) {
+    cloud.unsubs.forEach((f) => f()); cloud.unsubs = []; cloud.user = u; cloud.sent = new Set();
+    if (!u) { cloud.status = 'ready'; renderAcct(); if (route === '/me') render(); return; }
+    cloud.status = 'syncing'; renderAcct();
+    try {
+      const ref = userRef(), snap = await ref.get();
+      if (db.demo) {   // drop the sample data but keep anything you did yourself (edited logs carry a timestamp; sample scans have fixed ids)
+        const mine = Object.fromEntries(Object.entries(db.logs).filter(([, l]) => l.u));
+        db = { ...fresh(), profile: db.profile, routine: db.routine, reminders: db.reminders, sleep: { ...db.sleep, sessions: db.sleep.sessions.filter((x) => !/^n\d+$/.test(x.id)) }, plate: db.plate, logs: mine, scans: db.scans.filter((x) => !/^d[sh]\d+$/.test(x.id)), demo: false };
+      }
+      if (snap.exists) mergeRemote(JSON.parse(snap.data().db || '{}'));
+      (await ref.collection('scans').get()).forEach((d) => mergeScan(d.data()));
+      db.scans.sort((a, b) => a.date.localeCompare(b.date));
+      save(true); await pushAll();
+      cloud.unsubs.push(ref.onSnapshot((s2) => {
+        if (s2.metadata.hasPendingWrites || !s2.exists || s2.data().by === cloud.device) return;
+        mergeRemote(JSON.parse(s2.data().db || '{}')); save(true); render();
+      }));
+      cloud.unsubs.push(ref.collection('scans').onSnapshot((qs) => {
+        let changed = false;
+        qs.docChanges().forEach((ch) => {
+          if (ch.type === 'removed') { if (db.scans.some((x) => x.id === ch.doc.id)) { db.scans = db.scans.filter((x) => x.id !== ch.doc.id); changed = true; } cloud.sent.delete(ch.doc.id); }
+          else if (!db.scans.some((x) => x.id === ch.doc.id)) { mergeScan(ch.doc.data()); changed = true; }
+        });
+        if (changed) { save(true); if (route === '/scan' || route === '/') render(); }
+      }));
+      cloud.status = 'synced'; cloud.err = '';
+    } catch (e) { cloud.status = 'error'; cloud.err = 'Sync failed: ' + (e.message || e); }
+    renderAcct(); render();
+  }
+  function cloudPush() { if (!cloud.user) return; clearTimeout(cloud.pushT); cloud.status = 'syncing'; renderAcct(); cloud.pushT = setTimeout(pushAll, 1200); }
+  async function pushAll() {
+    if (!cloud.user) return;
+    try {
+      const { scans, ...rest } = db, ref = userRef();
+      await ref.set({ db: JSON.stringify(rest), by: cloud.device, at: firebase.firestore.FieldValue.serverTimestamp() });
+      for (const sc of scans) if (!cloud.sent.has(sc.id)) { await ref.collection('scans').doc(sc.id).set(sc); cloud.sent.add(sc.id); }
+      cloud.status = 'synced'; cloud.err = '';
+    } catch (e) { cloud.status = 'error'; cloud.err = 'Could not save to your account: ' + (e.message || e); }
+    renderAcct();
+  }
+  function cloudDeleteScans(ids) { if (!cloud.user) return; ids.forEach((id) => { userRef().collection('scans').doc(id).delete().catch(() => {}); cloud.sent.delete(id); }); }
+  const authMsg = (e) => ({ 'auth/invalid-credential': 'Wrong email or password.', 'auth/wrong-password': 'Wrong email or password.', 'auth/user-not-found': 'No account with that email. Create one instead.', 'auth/email-already-in-use': 'An account with that email already exists. Sign in instead.', 'auth/weak-password': 'Use a password with at least 6 characters.', 'auth/invalid-email': 'That email address doesn\'t look right.', 'auth/unauthorized-domain': 'This website address is not authorised in Firebase. Add it under Authentication → Settings → Authorized domains.', 'auth/popup-closed-by-user': 'Sign-in window was closed.' }[e?.code] || e?.message || 'Sign-in failed.');
+  async function cloudGoogle() {
+    const prov = new firebase.auth.GoogleAuthProvider();
+    try { await cloud.auth.signInWithPopup(prov); }
+    catch (e) { if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/cancelled-popup-request'].includes(e.code)) await cloud.auth.signInWithRedirect(prov); else { cloud.err = authMsg(e); render(); } }
+  }
+  async function cloudEmail(fd) {
+    try {
+      if (authMode === 'up') await cloud.auth.createUserWithEmailAndPassword(fd.email, fd.password);
+      else await cloud.auth.signInWithEmailAndPassword(fd.email, fd.password);
+      cloud.err = '';
+    } catch (e) { cloud.err = authMsg(e); render(); }
+  }
+  async function cloudReset() {
+    const email = $('#authEmail')?.value.trim(); if (!email) return toast('Type your email first');
+    try { await cloud.auth.sendPasswordResetEmail(email); toast('Password reset email sent'); } catch (e) { cloud.err = authMsg(e); render(); }
+  }
+  async function cloudSignOut(wipe) {
+    await pushAll(); await cloud.auth.signOut();
+    if (wipe) { db = fresh(); db.scanWipe = 1; current = null; save(true); }
+    toast('Signed out'); render();
+  }
+  function renderAcct() {
+    const el = $('#acct'); if (!el) return;
+    const st = cloud.user ? { synced: '☁ Synced', syncing: '☁ Syncing…', error: '☁ Sync error' }[cloud.status] || '☁ Signed in' : 'Sign in';
+    el.textContent = st; el.classList.toggle('on', !!cloud.user); el.classList.toggle('err', cloud.status === 'error');
+  }
+  function accountCard() {
+    const err = cloud.err ? `<div class="insight bad" style="margin-bottom:10px"><div class="ic">!</div><div><p style="color:var(--text);margin:0">${esc(cloud.err)}</p></div></div>` : '';
+    if (cloud.user) return `<div class="card account"><h3>☁ Account</h3>${err}
+      <div class="row" style="flex-wrap:nowrap"><span class="avatar-dot">${esc((cloud.user.displayName || cloud.user.email || '?')[0].toUpperCase())}</span><div style="min-width:0"><b>${esc(cloud.user.displayName || cloud.user.email)}</b><div class="small muted">${esc(cloud.user.email || '')}</div></div></div>
+      <p class="small" style="margin:12px 0">${cloud.status === 'synced' ? '✓ Everything is saved to your account. Sign in on your phone or iPad with the same account to see it there.' : cloud.status === 'syncing' ? 'Saving…' : 'There was a problem saving. It will retry on your next change.'}</p>
+      <div class="row"><button class="btn sm" data-act="logout">Sign out</button><button class="btn sm ghost" data-act="logoutWipe">Sign out & remove from this device</button></div></div>`;
+    if (cloud.status === 'unconfigured') return `<div class="card account"><h3>☁ Account & sync</h3>
+      <p class="small">Signing in keeps your logs, routine and scans in sync on your phone, iPad and computer. It needs a free Firebase project linked to your deployed site, which takes about 10 minutes to set up once.</p>
+      <ol class="small steps"><li>Create a project at console.firebase.google.com and add a <b>Web app</b>.</li><li>Turn on <b>Authentication</b> → Google and Email/Password.</li><li>Create a <b>Firestore database</b> and paste the rules from <span class="kbd">firestore.rules</span>.</li><li>Paste the web app config into <span class="kbd">js/firebase-config.js</span> and deploy.</li><li>Add your site's address under Authentication → Settings → Authorized domains.</li></ol>
+      <p class="tiny muted" style="margin:0">Until then, everything is saved on this device only. Full steps are in the README. This preview page can't connect to outside services, so sign-in works on your deployed site.</p></div>`;
+    if (cloud.status === 'loading') return `<div class="card account"><h3>☁ Account</h3><p class="small muted">Connecting…</p></div>`;
+    if (cloud.status === 'blocked') return `<div class="card account"><h3>☁ Account</h3>${err}<p class="small muted">Your data is still saved on this device.</p></div>`;
+    return `<div class="card account"><h3>☁ ${authMode === 'up' ? 'Create your account' : 'Sign in'}</h3>${err}
+      <p class="small muted">Keep your data safe and in sync on your phone, iPad and computer.</p>
+      <button class="btn google" data-act="gLogin"><span class="g">G</span> Continue with Google</button>
+      <div class="or"><span>or with email</span></div>
+      <form class="stack" data-form="auth">
+        <div><label for="authEmail">Email</label><input type="email" id="authEmail" name="email" autocomplete="email" required></div>
+        <div><label for="authPw">Password</label><input type="password" id="authPw" name="password" autocomplete="${authMode === 'up' ? 'new-password' : 'current-password'}" minlength="6" required></div>
+        <button class="btn primary">${authMode === 'up' ? 'Create account' : 'Sign in'}</button>
+      </form>
+      <div class="row between small" style="margin-top:10px">${authMode === 'up' ? '<a href="#" data-act="authMode" data-v="in">I already have an account</a>' : '<a href="#" data-act="authMode" data-v="up">Create an account</a><a href="#" data-act="resetPw">Forgot password?</a>'}</div>
+      <p class="tiny muted" style="margin:10px 0 0">What's on this device now is copied into your account when you sign in.${db.demo ? ' Sample data is not copied.' : ''}</p></div>`;
   }
 
   /* ================= actions ================= */
@@ -2026,7 +2200,13 @@ const App = (() => {
         cmp.sort((x, y) => dt(x).localeCompare(dt(y))); return render();
       }
       case 'cmpClear': cmp = []; return render();
-      case 'delScan': return askConfirm('Delete this scan photo?', () => { db.scans = db.scans.filter((x) => x.id !== d.id); cmp = cmp.filter((x) => x !== d.id); if (current?.id === d.id) current = null; save(); render(); });
+      case 'delScan': return askConfirm('Delete this scan photo?', () => { db.scans = db.scans.filter((x) => x.id !== d.id); cloudDeleteScans([d.id]); cmp = cmp.filter((x) => x !== d.id); if (current?.id === d.id) current = null; save(); render(); });
+      case 'delAllScans': return askConfirm(`Delete all ${db.scans.length} scans and their photos${cloud.user ? ' on every device' : ''}?`, () => { cloudDeleteScans(db.scans.map((x) => x.id)); db.scans = []; cmp = []; current = null; save(); toast('All scans deleted'); render(); }, 'Delete all scans');
+      case 'gLogin': return cloudGoogle();
+      case 'logout': return askConfirm('Sign out? Your data stays safe in your account. This device keeps a copy unless you remove it.', () => cloudSignOut(false), 'Sign out');
+      case 'logoutWipe': return askConfirm('Sign out and remove your data from this device? It stays in your account.', () => cloudSignOut(true), 'Sign out & remove');
+      case 'resetPw': return cloudReset();
+      case 'authMode': authMode = d.v; return render();
       case 'range': trendRange = +d.v; return render();
       case 'metric': { const i = trendSel.indexOf(d.v); if (i >= 0) trendSel.splice(i, 1); else { trendSel.push(d.v); if (trendSel.length > 4) trendSel.shift(); } return render(); }
       case 'mv': { const l = db.routine[d.w], i = +d.i, j = i + +d.d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; save(); return render(); }
@@ -2041,7 +2221,7 @@ const App = (() => {
       case 'import':
         return dialog(`<h3>Restore backup</h3><p class="small muted">Paste your backup text, or choose a backup file.</p><textarea id="importBox" rows="8"></textarea><input type="file" id="importFile" accept="application/json,.json,.txt" class="mt">`,
           [{ label: 'Cancel', cls: 'ghost' }, { label: 'Restore', cls: 'primary', fn: () => { restore(); return false; } }]);
-      case 'wipe': return askConfirm('Delete all logs, photos, routine and settings on this device? This cannot be undone.', () => { db = fresh(); save(); toast('Everything deleted'); go('#/'); }, 'Delete everything');
+      case 'wipe': return askConfirm(`Delete all logs, photos, routine and settings${cloud.user ? ' on every device and in your account' : ' on this device'}? This cannot be undone.`, () => { cloudDeleteScans(db.scans.map((x) => x.id)); db = fresh(); current = null; save(); toast('Everything deleted'); go('#/'); }, 'Delete everything');
       case 'startFresh': return askConfirm('Remove the sample data and start tracking your own? Your routine, reminders and profile stay.', () => {
         db = { ...fresh(), profile: db.profile, routine: db.routine, reminders: db.reminders, demo: false }; save(); toast('Ready. Log your first day!'); go('#/log');
       }, 'Start fresh');
@@ -2060,7 +2240,7 @@ const App = (() => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(form));
     if (form.dataset.form === 'addStep') { db.routine[fd.when].push({ id: uid(), name: fd.name.trim(), kind: fd.kind }); toast('Step added'); }
-    if (form.dataset.form === 'profile') { Object.assign(db.profile, fd); toast('Profile saved'); }
+    if (form.dataset.form === 'profile') { if (fd.skinType !== db.profile.skinType) db.profile.skinTypeManual = true; Object.assign(db.profile, fd); toast('Profile saved'); }
     if (form.dataset.form === 'body') { Object.assign(db.profile, { sex: fd.sex, age: +fd.age, weight: +fd.weight, height: +fd.height, activity: fd.activity, goal: fd.goal }); toast('Targets updated'); }
     if (form.dataset.form === 'alarm') { db.sleep.alarm = fd.alarm; db.sleep.need = +fd.need; if (db.sleep.active && !ringing) db.sleep.active.alarmAt = nextAlarm(new Date(db.sleep.active.start))?.getTime() ?? null; toast('Alarm saved for ' + fd.alarm); }
     if (form.dataset.form === 'night') {
@@ -2073,6 +2253,7 @@ const App = (() => {
       const l = ensureLog(fd.date); l.life.sleep = clamp(Math.round(h * 2) / 2, 3, 11);
       toast(`Saved ${round(h, 1)} h for ${fmtDay(fd.date)}`);
     }
+    if (form.dataset.form === 'auth') return cloudEmail(fd);
     if (form.dataset.form === 'addRem') { db.reminders.push({ id: uid(), label: fd.label, time: fd.time, days: [0, 1, 2, 3, 4, 5, 6], on: true }); toast('Reminder added'); }
     save(); render();
   }
@@ -2199,7 +2380,7 @@ const App = (() => {
     route = readHash();
     document.addEventListener('click', (e) => {
       const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); return go(g.dataset.go); }
-      const a = e.target.closest('a[href^="#"]'); if (a) { e.preventDefault(); return go(a.getAttribute('href')); }
+      const a = e.target.closest('a[href^="#"]:not([data-act])'); if (a) { e.preventDefault(); return a.getAttribute('href') === '#' ? undefined : go(a.getAttribute('href')); }
       const b = e.target.closest('[data-act]'); if (b && !b.disabled) { e.preventDefault(); act(b); }
     });
     document.addEventListener('keydown', (e) => {
@@ -2230,6 +2411,7 @@ const App = (() => {
     fx.init();
     setInterval(remTick, 20000); remTick();
     setInterval(sleepTick, 1000);
+    cloudInit();
     if (db.sleep.active) showNight();
     document.addEventListener('visibilitychange', () => { if (!document.hidden && db.sleep.active) { keepAwake(); sleepTick(); } });
   }
