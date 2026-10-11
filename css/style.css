@@ -386,3 +386,9 @@ ul.clean li::before { content: '▹'; position: absolute; left: 0; color: var(--
 .steps { padding-left: 18px; margin: 6px 0 10px; }
 .steps li { margin-bottom: 4px; }
 .on-cmp { color: var(--accent); border-color: var(--accent); }
+
+/* ---------- Face analysis ---------- */
+.wr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+.wr { padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: rgba(6, 8, 24, 0.45); }
+.wr.moderate { border-color: rgba(255, 194, 75, 0.4); }
+.wr.marked { border-color: rgba(255, 92, 122, 0.5); }

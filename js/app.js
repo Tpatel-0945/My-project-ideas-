@@ -643,11 +643,11 @@ const App = (() => {
 
   /* ---------- photo scan: auto-detect, 3D relief model, findings & fix plan ---------- */
   const SCAN_LABELS = {
-    skin: [['shine', 'Shine / oil', '#ffc24b'], ['redness', 'Redness', '#ff5c7a'], ['spots', 'Dark spots', '#ff4fd8'], ['evenness', 'Tone evenness', '#9dff6a']],
+    skin: [['wrinkles', 'Lines', '#7fd3ff'], ['spots', 'Dark spots', '#ff4fd8'], ['redness', 'Redness', '#ff5c7a'], ['shine', 'Shine / oil', '#ffc24b'], ['evenness', 'Tone evenness', '#9dff6a']],
     hair: [['scalp', 'Scalp visible', '#3cf0ff'], ['density', 'Coverage', '#a77bff'], ['flakes', 'Flakes', '#ff4fd8']],
   };
   const FTYPE = {
-    acne: ['Inflamed spot', '#ff3b5c'], spots: ['Dark mark', '#ff4fd8'], oil: ['Oily zone', '#ffc24b'],
+    acne: ['Inflamed spot', '#ff3b5c'], spots: ['Dark spot', '#ff4fd8'], oil: ['Oily zone', '#ffc24b'], wrinkles: ['Lines', '#7fd3ff'],
     thin: ['Thinner area', '#3cf0ff'], flakes: ['Flakes', '#ff4fd8'],
   };
   // Fix plans: first-line, evidence-based options. Not a prescription.
@@ -671,6 +671,16 @@ const App = (() => {
       timeline: 'Marks fade slowly: visible change in 8–12 weeks, 6 months or more for deeper marks.',
       derm: 'Any spot that changes shape or colour, itches or bleeds. Stubborn melasma may need prescription creams.',
       evidence: 'Daily broad-spectrum sunscreen, azelaic acid and niacinamide have trial evidence for hyperpigmentation.',
+    },
+    wrinkles: {
+      title: 'Fine lines and wrinkles', color: '#7fd3ff',
+      why: 'Mostly sun damage (photo-ageing), repeated expressions and natural collagen loss with age. Dry skin makes lines look deeper.',
+      am: ['Gentle cleanser', 'Vitamin C serum (10–20% L-ascorbic acid or a gentler derivative)', 'Moisturiser with ceramides or hyaluronic acid', 'Broad-spectrum sunscreen SPF 50 PA++++, every day'],
+      pm: ['Gentle cleanser', 'Retinol 0.25–0.5%, 2–3 nights a week at first, building up slowly', 'Moisturiser with peptides or ceramides'],
+      habits: ['Daily sunscreen is the most proven anti-ageing step', 'Sleep 7+ hours and avoid smoking', 'Dehydration lines plump up within days of regular moisturising'],
+      timeline: 'Hydration softens fine lines within 1–2 weeks; retinoids need 12 weeks or more to visibly reduce wrinkles.',
+      derm: 'Deep or static lines: prescription tretinoin, peels, lasers or injectables are options. Not for use in pregnancy (retinoids).',
+      evidence: 'Topical retinoids have randomised-trial evidence for photo-ageing, and daily sunscreen slowed skin ageing in a 4.5-year trial (Hughes et al., Ann Intern Med 2013).',
     },
     oil: {
       title: 'Oily zones', color: '#ffc24b',
@@ -812,7 +822,7 @@ const App = (() => {
     const l = ensureLog(today());
     if (cur.kind === 'skin') {
       const acne = cur.findings.filter((f) => f.type === 'acne');
-      l.skin.breakouts = acne.length; l.skin.zones = [...new Set(acne.map((f) => f.zone))];
+      l.skin.breakouts = acne.length; l.skin.zones = [...new Set(acne.map((f) => LOG_ZONE[f.zone] || f.zone).filter((z) => ZONES.some((x) => x[0] === z)))];
       l.skin.red = Math.round(clamp(cur.scores.redness / 10, 0, 10)); l.skin.oil = Math.round(clamp(cur.scores.shine / 10, 0, 10));
     } else l.hair.flakes = Math.round(clamp(cur.scores.flakes / 10, 0, 10));
     l.auto = { ...(l.auto || {}), [cur.kind]: Date.now() };
@@ -852,6 +862,7 @@ const App = (() => {
     return { gw, gh, baseZ, issueZ };
   }
   function scanTexture(cur, lay) {
+    if (cur.mesh) return faceTexture(cur, lay);
     const { W, H, base, masks, kind } = cur, c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d'), im = new ImageData(new Uint8ClampedArray(base.data), W, H), d = im.data;
     const tint = (i, rgb, a) => { d[i * 4] = d[i * 4] * (1 - a) + rgb[0] * a; d[i * 4 + 1] = d[i * 4 + 1] * (1 - a) + rgb[1] * a; d[i * 4 + 2] = d[i * 4 + 2] * (1 - a) + rgb[2] * a; };
@@ -870,6 +881,244 @@ const App = (() => {
     ctx.putImageData(im, 0, 0); return c;
   }
 
+  /* ---------- face landmark model (MediaPipe Face Landmarker, loaded on first scan) ---------- */
+  const MP_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+  let FL = null, landmarker = null, lmLoading = null, lmFailed = false;
+  function loadLandmarker() {
+    if (landmarker || lmFailed) return Promise.resolve(landmarker);
+    return (lmLoading ||= (async () => {
+      try {
+        const mod = await import(MP_CDN + '/vision_bundle.mjs');
+        FL = mod.FaceLandmarker;
+        const base = new URL('vendor/mediapipe/', document.baseURI).href;
+        landmarker = await FL.createFromOptions(
+          { wasmLoaderPath: MP_CDN + '/wasm/vision_wasm_internal.js', wasmBinaryPath: base + 'vision_wasm_internal.wasm' },
+          { baseOptions: { modelAssetPath: base + 'face_landmarker.task', delegate: 'CPU' }, runningMode: 'IMAGE', numFaces: 1 });
+      } catch (e) { console.warn('Face landmark model unavailable; using colour analysis only.', e); lmFailed = true; landmarker = null; }
+      return landmarker;
+    })());
+  }
+
+  const hull = (pts) => {
+    const p = pts.slice().sort((a, b) => a.x - b.x || a.y - b.y), cr = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x), lo = [], up = [];
+    for (const q of p) { while (lo.length >= 2 && cr(lo.at(-2), lo.at(-1), q) <= 0) lo.pop(); lo.push(q); }
+    for (const q of p.slice().reverse()) { while (up.length >= 2 && cr(up.at(-2), up.at(-1), q) <= 0) up.pop(); up.push(q); }
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  };
+  const idxOf = (conns) => [...new Set(conns.flatMap((c) => [c.start, c.end]))];
+  const pathPoly = (x, pts) => { x.beginPath(); pts.forEach((p, i) => (i ? x.lineTo(p.x, p.y) : x.moveTo(p.x, p.y))); x.closePath(); };
+  function maskFrom(w, h, draw) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d', { willReadFrequently: true }); draw(x);
+    const d = x.getImageData(0, 0, w, h).data, m = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) m[i] = d[i * 4 + 3] > 127 && d[i * 4] > 127 ? 1 : 0;
+    return m;
+  }
+  const SRGB = Array.from({ length: 256 }, (_, c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+  const labF = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  function toLab(r, g, b, out, i) {
+    const R = SRGB[r], G = SRGB[g], B = SRGB[b];
+    const fx = labF((R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047), fy = labF(R * 0.2126 + G * 0.7152 + B * 0.0722), fz = labF((R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883);
+    out[0][i] = 116 * fy - 16; out[1][i] = 500 * (fx - fy); out[2][i] = 200 * (fy - fz);
+  }
+  // mean of v over masked pixels in a (2r+1)^2 window, via integral images
+  function maskedBlur(v, m, w, h, r) {
+    const W1 = w + 1, I = new Float64Array(W1 * (h + 1)), C = new Float64Array(W1 * (h + 1)), out = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) { let sv = 0, sc = 0; for (let x = 0; x < w; x++) { const i = y * w + x; sv += m[i] ? v[i] : 0; sc += m[i]; I[(y + 1) * W1 + x + 1] = I[y * W1 + x + 1] + sv; C[(y + 1) * W1 + x + 1] = C[y * W1 + x + 1] + sc; } }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const x0 = Math.max(0, x - r), y0 = Math.max(0, y - r), x1 = Math.min(w, x + r + 1), y1 = Math.min(h, y + r + 1);
+      const s = I[y1 * W1 + x1] - I[y0 * W1 + x1] - I[y1 * W1 + x0] + I[y0 * W1 + x0], c = C[y1 * W1 + x1] - C[y0 * W1 + x1] - C[y1 * W1 + x0] + C[y0 * W1 + x0];
+      out[y * w + x] = c ? s / c : v[y * w + x];
+    }
+    return out;
+  }
+  function boxBlur(v, w, h, r) {
+    const tmp = new Float32Array(w * h), out = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0, n = 0; for (let k = -r; k <= r; k++) { const xx = x + k; if (xx >= 0 && xx < w) { s += v[y * w + xx]; n++; } } tmp[y * w + x] = s / n; }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0, n = 0; for (let k = -r; k <= r; k++) { const yy = y + k; if (yy >= 0 && yy < h) { s += tmp[yy * w + x]; n++; } } out[y * w + x] = s / n; }
+    return out;
+  }
+  // connected components with bounding box and pixel list
+  function comps(mask, w, h, minA, maxA) {
+    const seen = new Uint8Array(w * h), q = new Int32Array(w * h), out = [];
+    for (let i = 0; i < w * h; i++) {
+      if (!mask[i] || seen[i]) continue;
+      let qh = 0, qt = 0, x0 = w, x1 = 0, y0 = h, y1 = 0, sx = 0, sy = 0; q[qt++] = i; seen[i] = 1;
+      while (qh < qt) {
+        const p = q[qh++], x = p % w, y = (p / w) | 0; sx += x; sy += y;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        for (const np of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1, x > 0 && y > 0 ? p - w - 1 : -1, x < w - 1 && y > 0 ? p - w + 1 : -1, x > 0 && y < h - 1 ? p + w - 1 : -1, x < w - 1 && y < h - 1 ? p + w + 1 : -1]) {
+          if (np >= 0 && mask[np] && !seen[np]) { seen[np] = 1; q[qt++] = np; }
+        }
+      }
+      const n = qt; if (n < minA || n > maxA) continue;
+      out.push({ x: sx / n, y: sy / n, n, bw: x1 - x0 + 1, bh: y1 - y0 + 1, px: q.slice(0, qt) });
+    }
+    return out;
+  }
+
+  const WRINKLE_REGIONS = {
+    forehead: ['Forehead lines', 'h'], glabella: ['Frown lines (between brows)', 'v'], crowL: ["Crow's feet (left)", 'any'], crowR: ["Crow's feet (right)", 'any'],
+    eyeL: ['Under-eye lines (left)', 'h'], eyeR: ['Under-eye lines (right)', 'h'], nasoL: ['Smile line (left)', 'any'], nasoR: ['Smile line (right)', 'any'],
+  };
+  const SEV = (s) => (s < 18 ? 'none' : s < 38 ? 'mild' : s < 62 ? 'moderate' : 'marked');
+  const ZONE_ANCHORS = { forehead: [151, 108, 337, 10], glabella: [9, 8], nose: [4, 5, 195, 1], cheekL: [50, 101, 205, 123], cheekR: [280, 330, 425, 352], chin: [152, 199, 175, 18], jawL: [172, 136, 150, 58], jawR: [397, 365, 379, 288], underEyeL: [119, 118, 117], underEyeR: [348, 347, 346], templeL: [127, 162, 139], templeR: [356, 389, 368] };
+  Object.assign(ZONE_NAME, { glabella: 'Between brows', underEyeL: 'Under left eye', underEyeR: 'Under right eye', templeL: 'Left eye corner', templeR: 'Right eye corner' });
+  const LOG_ZONE = { glabella: 'forehead', underEyeL: 'cheekL', underEyeR: 'cheekR', templeL: 'cheekL', templeR: 'cheekR' };
+
+  /* Full face analysis guided by 478 landmarks: dark spots, red spots, shine and wrinkles. */
+  function analyzeFace(full, lmN) {
+    const FW = full.width, FH = full.height, P = lmN.map((p) => ({ x: p.x * FW, y: p.y * FH, z: p.z * FW }));
+    const ovalIdx = idxOf(FL.FACE_LANDMARKS_FACE_OVAL), ovP = ovalIdx.map((i) => P[i]);
+    const bx0 = Math.min(...ovP.map((p) => p.x)), bx1 = Math.max(...ovP.map((p) => p.x)), by0 = Math.min(...ovP.map((p) => p.y)), by1 = Math.max(...ovP.map((p) => p.y));
+    const mg = (bx1 - bx0) * 0.06, cx0 = Math.max(0, bx0 - mg), cy0 = Math.max(0, by0 - mg), cx1 = Math.min(FW, bx1 + mg), cy1 = Math.min(FH, by1 + mg);
+    const s = Math.min(2, 440 / (cx1 - cx0)), aw = Math.round((cx1 - cx0) * s), ah = Math.round((cy1 - cy0) * s);
+    const A = document.createElement('canvas'); A.width = aw; A.height = ah;
+    const actx = A.getContext('2d', { willReadFrequently: true }); actx.drawImage(full, cx0, cy0, cx1 - cx0, cy1 - cy0, 0, 0, aw, ah);
+    const Q = P.map((p) => ({ x: (p.x - cx0) * s, y: (p.y - cy0) * s })), fw = (bx1 - bx0) * s;
+    const ipd = P[468] && P[473] ? Math.hypot(P[468].x - P[473].x, P[468].y - P[473].y) * s : fw * 0.45, pxMm = ipd / 63; // average adult interpupillary distance ≈ 63 mm
+    const G = (conns) => idxOf(conns).map((i) => Q[i]);
+    const feats = [[FL.FACE_LANDMARKS_LEFT_EYE, 0.05], [FL.FACE_LANDMARKS_RIGHT_EYE, 0.05], [FL.FACE_LANDMARKS_LEFT_EYEBROW, 0.03], [FL.FACE_LANDMARKS_RIGHT_EYEBROW, 0.03], [FL.FACE_LANDMARKS_LIPS, 0.03]];
+    const region = maskFrom(aw, ah, (x) => {
+      x.fillStyle = '#fff'; pathPoly(x, hull(ovalIdx.map((i) => Q[i]))); x.fill();
+      x.fillStyle = '#000'; x.strokeStyle = '#000'; x.lineJoin = 'round';
+      feats.forEach(([c, d]) => { pathPoly(x, hull(G(c))); x.fill(); x.lineWidth = fw * d * 2; x.stroke(); });
+      [98, 327, 2].forEach((i) => { x.beginPath(); x.arc(Q[i].x, Q[i].y, fw * 0.04, 0, 7); x.fill(); });
+      [129, 358, 49, 279, 64, 294].forEach((i) => { x.beginPath(); x.arc(Q[i].x, Q[i].y, fw * 0.045, 0, 7); x.fill(); }); // nose-wing creases
+      x.lineWidth = fw * 0.03; pathPoly(x, hull(ovalIdx.map((i) => Q[i]))); x.stroke(); // keep away from the hairline/jaw edge
+    });
+    const data = actx.getImageData(0, 0, aw, ah).data, N = aw * ah, L = new Float32Array(N), Aa = new Float32Array(N), Bb = new Float32Array(N), lab = [L, Aa, Bb], mask = new Uint8Array(N);
+    let mN = 0;
+    for (let i = 0; i < N; i++) {
+      const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2]; toLab(r, g, b, lab, i);
+      const Y = 0.299 * r + 0.587 * g + 0.114 * b, cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b, cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+      if (region[i] && Y > 30 && cb > 70 && cb < 135 && cr > 128 && cr < 185) { mask[i] = 1; mN++; }
+    }
+    if (mN < N * 0.1) return null;
+    const rb = Math.max(4, Math.round(fw * 0.05));
+    const Lb = maskedBlur(L, mask, aw, ah, rb), ab = maskedBlur(Aa, mask, aw, ah, rb), bb = maskedBlur(Bb, mask, aw, ah, rb);
+    const dark = new Uint8Array(N), red = new Uint8Array(N), shine = new Uint8Array(N);
+    let redN = 0, shineN = 0, dev = 0;
+    for (let i = 0; i < N; i++) {
+      if (!mask[i]) continue;
+      const dL = Lb[i] - L[i], da = Aa[i] - ab[i]; dev += Math.abs(dL);
+      if (dL > 5.5) dark[i] = 1;
+      if (da > 6 && dL > -3) { red[i] = 1; redN++; }
+      if (L[i] - Lb[i] > 11 && Math.hypot(Aa[i], Bb[i]) < Math.hypot(ab[i], bb[i]) * 0.8) { shine[i] = 1; shineN++; }
+    }
+    const ringOnSkin = (c) => { const rr = Math.sqrt(c.n / Math.PI) + fw * 0.03; let k = 0; for (let t = 0; t < 12; t++) { const x = Math.round(c.x + rr * Math.cos((t * Math.PI) / 6)), y = Math.round(c.y + rr * Math.sin((t * Math.PI) / 6)); if (x >= 0 && y >= 0 && x < aw && y < ah && mask[y * aw + x]) k++; } return k >= 12; };
+    const minA = Math.PI * (pxMm * 0.95) ** 2;   // spots smaller than ~2 mm are mostly pores, stubble or noise
+    const stat = (c, arrA, arrB) => c.px.reduce((acc, p) => acc + (arrA[p] - arrB[p]), 0) / c.n;
+    const round_ = (c) => Math.max(c.bw, c.bh) / Math.max(1, Math.min(c.bw, c.bh)) < 2 && c.n / (c.bw * c.bh) > 0.45;
+    const toImg = (c) => ({ x: cx0 + c.x / s, y: cy0 + c.y / s });
+    const zoneAt = (ix, iy) => { let best = null, bd = Infinity; for (const [z, ids] of Object.entries(ZONE_ANCHORS)) for (const i of ids) { const d = Math.hypot(P[i].x - ix, P[i].y - iy); if (d < bd) { bd = d; best = z; } } return best; };
+    // a true spot is darker than skin on (nearly) every side; one-sided shading near the nose or jaw is not
+    const surrounded = (c, arr, sign, minD) => {
+      const mean = c.px.reduce((acc, p) => acc + arr[p], 0) / c.n, rr = Math.sqrt(c.n / Math.PI) + Math.max(2, fw * 0.008); let k = 0;
+      for (let t = 0; t < 16; t++) { const x = Math.round(c.x + rr * Math.cos((t * Math.PI) / 8)), y = Math.round(c.y + rr * Math.sin((t * Math.PI) / 8)); if (x >= 0 && y >= 0 && x < aw && y < ah && sign * (arr[y * aw + x] - mean) > minD) k++; }
+      return k >= 13;
+    };
+    const maxSpot = Math.PI * (pxMm * 3.5) ** 2;
+    const acneC = comps(red, aw, ah, minA, maxSpot).filter(round_).filter(ringOnSkin).filter((c) => surrounded(c, Aa, -1, 3)).sort((a, b) => b.n - a.n).slice(0, 12);
+    const spotC = comps(dark, aw, ah, minA, maxSpot).filter(round_).filter(ringOnSkin).filter((c) => surrounded(c, L, 1, 4.5)).filter((c) => !acneC.some((a) => Math.hypot(a.x - c.x, a.y - c.y) < Math.sqrt(a.n) + Math.sqrt(c.n))).sort((a, b) => b.n - a.n).slice(0, 12);
+    const spotPx = spotC.reduce((a, c) => a + c.n, 0);
+    const mm = (c) => round((2 * Math.sqrt(c.n / Math.PI)) / pxMm, 1);
+    const findings = [];
+    acneC.forEach((c) => { const p = toImg(c); findings.push({ ...p, n: c.n, type: 'acne', zone: zoneAt(p.x, p.y), mm: mm(c), detail: `${mm(c)} mm · red` }); });
+    spotC.forEach((c) => { const p = toImg(c), brown = stat(c, Bb, bb) > 1.5; findings.push({ ...p, n: c.n, type: 'spots', zone: zoneAt(p.x, p.y), mm: mm(c), detail: `${mm(c)} mm · ${brown ? 'brown' : 'dark'} · ${round(stat(c, Lb, L), 0)} ΔL` }); });
+
+    /* wrinkles: dark, thin, elongated valleys found with a Hessian (second-derivative) filter inside landmark-defined regions */
+    const sig = Math.max(1, Math.round(fw / 220)), Gs = boxBlur(boxBlur(L, aw, ah, sig), aw, ah, sig), h = Math.max(1, sig + 1);
+    const ridge = new Float32Array(N), ang = new Float32Array(N), vals = [];
+    for (let y = h; y < ah - h; y++) for (let x = h; x < aw - h; x++) {
+      const i = y * aw + x; if (!mask[i]) continue;
+      const Ixx = Gs[i + h] - 2 * Gs[i] + Gs[i - h], Iyy = Gs[i + h * aw] - 2 * Gs[i] + Gs[i - h * aw];
+      const Ixy = (Gs[i + h + h * aw] - Gs[i + h - h * aw] - Gs[i - h + h * aw] + Gs[i - h - h * aw]) / 4;
+      const tr = Ixx + Iyy, dt = Math.sqrt((Ixx - Iyy) ** 2 + 4 * Ixy * Ixy), l1 = (tr + dt) / 2, l2 = (tr - dt) / 2;
+      if (l1 > 0 && Math.abs(l2) < l1 * 0.5) { ridge[i] = l1 - Math.abs(l2); ang[i] = 0.5 * Math.atan2(2 * Ixy, Ixx - Iyy) + Math.PI / 2; vals.push(ridge[i]); }
+    }
+    vals.sort((a, b) => a - b);
+    const thr = Math.max(0.55 * h, vals[Math.floor(vals.length * 0.9)] || 0);
+    const up = fw * 0.07, P2 = (i, dx = 0, dy = 0) => ({ x: Q[i].x + dx, y: Q[i].y + dy });
+    const outward = (i) => (Q[i].x < Q[168].x ? -1 : 1);
+    const lidL = [33, 7, 163, 144, 145, 153, 154, 155, 133], lidR = [263, 249, 390, 373, 374, 380, 381, 382, 362];
+    const crow = (c, t) => { const o = outward(c), xa = Q[c].x + o * fw * 0.02, xb = Q[t].x - o * fw * 0.005; return [{ x: xa, y: Q[c].y - fw * 0.07 }, { x: xb, y: Q[c].y - fw * 0.07 }, { x: xb, y: Q[c].y + fw * 0.1 }, { x: xa, y: Q[c].y + fw * 0.1 }]; };
+    const naso = (a, b) => { const o = outward(a); return [P2(a, o * fw * 0.01), P2(b, o * fw * 0.01, fw * 0.02), P2(b, o * fw * 0.08), P2(a, o * fw * 0.08)]; };
+    const polys = {
+      forehead: hull([54, 103, 67, 109, 10, 338, 297, 332, 284, 300, 293, 334, 296, 336, 107, 66, 105, 63, 70].map((i) => Q[i])),
+      glabella: hull([P2(107), P2(336), P2(9), P2(8), P2(55), P2(285), P2(9, 0, -up)]),
+      crowL: crow(33, 127), crowR: crow(263, 356),
+      eyeL: hull([...lidL.map((i) => P2(i, 0, fw * 0.02)), ...lidL.map((i) => P2(i, 0, fw * 0.11))]),
+      eyeR: hull([...lidR.map((i) => P2(i, 0, fw * 0.02)), ...lidR.map((i) => P2(i, 0, fw * 0.11))]),
+      nasoL: naso(129, 61), nasoR: naso(358, 291),
+    };
+    const wr = new Uint8Array(N), regions = [];
+    for (const [key, poly] of Object.entries(polys)) {
+      const rm = maskFrom(aw, ah, (x) => { x.fillStyle = '#fff'; pathPoly(x, poly); x.fill(); });
+      const dir = WRINKLE_REGIONS[key][1], m = new Uint8Array(N); let area = 0;
+      for (let i = 0; i < N; i++) {
+        if (!rm[i] || !mask[i]) continue; area++;
+        if (ridge[i] < thr) continue;
+        let a = ang[i] % Math.PI; if (a < 0) a += Math.PI; const fromH = Math.min(a, Math.PI - a);
+        if ((dir === 'h' && fromH > 0.55) || (dir === 'v' && fromH < 1.0)) continue;
+        m[i] = 1;
+      }
+      if (area < fw * fw * 0.004) continue;
+      const lines = comps(m, aw, ah, 3, N).filter((c) => Math.max(c.bw, c.bh) >= fw * 0.035 && Math.max(c.bw, c.bh) / Math.max(1, Math.min(c.bw, c.bh)) >= 2.2);
+      lines.forEach((c) => c.px.forEach((p) => (wr[p] = 1)));
+      // score = total line length relative to the area's width, weighted by how deep (dark) the lines are
+      const rw = Math.max(...poly.map((p) => p.x)) - Math.min(...poly.map((p) => p.x));
+      const score = Math.round(clamp(lines.reduce((acc, c) => acc + (Math.hypot(c.bw, c.bh) / rw) * 32 * clamp(c.px.reduce((q, p) => q + ridge[p], 0) / c.n / thr, 1, 1.8), 0)));
+      const cxy = poly.reduce((acc, p) => ({ x: acc.x + p.x / poly.length, y: acc.y + p.y / poly.length }), { x: 0, y: 0 });
+      regions.push({ key, label: WRINKLE_REGIONS[key][0], score, sev: SEV(score), lines: lines.length, poly, cx: cxy.x, cy: cxy.y });
+    }
+    regions.filter((r) => r.sev !== 'none').forEach((r) => { const p = { x: cx0 + r.cx / s, y: cy0 + r.cy / s }; findings.push({ ...p, n: r.score, type: 'wrinkles', zone: r.key, label: r.label, detail: `${r.sev} · ${r.lines} line${r.lines === 1 ? '' : 's'}` }); });
+    const oil = comps(dilate(dilate(shine, aw, ah), aw, ah), aw, ah, fw * fw * 0.004, N).sort((a, b) => b.n - a.n).slice(0, 2);
+    oil.forEach((c) => { const p = toImg(c); findings.push({ ...p, n: c.n, type: 'oil', zone: zoneAt(p.x, p.y), detail: 'shine' }); });
+    const rs = regions.map((r) => r.score);
+    const scores = {
+      shine: Math.round(clamp((shineN / mN) * 1500)), redness: Math.round(clamp((redN / mN) * 1800)),
+      spots: Math.round(clamp((spotPx / mN) * 2500 + spotC.length * 3)), evenness: Math.round(clamp(100 - (dev / mN) * 12)),
+      wrinkles: rs.length ? Math.round(clamp(0.6 * Math.max(...rs) + 0.4 * avg(rs))) : 0,
+    };
+    const issues = [];
+    if (acneC.length >= 2 || scores.redness >= 40) issues.push('acne');
+    if (spotC.length >= 2 || scores.spots >= 35) issues.push('spots');
+    if (scores.wrinkles >= 25 || regions.some((r) => r.score >= 38)) issues.push('wrinkles');
+    if (scores.shine >= 40) issues.push('oil');
+    if (scores.redness >= 55) issues.push('red');
+    return { kind: 'skin', mesh: true, W: FW, H: FH, full, P, crop: { cx0, cy0, s, aw, ah }, ov: { red, dark: spotMaskOf(spotC, N), wr, shine }, regions, scores, findings, issues, pxMm, thumb: toThumb(full, 480) };
+  }
+  function spotMaskOf(cs, N) { const m = new Uint8Array(N); cs.forEach((c) => c.px.forEach((p) => (m[p] = 1))); return m; }
+
+  function faceTexture(cur, lay) {
+    const c = document.createElement('canvas'); c.width = cur.W; c.height = cur.H; const x = c.getContext('2d');
+    x.drawImage(cur.full, 0, 0);
+    if (lay === 'none') return c;
+    const { cx0, cy0, s, aw, ah } = cur.crop, o = document.createElement('canvas'); o.width = aw; o.height = ah;
+    const ox = o.getContext('2d'), im = ox.createImageData(aw, ah), d = im.data, on = (k) => lay === 'all' || lay === k;
+    const paint = (m, rgb, a) => { for (let i = 0; i < m.length; i++) if (m[i]) { d[i * 4] = rgb[0]; d[i * 4 + 1] = rgb[1]; d[i * 4 + 2] = rgb[2]; d[i * 4 + 3] = a; } };
+    if (on('oil')) paint(cur.ov.shine, [255, 194, 75], 120);
+    if (on('acne')) paint(cur.ov.red, [255, 40, 80], 170);
+    if (on('spots')) paint(cur.ov.dark, [255, 79, 216], 190);
+    if (on('wrinkles')) paint(cur.ov.wr, [127, 211, 255], 235);
+    ox.putImageData(im, 0, 0);
+    if (on('wrinkles')) cur.regions.filter((r) => r.sev !== 'none').forEach((r) => {
+      ox.strokeStyle = r.sev === 'marked' ? '#ff5c7a' : r.sev === 'moderate' ? '#ffc24b' : '#7fd3ff'; ox.lineWidth = Math.max(1.5, aw / 260); ox.setLineDash([6, 4]); pathPoly(ox, r.poly); ox.stroke();
+    });
+    x.drawImage(o, cx0, cy0, aw / s, ah / s);
+    return c;
+  }
+
+  let TRIS = null;
+  function faceTris() {
+    if (TRIS) return TRIS;
+    const adj = Array.from({ length: 468 }, () => new Set());
+    FL.FACE_LANDMARKS_TESSELATION.forEach(({ start, end }) => { adj[start].add(end); adj[end].add(start); });
+    const out = [];
+    for (let a = 0; a < 468; a++) for (const b of adj[a]) if (b > a) for (const c of adj[b]) if (c > b && adj[a].has(c)) out.push([a, b, c]);
+    return (TRIS = out);
+  }
+
   const Viewer = {
     raf: 0,
     stop() {
@@ -881,8 +1130,91 @@ const App = (() => {
       this.stop(); this.el = el; this.cur = cur; el.innerHTML = '';
       const T = window.THREE;
       if (!T) return this.flat(el, cur);
-      try { this.build(T, el, cur); } catch { this.stop(); this.el = el; this.flat(el, cur); }
+      try { cur.mesh ? this.buildFace(T, el, cur) : this.build(T, el, cur); } catch (e) { console.warn(e); this.stop(); this.el = el; this.flat(el, cur); }
     },
+    buildFace(T, el, cur) {
+      const w = el.clientWidth || 480, h = Math.min(580, Math.round(w * 1.05));
+      const canvas = document.createElement('canvas'); el.appendChild(canvas);
+      const renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); renderer.setSize(w, h);
+      const scene = new T.Scene(), camera = new T.PerspectiveCamera(32, w / h, 0.1, 50); camera.position.set(0, 0, 4.0);
+      // close the eye openings and the mouth with small fans so the face reads as a solid surface
+      const LOOPS = [[33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246], [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466], [78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, 415, 310, 311, 312, 13, 82, 81, 80, 191]];
+      const P = cur.P.slice(0, 468);
+      const fans = LOOPS.map((lp, k) => { const c = lp.reduce((a, i) => ({ x: a.x + cur.P[i].x / lp.length, y: a.y + cur.P[i].y / lp.length, z: a.z + cur.P[i].z / lp.length }), { x: 0, y: 0, z: 0 }); if (k < 2) c.z -= (Math.max(...cur.P.slice(0, 468).map((p) => p.x)) - Math.min(...cur.P.slice(0, 468).map((p) => p.x))) * 0.012; P.push(c); return lp.map((a, j) => [a, lp[(j + 1) % lp.length], 468 + k]); }).flat();
+      const NV = P.length, xs = P.map((p) => p.x), ys = P.map((p) => p.y), zs = P.map((p) => p.z);
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2, zc = (Math.min(...zs) + Math.max(...zs)) / 2, S = (Math.max(...xs) - Math.min(...xs)) / 1.55;
+      const pos = new Float32Array(NV * 3), uv = new Float32Array(NV * 2), zBase = new Float32Array(NV);
+      P.forEach((p, i) => { pos[i * 3] = (p.x - cx) / S; pos[i * 3 + 1] = -(p.y - cy) / S; zBase[i] = -(p.z - zc) / S; uv[i * 2] = p.x / cur.W; uv[i * 2 + 1] = 1 - p.y / cur.H; });
+      // orient every triangle the same way (towards the camera) so lighting is smooth
+      const tris = [...faceTris(), ...fans].map(([a, b, c]) => { const ar = (pos[b * 3] - pos[a * 3]) * (pos[c * 3 + 1] - pos[a * 3 + 1]) - (pos[b * 3 + 1] - pos[a * 3 + 1]) * (pos[c * 3] - pos[a * 3]); return ar < 0 ? [a, c, b] : [a, b, c]; });
+      const geo = new T.BufferGeometry();
+      geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setAttribute('uv', new T.BufferAttribute(uv, 2)); geo.setIndex(tris.flat());
+      const tex = new T.CanvasTexture(scanTexture(cur, layer));
+      const mesh = new T.Mesh(geo, new T.MeshStandardMaterial({ map: tex, roughness: 0.62, metalness: 0.04, side: T.DoubleSide }));
+      const edges = []; FL.FACE_LANDMARKS_TESSELATION.forEach(({ start, end }) => { if (start < 468 && end < 468) edges.push(start, end); });
+      const lineGeo = new T.BufferGeometry(); lineGeo.setAttribute('position', geo.attributes.position); lineGeo.setIndex(edges);
+      const wireMat = new T.LineBasicMaterial({ color: 0x3cf0ff, transparent: true, opacity: 0.5 }), wire = new T.LineSegments(lineGeo, wireMat);
+      const ptsMat = new T.PointsMaterial({ color: 0xff4fd8, size: 0.018, transparent: true, opacity: 1 }), pts = new T.Points(geo, ptsMat);
+      const group = new T.Group(); group.add(mesh, wire, pts); scene.add(group);
+      scene.add(new T.AmbientLight(0xffffff, 0.72));
+      const key = new T.DirectionalLight(0xffffff, 0.5); key.position.set(0.6, 0.8, 2); scene.add(key);
+      const c1 = new T.PointLight(0x3cf0ff, 0.45, 8); c1.position.set(-2, 0.5, 1); scene.add(c1);
+      const c2 = new T.PointLight(0xff4fd8, 0.35, 8); c2.position.set(2, -0.6, 1); scene.add(c2);
+      const sweep = new T.Mesh(new T.PlaneGeometry(1.9, 0.01), new T.MeshBasicMaterial({ color: 0x3cf0ff, transparent: true, opacity: 0.9 })); sweep.position.z = 0.6; group.add(sweep);
+      // place a marker on the mesh surface under an image point (barycentric interpolation)
+      const surf = (ix, iy) => {
+        for (const [a, b, c] of tris) {
+          const A = P[a], B = P[b], C = P[c], den = (B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y); if (!den) continue;
+          const u = ((B.y - C.y) * (ix - C.x) + (C.x - B.x) * (iy - C.y)) / den, v = ((C.y - A.y) * (ix - C.x) + (A.x - C.x) * (iy - C.y)) / den, t = 1 - u - v;
+          if (u >= 0 && v >= 0 && t >= 0) return [a, b, c].map((k, j) => [k, [u, v, t][j]]);
+        }
+        let bi = 0, bd = Infinity; P.forEach((p, i) => { const d = Math.hypot(p.x - ix, p.y - iy); if (d < bd) { bd = d; bi = i; } }); return [[bi, 1]];
+      };
+      const markers = cur.findings.slice(0, 14).map((f, k) => {
+        const col = new T.Color(FTYPE[f.type][1]);
+        const m = new T.Mesh(new T.SphereGeometry(0.018, 12, 12), new T.MeshBasicMaterial({ color: col }));
+        const ringM = new T.Mesh(new T.RingGeometry(0.03, 0.04, 32), new T.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, side: T.DoubleSide }));
+        m.add(ringM); group.add(m);
+        const lab = document.createElement('button'); lab.className = 'mk'; lab.style.setProperty('--c', FTYPE[f.type][1]); lab.textContent = k + 1; lab.dataset.act = 'focusFind'; lab.dataset.i = k; lab.title = f.label || FTYPE[f.type][0];
+        el.appendChild(lab);
+        return { m, ringM, f, lab, w: surf(f.x, f.y) };
+      });
+      let depth = 0;
+      const applyZ = () => {
+        const p = geo.attributes.position;
+        for (let i = 0; i < NV; i++) p.setZ(i, zBase[i] * relief * depth);
+        p.needsUpdate = true; geo.computeVertexNormals();
+        markers.forEach(({ m, w: wts }) => { let x = 0, y = 0, z = 0; wts.forEach(([i, t]) => { x += pos[i * 3] * t; y += pos[i * 3 + 1] * t; z += p.getZ(i) * t; }); m.position.set(x, y, z + 0.025); });
+      };
+      Object.assign(this, { renderer, geo, tex, applyZ, markers, scene, camera, group });
+      let tx = 0, ty = 0, rx = 0, ry = 0, drag = null, last = 0, yawOff = 0;
+      const t0 = performance.now();
+      el.onpointermove = (e) => { const r = el.getBoundingClientRect(); if (drag) yawOff = clamp(drag.yaw + (e.clientX - drag.x) * 0.01, -1.1, 1.1); tx = ((e.clientX - r.left) / r.width - 0.5) * 1.1; ty = ((e.clientY - r.top) / r.height - 0.5) * 0.6; last = performance.now(); };
+      el.onpointerdown = (e) => { if (e.target.closest('.mk')) return; drag = { x: e.clientX, yaw: yawOff }; el.setPointerCapture?.(e.pointerId); };
+      el.onpointerup = el.onpointercancel = () => { drag = null; };
+      el.onpointerleave = () => { last = 0; };
+      el.ondblclick = () => { yawOff = 0; };
+      const v3 = new T.Vector3();
+      const loop = (now) => {
+        this.raf = requestAnimationFrame(loop);
+        if (!el.isConnected) return this.stop();
+        const k = Math.min(1, (now - t0) / 1600), e = 1 - (1 - k) ** 3;   // build-up: flat photo → 3D face
+        if (depth !== e) { depth = e; applyZ(); }
+        sweep.visible = k < 1; sweep.position.y = 1.1 - k * 2.2;
+        ptsMat.opacity = 1 - 0.85 * e; wireMat.opacity = this.wireOn ? 0.35 : 0.5 * (1 - e);
+        const idle = now - last > 1800, gx = idle ? Math.sin(now / 2400) * 0.45 : clamp(tx + yawOff, -1.1, 1.1), gy = idle ? Math.sin(now / 3300) * 0.12 : ty;
+        ry += (gx - ry) * 0.07; rx += (gy - rx) * 0.07; group.rotation.y = ry; group.rotation.x = rx;
+        markers.forEach(({ m, ringM, lab }, i) => {
+          ringM.scale.setScalar(this.focus === i ? 1.7 + 0.3 * Math.sin(now / 200) : 1 + 0.2 * Math.sin(now / 300 + i));
+          ringM.lookAt(camera.position); m.getWorldPosition(v3); v3.project(camera);
+          lab.style.transform = `translate(${(v3.x * 0.5 + 0.5) * w}px, ${(-v3.y * 0.5 + 0.5) * h}px)`; lab.classList.toggle('on', this.focus === i);
+        });
+        renderer.render(scene, camera);
+      };
+      this.raf = requestAnimationFrame(loop);
+    },
+
     build(T, el, cur) {
       const w = el.clientWidth || 480, h = Math.min(560, Math.round(w * 0.95));
       const canvas = document.createElement('canvas'); el.appendChild(canvas);
@@ -982,20 +1314,22 @@ const App = (() => {
       const types = [...new Set(cur.findings.map((f) => f.type))];
       body = `
       <div class="split section" style="margin-top:18px">
-        <div class="card viewer-card"><div class="row between"><h3>${cur.kind === 'skin' ? '◐ Face' : '⌇ Scalp'} · 3D relief model</h3><span class="tiny muted">drag to rotate · double-click to reset</span></div>
+        <div class="card viewer-card"><div class="row between"><h3>${cur.mesh ? '◐ 3D face model · 468 points' : cur.kind === 'skin' ? '◐ Face · 3D relief model' : '⌇ Scalp · 3D relief model'}</h3><span class="tiny muted">drag to rotate · double-click to reset</span></div>
           <div class="viewer" id="viewer"></div>
-          <div class="row" style="margin-top:10px"><div class="chips"><button class="chip ${layer === 'all' ? 'on' : ''}" data-act="layer" data-v="all">All</button>${types.map((t) => `<button class="chip ${layer === t ? 'on' : ''}" data-act="layer" data-v="${t}" style="${layer === t ? `background:${FTYPE[t][1]};border-color:${FTYPE[t][1]}` : ''}">${FTYPE[t][0]}s</button>`).join('')}<button class="chip ${layer === 'none' ? 'on' : ''}" data-act="layer" data-v="none">Photo only</button></div>
-            <label style="margin:0 0 0 auto;display:flex;align-items:center;gap:8px;min-width:160px">Relief<input type="range" id="reliefRange" min="0" max="2.5" step="0.1" value="${relief}" style="--p:${relief / 2.5 * 100}"></label></div>
-          <p class="tiny muted" style="margin:8px 0 0">A single photo has no real depth, so this is a relief model built from the image: affected areas are raised${cur.kind === 'hair' ? ' (visible scalp sinks)' : ''} and numbered so you can see where they are.</p>
+          <div class="row" style="margin-top:10px"><div class="chips"><button class="chip ${layer === 'all' ? 'on' : ''}" data-act="layer" data-v="all">All</button>${types.map((t) => `<button class="chip ${layer === t ? 'on' : ''}" data-act="layer" data-v="${t}" style="${layer === t ? `background:${FTYPE[t][1]};border-color:${FTYPE[t][1]}` : ''}">${t === 'wrinkles' ? 'Lines' : FTYPE[t][0] + 's'}</button>`).join('')}<button class="chip ${layer === 'none' ? 'on' : ''}" data-act="layer" data-v="none">Photo only</button></div>
+            ${cur.mesh ? `<button class="chip ${Viewer.wireOn ? 'on' : ''}" data-act="wire">Mesh</button>` : ''}<label style="margin:0 0 0 auto;display:flex;align-items:center;gap:8px;min-width:160px">${cur.mesh ? 'Depth' : 'Relief'}<input type="range" id="reliefRange" min="0" max="2.5" step="0.1" value="${relief}" style="--p:${relief / 2.5 * 100}"></label></div>
+          <p class="tiny muted" style="margin:8px 0 0">${cur.mesh ? 'Your face shape is reconstructed from 468 landmark points estimated by a face-mesh model, with your photo mapped onto it. Depth is an estimate from one photo, not a medical 3D scan.' : `A single photo has no real depth, so this is a relief model built from the image: affected areas are raised${cur.kind === 'hair' ? ' (visible scalp sinks)' : ''} and numbered so you can see where they are.`}</p>
         </div>
         <div class="card"><div class="row between"><h3>Scan result</h3><span class="pill ${cur.kind}">${cur.kind === 'skin' ? 'Face detected' : 'Scalp detected'}</span></div>
-          <div class="grid" style="grid-template-columns:repeat(${labels.length === 4 ? 4 : 3},minmax(0,1fr));gap:8px">${labels.map(([k, t, c]) => `<div><div class="gauge" style="--v:${cur.scores[k]};--c:${c}"><span>${cur.scores[k]}</span></div><div class="tiny" style="text-align:center">${t}${prev?.scores?.[k] != null ? `<br><span class="muted">last ${prev.scores[k]}</span>` : ''}</div></div>`).join('')}</div>
+          <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px">${labels.map(([k, t, c]) => `<div><div class="gauge" style="--v:${cur.scores[k]};--c:${c}"><span>${cur.scores[k]}</span></div><div class="tiny" style="text-align:center">${t}${prev?.scores?.[k] != null ? `<br><span class="muted">last ${prev.scores[k]}</span>` : ''}</div></div>`).join('')}</div>
           <h3 class="mt">Found ${cur.findings.length ? cur.findings.length + ' area' + (cur.findings.length > 1 ? 's' : '') : 'nothing that stands out'}</h3>
-          <div class="stack" style="gap:6px;max-height:300px;overflow:auto">${cur.findings.slice(0, 12).map((f, k) => `<button class="find" data-act="focusFind" data-i="${k}"><span class="mk static" style="--c:${FTYPE[f.type][1]}">${k + 1}</span><span><b>${FTYPE[f.type][0]}</b> <span class="muted">· ${ZONE_NAME[f.zone] || ''}</span></span><span class="tiny muted" style="margin-left:auto">${f.type === 'thin' ? f.n + '% scalp' : f.type === 'oil' ? 'zone' : f.n > 80 ? 'larger' : 'small'}</span></button>`).join('') || '<p class="small muted">Nothing stands out in this photo.</p>'}</div>
+          <div class="stack" style="gap:6px;max-height:300px;overflow:auto">${cur.findings.slice(0, 12).map((f, k) => `<button class="find" data-act="focusFind" data-i="${k}"><span class="mk static" style="--c:${FTYPE[f.type][1]}">${k + 1}</span><span><b>${f.label || FTYPE[f.type][0]}</b> <span class="muted">${f.type === 'wrinkles' ? '' : '· ' + (ZONE_NAME[f.zone] || '')}</span></span><span class="tiny muted" style="margin-left:auto;text-align:right">${f.detail || (f.type === 'thin' ? f.n + '% scalp' : f.type === 'oil' ? 'zone' : f.n > 80 ? 'larger' : 'small')}</span></button>`).join('') || '<p class="small muted">Nothing stands out in this photo.</p>'}</div>
           <div class="insight info mt"><div class="ic">✓</div><div><b>Saved and filled in</b><p>${cur.fromHistory ? 'Opened from your history.' : `Added to your history, and today's check-in was filled in${cur.kind === 'skin' ? ` (${cur.findings.filter((f) => f.type === 'acne').length} spots, redness, oiliness)` : ' (flakes)'}. Nothing to type.`}</p></div></div>
           ${cur.fromHistory ? '' : `<button class="btn sm ghost mt" data-act="delScan" data-id="${cur.id}">Delete this scan</button>`}
         </div>
       </div>
+      ${cur.regions ? `<div class="card section"><h3>Lines & wrinkles by area</h3><div class="wr-grid">${cur.regions.map((r) => `<div class="wr ${r.sev}"><div class="row between" style="flex-wrap:nowrap"><b class="small">${r.label}</b><span class="pill ${r.sev === 'marked' ? 'bad' : r.sev === 'moderate' ? 'warn' : r.sev === 'mild' ? 'skin' : 'good'}">${r.sev === 'none' ? 'smooth' : r.sev}</span></div><div class="bar" style="margin-top:8px"><i style="width:${r.score}%;--c:${r.sev === 'marked' ? 'var(--bad)' : r.sev === 'moderate' ? 'var(--warn)' : '#7fd3ff'}"></i></div><div class="tiny muted" style="margin-top:4px">${r.lines} line${r.lines === 1 ? '' : 's'} detected · score ${r.score}</div></div>`).join('')}</div>
+        <p class="tiny muted" style="margin:10px 0 0">Expression lines show more when you smile or frown, and side lighting exaggerates them. For tracking, use a neutral face and even, front-facing light each time. Spot sizes in mm are estimated from the average distance between pupils (about 63 mm).</p></div>` : ''}
 
       <div class="section"><span class="eyebrow">How to fix it</span><h2 style="margin-bottom:14px">${cur.issues.length ? 'Your plan' : 'Keep doing what you are doing'}</h2>
         ${cur.issues.length ? `<div class="grid g2">${cur.issues.map((k) => { const f = FIXES[k]; return `<div class="card fix" style="--c:${f.color}">
@@ -1037,15 +1371,25 @@ const App = (() => {
     if (!file || !(opts.src || file.type?.startsWith('image/'))) return toast('Please choose an image file');
     busy = true;
     let img; try { img = await loadImage(file, opts.src); } catch { busy = false; return toast('That image could not be opened'); }
-    const cv = document.createElement('canvas'), W = Math.min(440, img.width), H = Math.round((img.height / img.width) * W);
-    cv.width = W; cv.height = H; cv.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, W, H);
-    const stage = $('#scanStage');
+    const sized = (max) => { const c = document.createElement('canvas'), k = Math.min(1, max / Math.max(img.width, img.height)); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, c.width, c.height); return c; };
+    const full = sized(1100), cv = sized(440);
+    const stage = $('#scanStage'), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const names = [landmarker || lmFailed ? 'Detecting face landmarks' : 'Loading face model (first scan only)', 'Mapping skin tone and texture', 'Finding spots, marks and lines', 'Building 3D face model', 'Writing your fix plan'];
+    const step = async (i, work) => { const el = $$('#steps .stp')[i]; el?.classList.add('run'); const r = await work(); await wait(opts.quiet ? 0 : 320); el?.classList.replace('run', 'done'); return r; };
     if (stage && !opts.quiet) {
       stage.className = 'card scanning section';
-      stage.innerHTML = `<div class="scan-prev"><img src="${cv.toDataURL('image/jpeg', 0.7)}" alt="Your photo"><div class="beam"></div></div><div class="stack" id="steps">${['Detecting face or scalp', 'Mapping skin tone and texture', 'Finding affected areas', 'Building 3D model', 'Writing your fix plan'].map((s) => `<div class="stp">${s}</div>`).join('')}</div>`;
-      for (const el of $$('#steps .stp')) { el.classList.add('run'); await new Promise((r) => setTimeout(r, 380)); el.classList.replace('run', 'done'); }
+      stage.innerHTML = `<div class="scan-prev"><img src="${cv.toDataURL('image/jpeg', 0.7)}" alt="Your photo"><div class="beam"></div></div><div class="stack" id="steps">${names.map((s) => `<div class="stp">${s}</div>`).join('')}</div>`;
     }
-    const res = analyzePhoto(cv, opts.kind || scanKind);
+    const want = opts.kind || scanKind;
+    const lmk = want === 'hair' ? null : await step(0, () => loadLandmarker());
+    let res = null;
+    if (lmk) {
+      const det = await step(1, async () => { await wait(30); try { return lmk.detect(full); } catch { return null; } });
+      const lm = det?.faceLandmarks?.[0];
+      if (lm) res = await step(2, async () => { await wait(30); try { return analyzeFace(full, lm); } catch (e) { console.warn(e); return null; } });
+    }
+    if (!res) res = analyzePhoto(cv, want);
+    if (!opts.quiet) { await step(3, () => wait(250)); await step(4, () => wait(150)); }
     busy = false;
     if (!res) {
       if (stage) { stage.className = 'card section'; stage.innerHTML = `<h3>Couldn't read this photo</h3><p class="muted" style="margin:0">Try a closer, sharper photo in daylight: a front-facing selfie, or your hair parting from above.</p>`; }
@@ -1055,6 +1399,7 @@ const App = (() => {
     else {
       res.id = uid();
       db.scans.push({ id: res.id, date: today(), kind: res.kind, img: res.thumb, scores: res.scores, issues: res.issues, count: res.findings.length });
+      while (JSON.stringify(db).length > 4.2e6 && db.scans.length > 8) db.scans.shift();   // keep localStorage under its ~5 MB limit
       applyScanToLog(res);
       if (save()) toast(`Scan saved · ${res.findings.length} area${res.findings.length === 1 ? '' : 's'} found`);
     }
@@ -1566,6 +1911,7 @@ const App = (() => {
       case 'focusFind': Viewer.focus = Viewer.focus === +d.i ? null : +d.i; $$('.find').forEach((x) => x.classList.toggle('on', +x.dataset.i === Viewer.focus)); return;
       case 'openScan': { const sc = db.scans.find((x) => x.id === d.id); if (sc) runScan({}, { src: sc.img, history: sc, kind: sc.kind, quiet: true }); return; }
       case 'addPlan': return addPlanToRoutine();
+      case 'wire': Viewer.wireOn = !Viewer.wireOn; el.classList.toggle('on', Viewer.wireOn); return;
       case 'pick': {
         cmp = cmp.includes(d.id) ? cmp.filter((x) => x !== d.id) : [...cmp, d.id].slice(-2);
         const dt = (id) => db.scans.find((x) => x.id === id)?.date || '';
