@@ -1,6 +1,8 @@
 # AURA Monitor
 
-A personal skin & hair monitor with a floating, pointer-reactive interface. Plain HTML/CSS/JS, no build step, no backend.
+A personal skin & hair monitor. Plain HTML/CSS/JS, no build step, no backend.
+
+The interface sits in a real-time 3D space scene (three.js): stars, a ringed planet, a moon, glass orbs, drifting rocks and water molecules that move with your pointer and scroll. Cards are smoked glass with film grain and a vignette; type is Unbounded / Onest / JetBrains Mono.
 
 Open `index.html` through a local web server (for example `python3 -m http.server`), or deploy it (steps below).
 
@@ -14,11 +16,12 @@ Open `index.html` through a local web server (for example `python3 -m http.serve
   - The 3D face opens on a **problem map**: each area (forehead, between brows, eye corners, under-eyes, smile lines, cheeks, nose, chin) is outlined red or amber by how many problems it holds. Label cards beside the face point to each spot with a leader line, and **"Show me each problem"** rotates and zooms the camera to each one with what it is and how to fix it. Mouse-wheel / + − zoom.
   - **Acne:** pimples (redder than the skin around them) appear as raised red bumps on the 3D face, white-headed ones with a white tip; blackheads on the nose are counted (approximate: very small, limited by photo resolution); an overall grade (clear / mild / moderate / severe) is shown.
   - **Auto-fill:** each scan fills today's check-in: oiliness, redness, pimples and where, white heads, blackheads, dark spots, lines score, tone evenness, plus estimated dryness and sensitivity, and suggests a skin type.
+  - **Scan reliability:** every scan is checked for resolution, sharpness, exposure, even lighting, head turn, expression (smiling deepens lines, so line scores are halved) and beauty filters (unnaturally smooth skin). It gets a 0–100 reliability score with what to fix. Below 50, the check-in is not filled unless you choose "Fill anyway".
   - Every finding is numbered on the 3D model and in a list; each problem gets an evidence-based fix plan (morning/night steps, habits, timeline, when to see a dermatologist) that can be added to the routine. Results fill in today's check-in. History, trend chart and before/after compare.
   - Model files live in `vendor/mediapipe/` (see its README); the JS bundle loads from jsDelivr. Serve the folder over http (not `file://`) for face mode.
 - **Trends**: interactive chart (hover or drag to read any day), period-vs-period comparison, patterns found in your own logs (for example, breakouts vs short sleep), and a 13-week calendar.
-- **Fuel**: daily targets for energy, protein, carbs, fat, fibre and water calculated from your sex, age, weight, height, activity and goal (Mifflin-St Jeor, ICMR-NIN 2020/2024, IOM, EFSA). Hydration tracker, an evidence summary on skipping lunch to avoid carbs, a lunch plate builder with Indian foods (carbs, protein, fibre, carb-to-fibre ratio), a skin & hair nutrient table and a sample day. Sources are listed on the page.
-- **Sleep**: set a wake-up alarm, tap "Start sleep" at bedtime; the page rings at the alarm time (snooze, sleep-mode screen), records the night and fills in the check-in. If the page was closed, it asks in the morning and uses the alarm time. Bedtime calculator, 14-night chart, sleep debt, bedtime consistency, quality ratings, and skin/hair after good vs short sleep. A website cannot read your phone's own alarm app, so keep that alarm as a backup.
+- **Fuel**: daily targets for energy, protein, carbs, fat, fibre and water calculated from your sex, age, weight, height, activity and goal (Mifflin-St Jeor, ICMR-NIN 2020/2024, IOM, EFSA). Hydration tracker with a 3D glass of water that fills as you log glasses (tap the glass to add one), an evidence summary on skipping lunch to avoid carbs, a lunch plate builder with Indian foods (carbs, protein, fibre, carb-to-fibre ratio), a skin & hair nutrient table and a sample day. Sources are listed on the page.
+- **Sleep**: a 3D twin-bell alarm clock showing the real time. Drag its brass hand to set the alarm (5-minute steps, AM/PM chips); it shakes and rings at the alarm time. Set a wake-up alarm, tap "Start sleep" at bedtime; the page rings at the alarm time (snooze, sleep-mode screen), records the night and fills in the check-in. If the page was closed, it asks in the morning and uses the alarm time. Bedtime calculator, 14-night chart, sleep debt, bedtime consistency, quality ratings, and skin/hair after good vs short sleep. A website cannot read your phone's own alarm app, so keep that alarm as a backup.
 - **Routine**: AM/PM checklist, streak, per-step consistency, skin score on nights the routine was done vs skipped, and conflict warnings (retinoid + acid, BPO + vitamin C, missing sunscreen).
 - **Me**: account (sign in with Google or email to sync across devices), profile, reminders (with Google Calendar links), backup and restore, privacy and safety notes.
 
@@ -28,7 +31,7 @@ The monitor raises a "see a dermatologist" alert when you tick a warning sign (c
 
 ## Data
 
-Everything is stored in your browser's `localStorage` (`auram.db`). Photos are analysed on-device and saved only as small thumbnails. The first visit shows 45 days of sample data; use "Start tracking my own data" to clear it.
+Everything is stored in your browser's `localStorage` (`auram.db`). Photos are analysed on-device and saved only as small thumbnails. A first visit starts empty: your first scan or check-in becomes your first data point.
 
 Not medical advice. Photo scores are colour-based estimates and change with lighting.
 

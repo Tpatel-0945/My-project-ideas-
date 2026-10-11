@@ -68,7 +68,7 @@ const App = (() => {
   const newLog = () => ({
     skin: { oil: 3, dry: 2, red: 1, sens: 1, breakouts: 0, zones: [], pustules: null, blackheads: null, spots: null, lines: null, even: null },
     hair: { fall: 70, itch: 1, flakes: 1, oil: 3, frizz: 3, wash: false },
-    life: { sleep: 7, water: 6, stress: 4, sun: 30, junk: false, period: false, workout: false, hot: false, protein: null, meals: { b: true, l: true, d: true } },
+    life: { sleep: 7, water: 0, stress: 4, sun: 30, junk: false, period: false, workout: false, hot: false, protein: null, meals: { b: true, l: true, d: true } },
     done: { am: [], pm: [] }, flags: [], note: '',
   });
 
@@ -82,9 +82,9 @@ const App = (() => {
   const adherence = (l) => { if (!l) return null; const tot = db.routine.am.length + db.routine.pm.length; if (!tot) return null; return (db.routine.am.filter((s) => l.done.am.includes(s.id)).length + db.routine.pm.filter((s) => l.done.pm.includes(s.id)).length) / tot; };
 
   const METRICS = {
-    skinScore: { label: 'Skin score', color: '#3cf0ff', get: skinScore, max: 100 },
-    hairScore: { label: 'Hair score', color: '#a77bff', get: hairScore, max: 100 },
-    fall: { label: 'Hair fall / day', color: '#ff4fd8', get: (l) => l.hair?.fall, max: 'auto', lowerBetter: true },
+    skinScore: { label: 'Skin score', color: '#8fded0', get: skinScore, max: 100 },
+    hairScore: { label: 'Hair score', color: '#b8a6ff', get: hairScore, max: 100 },
+    fall: { label: 'Hair fall / day', color: '#f2a0cf', get: (l) => l.hair?.fall, max: 'auto', lowerBetter: true },
     breakouts: { label: 'Breakouts', color: '#ff5c7a', get: (l) => l.skin?.breakouts, max: 'auto', lowerBetter: true },
     red: { label: 'Redness', color: '#ff8f6b', get: (l) => l.skin?.red, max: 10, lowerBetter: true },
     oil: { label: 'Skin oiliness', color: '#ffc24b', get: (l) => l.skin?.oil, max: 10, lowerBetter: true },
@@ -94,7 +94,7 @@ const App = (() => {
     stress: { label: 'Stress', color: '#ff9de2', get: (l) => l.life?.stress, max: 10, lowerBetter: true },
     water: { label: 'Water (glasses)', color: '#6bb8ff', get: (l) => l.life?.water, max: 'auto' },
     protein: { label: 'Protein (g)', color: '#ffd27a', get: (l) => l.life?.protein ?? null, max: 'auto' },
-    darkSpots: { label: 'Dark spots (scan)', color: '#ff4fd8', get: (l) => l.skin?.spots ?? null, max: 'auto', lowerBetter: true },
+    darkSpots: { label: 'Dark spots (scan)', color: '#f2a0cf', get: (l) => l.skin?.spots ?? null, max: 'auto', lowerBetter: true },
     lines: { label: 'Lines score (scan)', color: '#7fd3ff', get: (l) => l.skin?.lines ?? null, max: 100, lowerBetter: true },
     routine: { label: 'Routine done %', color: '#e9edff', get: (l) => { const a = adherence(l); return a == null ? null : Math.round(a * 100); }, max: 100 },
   };
@@ -327,7 +327,7 @@ const App = (() => {
     const saved = store.get('db', null), f = fresh();
     let d;
     if (saved && !(saved.demo && saved.demoV !== DEMO_V)) d = { ...f, ...saved, profile: { ...f.profile, ...saved.profile }, sleep: { ...f.sleep, ...saved.sleep }, plate: saved.plate || f.plate };
-    else { d = f; if (saved) Object.assign(d, { routine: saved.routine || d.routine, reminders: saved.reminders || d.reminders, profile: { ...d.profile, ...saved.profile } }); seedDemo(d); }
+    else { d = f; if (saved) { Object.assign(d, { routine: saved.routine || d.routine, reminders: saved.reminders || d.reminders, profile: { ...d.profile, ...saved.profile } }); seedDemo(d); } }   // new visitors start with their own, empty data
     if (saved && saved.scanWipe !== 1) { d.scans = []; d.scanWipe = 1; }   // one-time clear of all earlier scans (requested)
     Object.values(d.logs).forEach((l) => { const n = newLog(); l.skin = { ...n.skin, ...l.skin }; l.hair = { ...n.hair, ...l.hair }; l.life = { ...n.life, ...l.life }; l.done ||= n.done; l.flags ||= []; });
     store.set('db', d); return d;
@@ -362,7 +362,7 @@ const App = (() => {
         paths += sg.length > 1 ? `<polyline fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" points="${sg.map((p) => p.join(',')).join(' ')}"/>` : `<circle cx="${sg[0][0]}" cy="${sg[0][1]}" r="3" fill="${s.color}"/>`;
       });
       const lastI = s.vals.map((v, i) => (v != null ? i : -1)).filter((i) => i >= 0).at(-1);
-      if (lastI != null) paths += `<circle cx="${x(lastI)}" cy="${y(s.vals[lastI], s.m)}" r="4.5" fill="${s.color}" stroke="#04050d" stroke-width="2"/>`;
+      if (lastI != null) paths += `<circle cx="${x(lastI)}" cy="${y(s.vals[lastI], s.m)}" r="4.5" fill="${s.color}" stroke="#05060a" stroke-width="2"/>`;
     });
     const hov = `<line class="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="rgba(255,255,255,0.35)" stroke-dasharray="3 3" visibility="hidden"/>` +
       list.map((s, k) => `<circle class="hd" data-k="${k}" r="5.5" fill="${s.color}" stroke="#fff" stroke-width="2" visibility="hidden"/>`).join('');
@@ -424,7 +424,7 @@ const App = (() => {
       <path class="outline" d="M66 102 q12 -8 24 0 M110 102 q12 -8 24 0 M86 172 q14 8 28 0" opacity="0.6"/>
       ${ZONES.map(([id, label, tag, attrs]) => {
         const on = selected.includes(id), a = heat ? 0.06 + 0.8 * ((heat[id] || 0) / mx) : null;
-        return `<${tag} class="zone ${on ? 'on' : ''}" ${edit ? `data-act="zone" data-z="${id}" tabindex="0" role="button" aria-pressed="${on}" aria-label="${label}"` : ''} ${attrs} ${a != null ? `style="fill:rgba(255,79,216,${a.toFixed(2)})"` : ''}><title>${label}${heat ? ': ' + (heat[id] || 0) + ' days' : ''}</title></${tag}>`;
+        return `<${tag} class="zone ${on ? 'on' : ''}" ${edit ? `data-act="zone" data-z="${id}" tabindex="0" role="button" aria-pressed="${on}" aria-label="${label}"` : ''} ${attrs} ${a != null ? `style="fill:rgba(242,160,207,${a.toFixed(2)})"` : ''}><title>${label}${heat ? ': ' + (heat[id] || 0) + ' days' : ''}</title></${tag}>`;
       }).join('')}
     </svg>`;
   }
@@ -448,10 +448,10 @@ const App = (() => {
   function rings(skin, hair) {
     const C1 = 2 * Math.PI * 96, C2 = 2 * Math.PI * 72;
     return `<div class="rings"><div class="orbit"></div><svg viewBox="0 0 220 220">
-      <circle cx="110" cy="110" r="96" fill="none" stroke="rgba(60,240,255,0.12)" stroke-width="12"/>
-      <circle cx="110" cy="110" r="72" fill="none" stroke="rgba(167,123,255,0.14)" stroke-width="12"/>
-      <circle class="ring-arc" cx="110" cy="110" r="96" fill="none" stroke="#3cf0ff" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C1}" stroke-dashoffset="${C1}" data-off="${C1 * (1 - (skin ?? 0) / 100)}" style="filter:drop-shadow(0 0 6px #3cf0ff)"/>
-      <circle class="ring-arc" cx="110" cy="110" r="72" fill="none" stroke="#a77bff" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C2}" stroke-dashoffset="${C2}" data-off="${C2 * (1 - (hair ?? 0) / 100)}" style="filter:drop-shadow(0 0 6px #a77bff)"/>
+      <circle cx="110" cy="110" r="96" fill="none" stroke="rgba(143,222,208,0.12)" stroke-width="12"/>
+      <circle cx="110" cy="110" r="72" fill="none" stroke="rgba(184,166,255,0.14)" stroke-width="12"/>
+      <circle class="ring-arc" cx="110" cy="110" r="96" fill="none" stroke="#8fded0" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C1}" stroke-dashoffset="${C1}" data-off="${C1 * (1 - (skin ?? 0) / 100)}" style="filter:drop-shadow(0 0 6px #8fded0)"/>
+      <circle class="ring-arc" cx="110" cy="110" r="72" fill="none" stroke="#b8a6ff" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C2}" stroke-dashoffset="${C2}" data-off="${C2 * (1 - (hair ?? 0) / 100)}" style="filter:drop-shadow(0 0 6px #b8a6ff)"/>
     </svg><div class="center"><div><div class="lbl" style="color:var(--skin)">Skin</div><div class="big num">${skin ?? '—'}</div><div class="lbl" style="color:var(--hair);margin-top:4px">Hair</div><div class="big num">${hair ?? '—'}</div></div></div></div>`;
   }
 
@@ -506,7 +506,7 @@ const App = (() => {
       </div>
       <div class="stage" aria-hidden="true">
         <div class="float" style="--d:22;left:calc(50% - 135px);top:calc(50% - 150px);width:270px"><div class="holo"><div class="scanline"></div><div class="lbl">Latest scores · ${latest ? fmtShort(lastLogDate()) : '—'}</div>${rings(skinScore(latest), hairScore(latest))}</div></div>
-        <div class="float" style="--d:52;left:0;top:6px;width:178px;z-index:2"><div class="holo" style="--delay:-1.5s"><div class="lbl">Hair fall · 7d</div><div class="big num" style="color:var(--accent)">${f7 == null ? '—' : Math.round(f7)}<span class="small muted">/day</span></div>${spark(series('fall', d14), '#ff4fd8')}</div></div>
+        <div class="float" style="--d:52;left:0;top:6px;width:178px;z-index:2"><div class="holo" style="--delay:-1.5s"><div class="lbl">Hair fall · 7d</div><div class="big num" style="color:var(--accent)">${f7 == null ? '—' : Math.round(f7)}<span class="small muted">/day</span></div>${spark(series('fall', d14), '#f2a0cf')}</div></div>
         <div class="float hide-sm" style="--d:40;right:0;top:0;width:150px"><div class="holo" style="--delay:-3s;padding:12px"><div class="lbl">Breakout zones</div>${faceMap({ heat })}</div></div>
         <div class="float hide-sm" style="--d:64;right:2%;bottom:6px;width:180px"><div class="holo" style="--delay:-2.2s"><div class="lbl">Streak</div><div class="big num">${st}<span class="small muted"> days</span></div>
           <div class="row" style="gap:5px;margin-top:8px">${lastDays(7).map((d) => `<span style="width:16px;height:16px;border-radius:5px;background:${db.logs[d] ? 'var(--grad)' : 'rgba(255,255,255,.08)'}"></span>`).join('')}</div></div></div>
@@ -583,10 +583,10 @@ const App = (() => {
 
     <div class="grid g2">
       <div class="card"><h3><span style="color:var(--skin)">◐</span> Skin</h3>
-        ${slider('skin.oil', 'Oiliness', 0, 10, 1, '#3cf0ff', ['Matte', 'Very shiny'])}
-        ${slider('skin.dry', 'Dryness / tightness', 0, 10, 1, '#3cf0ff', ['Comfortable', 'Flaky'])}
-        ${slider('skin.red', 'Redness', 0, 10, 1, '#3cf0ff', ['None', 'Very red'])}
-        ${slider('skin.sens', 'Stinging / sensitivity', 0, 10, 1, '#3cf0ff', ['None', 'Burning'])}
+        ${slider('skin.oil', 'Oiliness', 0, 10, 1, '#8fded0', ['Matte', 'Very shiny'])}
+        ${slider('skin.dry', 'Dryness / tightness', 0, 10, 1, '#8fded0', ['Comfortable', 'Flaky'])}
+        ${slider('skin.red', 'Redness', 0, 10, 1, '#8fded0', ['None', 'Very red'])}
+        ${slider('skin.sens', 'Stinging / sensitivity', 0, 10, 1, '#8fded0', ['None', 'Burning'])}
         <label>New or active breakouts</label>
         <div class="stepper"><button data-act="step" data-path="skin.breakouts" data-d="-1" aria-label="Fewer breakouts">−</button><span class="n num">${l.skin.breakouts}</span><button data-act="step" data-path="skin.breakouts" data-d="1" aria-label="More breakouts">+</button></div>
         <label class="mt">Where? Tap the zones</label>
@@ -598,10 +598,10 @@ const App = (() => {
         <div class="stepper"><button data-act="step" data-path="hair.fall" data-d="-10" aria-label="Minus 10 hairs">−</button><span class="n num">${l.hair.fall}</span><button data-act="step" data-path="hair.fall" data-d="10" aria-label="Plus 10 hairs">+</button></div>
         <div class="chips" style="margin-top:10px">${[['Under 50', 35], ['50–100', 75], ['100–150', 125], ['150–250', 200], ['250+', 280]].map(([t, v]) => `<button class="chip hair ${l.hair.fall === v ? 'on' : ''}" data-act="set" data-path="hair.fall" data-v="${v}">${t}</button>`).join('')}</div>
         <p class="tiny muted" style="margin-top:8px">Count hairs on your comb, shower drain and pillow. 50–100 a day is normal; wash days run higher.</p>
-        ${slider('hair.itch', 'Scalp itch', 0, 10, 1, '#a77bff', ['None', 'Constant'])}
-        ${slider('hair.flakes', 'Flakes / dandruff', 0, 10, 1, '#a77bff', ['None', 'Heavy'])}
-        ${slider('hair.oil', 'Scalp oiliness', 0, 10, 1, '#a77bff', ['Dry', 'Greasy'])}
-        ${slider('hair.frizz', 'Frizz / dry lengths', 0, 10, 1, '#a77bff', ['Smooth', 'Very frizzy'])}
+        ${slider('hair.itch', 'Scalp itch', 0, 10, 1, '#b8a6ff', ['None', 'Constant'])}
+        ${slider('hair.flakes', 'Flakes / dandruff', 0, 10, 1, '#b8a6ff', ['None', 'Heavy'])}
+        ${slider('hair.oil', 'Scalp oiliness', 0, 10, 1, '#b8a6ff', ['Dry', 'Greasy'])}
+        ${slider('hair.frizz', 'Frizz / dry lengths', 0, 10, 1, '#b8a6ff', ['Smooth', 'Very frizzy'])}
         ${toggle('hair.wash', 'Wash day')}
       </div>
 
@@ -647,12 +647,12 @@ const App = (() => {
 
   /* ---------- photo scan: auto-detect, 3D relief model, findings & fix plan ---------- */
   const SCAN_LABELS = {
-    skin: [['acne', 'Acne', '#ff3b5c'], ['wrinkles', 'Lines', '#7fd3ff'], ['spots', 'Dark spots', '#ff4fd8'], ['redness', 'Redness', '#ff5c7a'], ['shine', 'Shine / oil', '#ffc24b'], ['evenness', 'Tone evenness', '#9dff6a']],
-    hair: [['scalp', 'Scalp visible', '#3cf0ff'], ['density', 'Coverage', '#a77bff'], ['flakes', 'Flakes', '#ff4fd8']],
+    skin: [['acne', 'Acne', '#ff3b5c'], ['wrinkles', 'Lines', '#7fd3ff'], ['spots', 'Dark spots', '#f2a0cf'], ['redness', 'Redness', '#ff5c7a'], ['shine', 'Shine / oil', '#ffc24b'], ['evenness', 'Tone evenness', '#9dff6a']],
+    hair: [['scalp', 'Scalp visible', '#8fded0'], ['density', 'Coverage', '#b8a6ff'], ['flakes', 'Flakes', '#f2a0cf']],
   };
   const FTYPE = {
-    acne: ['Pimple', '#ff3b5c'], blackheads: ['Blackheads', '#c08cff'], spots: ['Dark spot', '#ff4fd8'], oil: ['Oily zone', '#ffc24b'], wrinkles: ['Lines', '#7fd3ff'],
-    thin: ['Thinner area', '#3cf0ff'], flakes: ['Flakes', '#ff4fd8'],
+    acne: ['Pimple', '#ff3b5c'], blackheads: ['Blackheads', '#c08cff'], spots: ['Dark spot', '#f2a0cf'], oil: ['Oily zone', '#ffc24b'], wrinkles: ['Lines', '#7fd3ff'],
+    thin: ['Thinner area', '#8fded0'], flakes: ['Flakes', '#f2a0cf'],
   };
   // Fix plans: first-line, evidence-based options. Not a prescription.
   const FIXES = {
@@ -667,7 +667,7 @@ const App = (() => {
       evidence: 'Adapalene and benzoyl peroxide are first-line treatments in the American Academy of Dermatology acne guideline (2024).',
     },
     spots: {
-      title: 'Dark marks and uneven tone', color: '#ff4fd8',
+      title: 'Dark marks and uneven tone', color: '#f2a0cf',
       why: 'Extra melanin after acne or sun (post-inflammatory hyperpigmentation). Indian skin is especially prone, and UV keeps it dark.',
       am: ['Gentle cleanser', 'Vitamin C or niacinamide serum', 'Moisturiser', 'Sunscreen SPF 50 PA++++, two finger-lengths, reapplied every 2–3 h outdoors'],
       pm: ['Cleanser', 'Azelaic acid 10–20% or alpha arbutin 2%', 'Moisturiser'],
@@ -707,7 +707,7 @@ const App = (() => {
       evidence: 'Ceramide-containing moisturisers repair the barrier and reduce water loss.',
     },
     thin: {
-      title: 'Visible scalp / thinning', color: '#3cf0ff',
+      title: 'Visible scalp / thinning', color: '#8fded0',
       why: 'Common causes are pattern hair loss, shedding after stress, illness or crash dieting (telogen effluvium), and low iron, vitamin D, B12 or thyroid problems.',
       am: ['Loose hairstyles: avoid tight buns and ponytails'],
       pm: ['Gentle scalp massage, 4 minutes', 'Minoxidil, only after a dermatologist confirms pattern hair loss'],
@@ -905,7 +905,7 @@ const App = (() => {
 
   /* ---------- face landmark model (MediaPipe Face Landmarker, loaded on first scan) ---------- */
   const MP_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
-  let FL = null, landmarker = null, lmLoading = null, lmFailed = false;
+  let FL = null, landmarker = null, lmLoading = null, lmFailed = false, lmError = '';
   // the model ships as a binary .task file; hosts that cannot serve that type get a base64 text copy instead
   async function modelBytes(base) {
     try { const r = await fetch(base + 'face_landmarker.task'); if (r.ok) return new Uint8Array(await r.arrayBuffer()); } catch {}
@@ -923,7 +923,7 @@ const App = (() => {
         landmarker = await FL.createFromOptions(
           { wasmLoaderPath: MP_CDN + '/wasm/vision_wasm_internal.js', wasmBinaryPath: base + 'vision_wasm_internal.wasm' },
           { baseOptions: { modelAssetBuffer: await modelBytes(base), delegate: 'CPU' }, runningMode: 'IMAGE', numFaces: 1 });
-      } catch (e) { console.warn('Face landmark model unavailable; using colour analysis only.', e); lmFailed = true; landmarker = null; }
+      } catch (e) { console.warn('Face landmark model unavailable; using colour analysis only.', e); lmFailed = true; lmError = String(e?.message || e).slice(0, 120); landmarker = null; }
       return landmarker;
     })());
   }
@@ -1138,13 +1138,40 @@ const App = (() => {
     // estimates for the check-in: dryness from fine surface roughness, sensitivity from overall redness (a*)
     const est = { dry: Math.round(clamp(((rough / Math.max(1, rN)) - 1.1) * 4 - scores.shine / 25, 0, 10)), sens: Math.round(clamp((aSum / Math.max(1, rN) - 13) / 1.5, 0, 10)) };
     const grade = acneC.length === 0 ? 'clear' : acneC.length <= 5 ? 'mild' : acneC.length <= 20 ? 'moderate' : 'severe';
+    /* photo quality: how much can this scan be trusted? Each check is measured, not assumed. */
+    const faceW = bx1 - bx0, faceH = by1 - by0;
+    let lapSum = 0, lap2 = 0, lapN = 0, lSum = 0, clip = 0;
+    for (let y = 1; y < ah - 1; y++) for (let x = 1; x < aw - 1; x++) { const i = y * aw + x; if (!mask[i]) continue; const v = 4 * L[i] - L[i - 1] - L[i + 1] - L[i - aw] - L[i + aw]; lapSum += v; lap2 += v * v; lapN++; lSum += L[i]; if (L[i] > 95) clip++; }
+    const sharp = lapN ? lap2 / lapN - (lapSum / lapN) ** 2 : 0, meanL = lapN ? lSum / lapN : 50, clipF = lapN ? clip / lapN : 0;
+    const sideL = (i) => { let t = 0, n = 0; const r0 = fw * 0.07; for (let y = Math.round(Q[i].y - r0); y < Q[i].y + r0; y++) for (let x = Math.round(Q[i].x - r0); x < Q[i].x + r0; x++) { const k = y * aw + x; if (x >= 0 && y >= 0 && x < aw && y < ah && mask[k]) { t += L[k]; n++; } } return n ? t / n : null; };
+    const lc = sideL(50), rc = sideL(280), lightDiff = lc != null && rc != null ? Math.abs(lc - rc) : 0;
+    const yawR = (P[1].x - P[234].x) / Math.max(1, P[454].x - P[234].x), yaw = Math.round((yawR - 0.5) * 120);
+    const roll = Math.round((Math.atan2(P[263].y - P[33].y, P[263].x - P[33].x) * 180) / Math.PI);
+    const mouthW = Math.hypot(P[291].x - P[61].x, P[291].y - P[61].y) / Math.max(1, Math.hypot(P[454].x - P[234].x, P[454].y - P[234].y)), mouthO = Math.hypot(P[14].x - P[13].x, P[14].y - P[13].y) / Math.max(1, faceH);
+    const smiling = mouthW > 0.44 || mouthO > 0.05, roughness = rough / Math.max(1, rN);
+    const checks = [
+      ['res', 'Resolution', faceW >= 260, `Face is ${Math.round(faceW)} px wide${faceW < 260 ? ': move closer or use the rear camera for fine detail (aim for 400 px+)' : ''}`, 20],
+      ['sharp', 'Sharpness', sharp >= 6, sharp >= 6 ? 'In focus' : 'Looks blurry: hold steady, tap to focus, wipe the lens', 25],
+      ['exposure', 'Exposure', meanL > 38 && meanL < 82 && clipF < 0.03, meanL <= 38 ? 'Too dark: face a window' : meanL >= 82 || clipF >= 0.03 ? 'Over-exposed or flash glare: avoid direct flash and harsh sun' : 'Good brightness', 15],
+      ['light', 'Even lighting', lightDiff < 9, lightDiff < 9 ? 'Both sides lit evenly' : 'One side is darker: side light exaggerates lines and spots. Face the light source', 15],
+      ['pose', 'Facing the camera', Math.abs(yaw) <= 14 && Math.abs(roll) <= 10, Math.abs(yaw) <= 14 && Math.abs(roll) <= 10 ? 'Straight on' : `Head turned ${Math.abs(yaw)}° / tilted ${Math.abs(roll)}°: look straight at the camera`, 15],
+      ['expr', 'Neutral expression', !smiling, smiling ? 'Smiling or open mouth: smile lines and crow’s feet are discounted' : 'Relaxed face', 10],
+      ['filter', 'No beauty filter', roughness >= 0.55, roughness >= 0.55 ? 'Natural skin texture detected' : 'Skin looks digitally smoothed (filter or heavy makeup): spots and lines will be missed', 30],
+    ].map(([key, label, ok, msg, pen]) => ({ key, label, ok, msg, pen }));
+    const reliability = Math.max(0, 100 - checks.filter((c) => !c.ok).reduce((a, c) => a + c.pen, 0));
+    const quality = { reliability, level: reliability >= 75 ? 'good' : reliability >= 50 ? 'fair' : 'poor', checks, smiling, faceW: Math.round(faceW) };
+    if (smiling) {   // expression lines from smiling are not resting wrinkles
+      regions.filter((r) => /^(crow|naso|eye)/.test(r.key)).forEach((r) => { r.score = Math.round(r.score * 0.5); r.sev = SEV(r.score); r.note = 'discounted: smiling'; });
+      findings.filter((f) => f.type === 'wrinkles' && /^(crow|naso|eye)/.test(f.zone)).forEach((f) => { const r = regions.find((x) => x.key === f.zone); f.n = r.score; f.detail = `${r.sev} · from smiling?`; });
+      const rs2 = regions.map((r) => r.score); scores.wrinkles = rs2.length ? Math.round(clamp(0.6 * Math.max(...rs2) + 0.4 * avg(rs2))) : 0;
+    }
     const issues = [];
     if (acneC.length >= 2 || scores.redness >= 40 || blackheads.length >= 5) issues.push('acne');
     if (spotC.length >= 2 || scores.spots >= 35) issues.push('spots');
     if (scores.wrinkles >= 25 || regions.some((r) => r.score >= 38)) issues.push('wrinkles');
     if (scores.shine >= 40) issues.push('oil');
     if (scores.redness >= 55) issues.push('red');
-    return { kind: 'skin', mesh: true, W: FW, H: FH, full, P, crop: { cx0, cy0, s, aw, ah }, ov: { red, dark: spotMaskOf(spotC, N), wr, shine, bh: spotMaskOf(blackheads, N) }, regions, zones, scores, est, acne: { count: acneC.length, pustules: acneC.filter((c) => c.head).length, blackheads: blackheads.length, grade }, findings, issues, pxMm, thumb: toThumb(full, 480) };
+    return { kind: 'skin', mesh: true, W: FW, H: FH, full, P, crop: { cx0, cy0, s, aw, ah }, ov: { red, dark: spotMaskOf(spotC, N), wr, shine, bh: spotMaskOf(blackheads, N) }, regions, zones, scores, est, quality, acne: { count: acneC.length, pustules: acneC.filter((c) => c.head).length, blackheads: blackheads.length, grade }, findings, issues, pxMm, thumb: toThumb(full, 480) };
   }
   function spotMaskOf(cs, N) { const m = new Uint8Array(N); cs.forEach((c) => c.px.forEach((p) => (m[p] = 1))); return m; }
 
@@ -1246,14 +1273,14 @@ const App = (() => {
       const mesh = new T.Mesh(geo, new T.MeshStandardMaterial({ map: tex, roughness: 0.62, metalness: 0.04, side: T.DoubleSide }));
       const edges = []; FL.FACE_LANDMARKS_TESSELATION.forEach(({ start, end }) => { if (start < 468 && end < 468) edges.push(start, end); });
       const lineGeo = new T.BufferGeometry(); lineGeo.setAttribute('position', geo.attributes.position); lineGeo.setIndex(edges);
-      const wireMat = new T.LineBasicMaterial({ color: 0x3cf0ff, transparent: true, opacity: 0.5 }), wire = new T.LineSegments(lineGeo, wireMat);
-      const ptsMat = new T.PointsMaterial({ color: 0xff4fd8, size: 0.018, transparent: true, opacity: 1 }), pts = new T.Points(geo, ptsMat);
+      const wireMat = new T.LineBasicMaterial({ color: 0x8fded0, transparent: true, opacity: 0.5 }), wire = new T.LineSegments(lineGeo, wireMat);
+      const ptsMat = new T.PointsMaterial({ color: 0xffb27a, size: 0.018, transparent: true, opacity: 1 }), pts = new T.Points(geo, ptsMat);
       const group = new T.Group(); group.add(mesh, wire, pts); scene.add(group);
       scene.add(new T.AmbientLight(0xffffff, 0.72));
       const key = new T.DirectionalLight(0xffffff, 0.5); key.position.set(0.6, 0.8, 2); scene.add(key);
-      const c1 = new T.PointLight(0x3cf0ff, 0.45, 8); c1.position.set(-2, 0.5, 1); scene.add(c1);
-      const c2 = new T.PointLight(0xff4fd8, 0.35, 8); c2.position.set(2, -0.6, 1); scene.add(c2);
-      const sweep = new T.Mesh(new T.PlaneGeometry(1.9, 0.01), new T.MeshBasicMaterial({ color: 0x3cf0ff, transparent: true, opacity: 0.9 })); sweep.position.z = 0.6; group.add(sweep);
+      const c1 = new T.PointLight(0x8fded0, 0.45, 8); c1.position.set(-2, 0.5, 1); scene.add(c1);
+      const c2 = new T.PointLight(0xffb27a, 0.35, 8); c2.position.set(2, -0.6, 1); scene.add(c2);
+      const sweep = new T.Mesh(new T.PlaneGeometry(1.9, 0.01), new T.MeshBasicMaterial({ color: 0x8fded0, transparent: true, opacity: 0.9 })); sweep.position.z = 0.6; group.add(sweep);
       // place a marker on the mesh surface under an image point (barycentric interpolation)
       const surf = (ix, iy) => {
         for (const [a, b, c] of tris) {
@@ -1371,13 +1398,13 @@ const App = (() => {
       const R = relieve(cur), geo = new T.PlaneGeometry(pw, ph, R.gw - 1, R.gh - 1);
       const tex = new T.CanvasTexture(scanTexture(cur, layer));
       const mesh = new T.Mesh(geo, new T.MeshStandardMaterial({ map: tex, roughness: 0.7, metalness: 0.05, side: T.DoubleSide }));
-      const wire = new T.Mesh(geo, new T.MeshBasicMaterial({ color: 0x3cf0ff, wireframe: true, transparent: true, opacity: 0.06 }));
+      const wire = new T.Mesh(geo, new T.MeshBasicMaterial({ color: 0x8fded0, wireframe: true, transparent: true, opacity: 0.06 }));
       const group = new T.Group(); group.add(mesh, wire); scene.add(group);
       scene.add(new T.AmbientLight(0xffffff, 0.32));
       const key = new T.DirectionalLight(0xffffff, 0.6); key.position.set(1, 1.2, 2); scene.add(key);
-      const c1 = new T.PointLight(0x3cf0ff, 0.7, 8); c1.position.set(-1.8, 0.6, 1.6); scene.add(c1);
-      const c2 = new T.PointLight(0xff4fd8, 0.55, 8); c2.position.set(1.8, -0.8, 1.6); scene.add(c2);
-      const sweep = new T.Mesh(new T.PlaneGeometry(pw * 1.08, 0.012), new T.MeshBasicMaterial({ color: 0x3cf0ff, transparent: true, opacity: 0.9 }));
+      const c1 = new T.PointLight(0x8fded0, 0.7, 8); c1.position.set(-1.8, 0.6, 1.6); scene.add(c1);
+      const c2 = new T.PointLight(0xffb27a, 0.55, 8); c2.position.set(1.8, -0.8, 1.6); scene.add(c2);
+      const sweep = new T.Mesh(new T.PlaneGeometry(pw * 1.08, 0.012), new T.MeshBasicMaterial({ color: 0x8fded0, transparent: true, opacity: 0.9 }));
       sweep.position.z = 0.42; group.add(sweep);
       const zAt = (fx, fy) => { const gx = clamp(Math.round((fx / cur.W) * (R.gw - 1)), 0, R.gw - 1), gy = clamp(Math.round((fy / cur.H) * (R.gh - 1)), 0, R.gh - 1), g = gy * R.gw + gx; return R.baseZ[g] + relief * R.issueZ[g]; };
       const markers = cur.findings.slice(0, 12).map((f, k) => {
@@ -1473,6 +1500,10 @@ const App = (() => {
           <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px">${labels.map(([k, t, c]) => `<div><div class="gauge" style="--v:${cur.scores[k]};--c:${c}"><span>${cur.scores[k]}</span></div><div class="tiny" style="text-align:center">${t}${prev?.scores?.[k] != null ? `<br><span class="muted">last ${prev.scores[k]}</span>` : ''}</div></div>`).join('')}</div>
           <h3 class="mt">Found ${cur.findings.length ? cur.findings.length + ' area' + (cur.findings.length > 1 ? 's' : '') : 'nothing that stands out'}</h3>
           <div class="stack" style="gap:6px;max-height:300px;overflow:auto">${cur.findings.slice(0, 12).map((f, k) => `<button class="find" data-act="focusFind" data-i="${k}"><span class="mk static" style="--c:${FTYPE[f.type][1]}">${k + 1}</span><span><b>${f.label || FTYPE[f.type][0]}</b> <span class="muted">${f.type === 'wrinkles' ? '' : '· ' + (ZONE_NAME[f.zone] || '')}</span></span><span class="tiny muted" style="margin-left:auto;text-align:right">${f.detail || (f.type === 'thin' ? f.n + '% scalp' : f.type === 'oil' ? 'zone' : f.n > 80 ? 'larger' : 'small')}</span></button>`).join('') || '<p class="small muted">Nothing stands out in this photo.</p>'}</div>
+          ${cur.quality ? `<div class="quality ${cur.quality.level}"><div class="row between" style="flex-wrap:nowrap"><b class="small">Scan reliability</b><span class="q-score num">${cur.quality.reliability}<small>/100 · ${cur.quality.level}</small></span></div>
+            <ul class="qlist">${cur.quality.checks.map((c) => `<li class="${c.ok ? 'ok' : 'bad'}"><span>${c.ok ? '✓' : '!'}</span><b>${c.label}</b><em>${esc(c.msg)}</em></li>`).join('')}</ul>
+            ${cur.quality.reliability < 50 && !cur.fromHistory ? '<p class="small" style="margin:8px 0 0">This photo is not reliable enough, so today\'s check-in was <b>not</b> filled in. Fix the items above and scan again, or <a href="#" data-act="fillAnyway">fill it in anyway</a>.</p>' : ''}</div>` : ''}
+          ${cur.kind === 'skin' && !cur.mesh ? `<div class="insight warn mt"><div class="ic">i</div><div><b>Basic colour scan</b><p>${lmFailed ? 'The face-landmark model could not load here' + (lmError ? ` (${esc(lmError)})` : '') + ', so this used colour analysis only: no 3D face, wrinkles or mm sizes.' : 'No face was found in this photo, so it used colour analysis only. Use a clear, front-facing photo for the full face scan.'}</p></div></div>` : ''}
           ${cur.acne ? `<div class="insight ${cur.acne.grade === 'clear' ? 'good' : cur.acne.grade === 'mild' ? 'warn' : 'bad'} mt"><div class="ic">◉</div><div><b>Acne: ${cur.acne.grade}</b><p>${cur.acne.count} pimple${cur.acne.count === 1 ? '' : 's'} (${cur.acne.pustules} with a white head) · ${cur.acne.blackheads} blackheads on the nose. Pimples show as raised red bumps on the 3D face.</p></div></div>` : ''}
           ${cur.fromHistory ? '<p class="small muted mt">Opened from your history.</p>' : `<div class="filled mt"><div class="row between"><b class="small">✓ Filled in today's check-in for you</b><a class="small" href="#/log">Review →</a></div><div class="filled-grid">${(cur.filled || []).map(([k, v]) => `<div><span class="tiny muted">${esc(k)}</span><b class="num">${esc(v)}</b></div>`).join('')}</div></div>`}
           ${cur.fromHistory ? '' : `<button class="btn sm ghost mt" data-act="delScan" data-id="${cur.id}">Delete this scan</button>`}
@@ -1550,7 +1581,7 @@ const App = (() => {
       res.id = uid();
       db.scans.push({ id: res.id, date: today(), kind: res.kind, img: res.thumb, scores: res.scores, issues: res.issues, count: res.findings.length });
       while (JSON.stringify(db).length > 4.2e6 && db.scans.length > 8) db.scans.shift();   // keep localStorage under its ~5 MB limit
-      res.filled = applyScanToLog(res);
+      res.filled = !res.quality || res.quality.reliability >= 50 ? applyScanToLog(res) : null;
       if (save()) toast(`Scan saved · ${res.findings.length} area${res.findings.length === 1 ? '' : 's'} found`);
     }
     current = res; layer = res.mesh ? 'map' : 'all'; Viewer.focus = null;
@@ -1744,11 +1775,11 @@ const App = (() => {
     </div>
 
     <div class="grid g2 section">
-      <div class="card tilt"><h3>💧 Hydration today</h3>
+      <div class="card hydra"><h3>Hydration today</h3>
         <div class="row" style="gap:22px;flex-wrap:nowrap">
-          <div class="rings" style="width:150px;height:150px;flex:none;margin:0"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(107,184,255,0.14)" stroke-width="10"/><circle class="ring-arc" cx="60" cy="60" r="52" fill="none" stroke="#6bb8ff" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" data-off="${C * (1 - clamp(water / t.glasses, 0, 1))}" style="filter:drop-shadow(0 0 6px #6bb8ff)"/></svg><div class="center"><div><div class="big num" style="font-family:var(--font-display);font-size:1.8rem">${water}<span class="small muted">/${t.glasses}</span></div><div class="tiny muted">glasses</div></div></div></div>
+          <div class="glass-wrap"><div class="glass3d" id="glass3d" title="Tap the glass to add 250 ml" role="button" aria-label="Add a glass of water"></div><div class="glass-read"><b class="num" id="wCount">${water}</b><span class="muted">/ ${t.glasses} glasses</span></div></div>
           <div style="min-width:0"><div class="row"><button class="btn sm" data-act="glass" data-v="-1" aria-label="Remove a glass">−</button><button class="btn primary sm" data-act="glass" data-v="1">+ 1 glass (250 ml)</button></div>
-            <p class="small" style="margin:10px 0 6px">${round(water * 0.25, 2)} of ${round(t.water, 1)} L</p>
+            <p class="small" style="margin:10px 0 6px" id="wL">${round(water * 0.25, 2)} of ${round(t.water, 1)} L${water >= t.glasses ? ' · target reached' : ''}</p><p class="tiny muted" style="margin:0 0 8px">Tap the glass to add one.</p>
             <div class="row">${['workout', 'hot'].map((k) => `<button class="toggle ${tl?.life[k] ? 'on' : ''}" data-act="flip" data-path="life.${k}" data-today="1">${tl?.life[k] ? '✓' : '○'} ${k === 'hot' ? 'Hot / sweaty day +0.5 L' : 'Workout today +0.5 L'}</button>`).join('')}</div></div>
         </div>
         <ul class="clean small mt">
@@ -1817,6 +1848,7 @@ const App = (() => {
   /* ---------- sleep monitor ---------- */
   let ringing = false, missedShown = false, wakeLock = null;
   const hm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const fmt12 = (t) => { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${pad(m)} ${h < 12 ? 'AM' : 'PM'}`; };
   const dur = (ms) => { const m = Math.max(0, Math.round(ms / 60000)); return `${Math.floor(m / 60)} h ${pad(m % 60)} m`; };
   function alarmToday() { const [h, m] = db.sleep.alarm.split(':').map(Number); const d = new Date(); d.setHours(h, m, 0, 0); return d; }
   function bedFor(hours, latency = 15) { return hm(new Date(alarmToday().getTime() - hours * 36e5 - latency * 60e3)); }
@@ -1847,7 +1879,10 @@ const App = (() => {
     stop() { clearInterval(this.timer); this.timer = null; try { navigator.vibrate?.(0); } catch {} },
   };
   async function keepAwake() { try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { wakeLock = null; } }
-  function showNight() { $('#night').classList.remove('hidden'); updateNight(); }
+  function showNight() {
+    $('#night').classList.remove('hidden'); updateNight();
+    const el = $('#nclock3d'); if (el && !el.querySelector('canvas') && window.THREE) requestAnimationFrame(() => { nightClock = mountClock(el, { getAlarm: () => (db.sleep.active?.alarmAt ? hm(new Date(db.sleep.active.alarmAt)) : db.sleep.alarm), ringing: () => ringing }); });
+  }
   function hideNight() { $('#night').classList.add('hidden'); }
   function updateNight() {
     const a = db.sleep.active, n = $('#night'); if (!a || n.classList.contains('hidden')) return;
@@ -1897,7 +1932,7 @@ const App = (() => {
     const y = (v) => T + (1 - v / max) * (H - T - B);
     let g = `<rect x="${L}" y="${y(9)}" width="${W - L - R}" height="${y(7) - y(9)}" fill="rgba(157,255,106,0.07)"/><text x="${W - R - 4}" y="${y(9) + 13}" text-anchor="end" style="fill:#9dff6a">7–9 h healthy range</text>`;
     [0, 3, 6, 9].forEach((v) => (g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(130,150,255,0.12)"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v}h</text>`));
-    g += `<line x1="${L}" x2="${W - R}" y1="${y(need)}" y2="${y(need)}" stroke="#a77bff" stroke-dasharray="4 4"/><text x="${L + 4}" y="${y(need) - 4}" style="fill:#a77bff">your goal ${need} h</text>`;
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(need)}" y2="${y(need)}" stroke="#b8a6ff" stroke-dasharray="4 4"/><text x="${L + 4}" y="${y(need) - 4}" style="fill:#b8a6ff">your goal ${need} h</text>`;
     dates.forEach((d, i) => {
       const v = vals[i], x = L + i * bw;
       if (v != null) { const col = v < 6 ? '#ff5c7a' : v < 7 ? '#ffc24b' : v <= 9 ? '#9dff6a' : '#6bb8ff'; g += `<rect x="${x + bw * 0.18}" y="${y(v)}" width="${bw * 0.64}" height="${y(0) - y(v)}" rx="5" fill="${col}" fill-opacity="0.85"><title>${fmtDay(d)}: ${round(v, 1)} h</title></rect>`; }
@@ -1919,12 +1954,15 @@ const App = (() => {
     return `${demoBanner()}<div class="page-head"><span class="eyebrow">Sleep</span><h1>Sleep <span class="grad-text">monitor</span></h1>
       <p>Set your alarm here and tap <b>Start sleep</b> at bedtime. The monitor rings at your alarm time, records how long you slept, and fills in your daily check-in automatically.</p></div>
     <div class="split">
-      <div class="card tilt"><span class="eyebrow">Now · ${fmtDay(today())}</span>
-        <div class="bigclock num" id="clock">${hm(now)}<span id="clockSec">:${pad(now.getSeconds())}</span></div>
-        <p style="margin:6px 0 2px">${a ? `Sleeping since <b>${hm(new Date(a.start))}</b>` : na ? `Next alarm <b>${hm(na)}</b> ${iso(na) === today() ? 'today' : na.toLocaleDateString('en-IN', { weekday: 'long' })}` : 'Alarm is off'}</p>
-        <div class="small muted num" id="countdown"></div>
-        <div class="row mt">${a ? '<button class="btn primary" data-act="showNight">Open sleep mode</button>' : '<button class="btn primary" data-act="startSleep">☾ Start sleep now</button>'}<button class="btn" data-act="testSound">Test alarm sound</button></div>
-        <p class="tiny muted" style="margin:14px 0 0">Keep this tab open and your phone charging overnight. Phones can pause pages in the background, so keep your phone's own alarm as a backup. If the page could not ring, it asks you in the morning and uses your alarm time as your wake time.</p>
+      <div class="card clock-card"><div class="row between"><span class="eyebrow" style="margin:0">Now · ${fmtDay(today())}</span><span class="tiny muted">drag the brass hand to set your alarm</span></div>
+        <div class="clock3d" id="clock3d"></div>
+        <div class="clock-read">
+          <div><span class="tiny muted">TIME</span><div class="bigclock num" id="clock">${hm(now)}<span id="clockSec">:${pad(now.getSeconds())}</span></div></div>
+          <div><span class="tiny muted">ALARM ${s.alarmOn ? '' : '(OFF)'}</span><div class="alarm-out num" id="alarmOut">${fmt12(s.alarm)}</div><div class="small muted num" id="countdown"></div></div>
+        </div>
+        <div class="row mt"><div class="chips"><button class="chip ${+s.alarm.split(':')[0] < 12 ? 'on' : ''}" data-act="ampm" data-v="am">AM</button><button class="chip ${+s.alarm.split(':')[0] >= 12 ? 'on' : ''}" data-act="ampm" data-v="pm">PM</button></div>
+          ${a ? '<button class="btn primary" data-act="showNight">Open sleep mode</button>' : '<button class="btn primary" data-act="startSleep">Start sleep now</button>'}<button class="btn ghost sm" data-act="testSound">Test the bell</button></div>
+        <p class="tiny muted" style="margin:12px 0 0">${a ? `Sleeping since <b>${hm(new Date(a.start))}</b>. ` : na ? `Rings ${iso(na) === today() ? 'today' : na.toLocaleDateString('en-IN', { weekday: 'long' })} at ${fmt12(hm(na))}. ` : 'Alarm is off. '}Keep this tab open and your phone charging overnight; phones can pause background pages, so keep your phone's own alarm as a backup.</p>
       </div>
       <form class="card" data-form="alarm"><h3>Alarm</h3>
         <div class="row"><button type="button" class="toggle ${s.alarmOn ? 'on' : ''}" data-act="alarmOn">${s.alarmOn ? '✓ Alarm on' : '○ Alarm off'}</button></div>
@@ -2161,7 +2199,15 @@ const App = (() => {
       case 'flag': { const l = ensureLog(), i = l.flags.indexOf(d.id); i >= 0 ? l.flags.splice(i, 1) : l.flags.push(d.id); persist(); return render(); }
       case 'done': { const l = ensureLog(d.date), arr = l.done[d.w], i = arr.indexOf(d.id); i >= 0 ? arr.splice(i, 1) : arr.push(d.id); persist(); return render(); }
       case 'day': return go('#/log/' + addDays(logDate, +d.d));
-      case 'glass': { const l = ensureLog(today()); l.life.water = clamp(l.life.water + +d.v, 0, 24); save(); return render(); }
+      case 'glass': {
+        const l = ensureLog(today()); l.life.water = clamp(l.life.water + +d.v, 0, 24); save();
+        if (glassInst && $('#glass3d')) {   // update in place so the water rises instead of the glass being rebuilt
+          const tg = targets(); glassInst.set(l.life.water / tg.glasses);
+          $('#wCount').textContent = l.life.water; $('#wL').textContent = `${round(l.life.water * 0.25, 2)} of ${round(tg.water, 1)} L${l.life.water >= tg.glasses ? ' · target reached' : ''}`;
+          return;
+        }
+        return render();
+      }
       case 'food': db.plate.items[d.id] = clamp((db.plate.items[d.id] || 0) + +d.d, 0, 6); save(); return render();
       case 'plateMode': plateMode = d.v; return render();
       case 'platePreset': db.plate.items = d.v ? { ...PLATES[d.v][1] } : {}; save(); return render();
@@ -2177,6 +2223,7 @@ const App = (() => {
       case 'snooze': db.sleep.active.alarmAt = Date.now() + 9 * 60e3; ringing = false; alarmSound.stop(); save(); return updateNight();
       case 'cancelSleep': return askConfirm('Stop tracking tonight without saving it?', () => { db.sleep.active = null; alarmSound.stop(); ringing = false; try { wakeLock?.release(); } catch {} save(); hideNight(); render(); }, 'Cancel night');
       case 'testSound': alarmSound.unlock(); alarmSound.beep(0.4); return toast('If you heard three beeps, the alarm sound works');
+      case 'ampm': { let [h, m] = db.sleep.alarm.split(':').map(Number); h = (h % 12) + (d.v === 'pm' ? 12 : 0); db.sleep.alarm = `${pad(h)}:${pad(m)}`; save(); return render(); }
       case 'alarmOn': db.sleep.alarmOn = !db.sleep.alarmOn; save(); return render();
       case 'alarmDay': { const v = +d.v, ds = db.sleep.days; db.sleep.days = ds.includes(v) ? ds.filter((x) => x !== v) : [...ds, v].sort(); save(); return render(); }
       case 'quality': { const x = db.sleep.sessions.find((q) => q.id === d.id); if (x) x.quality = +d.v; save(); $('#modal').classList.add('hidden'); toast('Thanks, saved'); return render(); }
@@ -2193,6 +2240,7 @@ const App = (() => {
       }
       case 'openScan': { const sc = db.scans.find((x) => x.id === d.id); if (sc) runScan({}, { src: sc.img, history: sc, kind: sc.kind, quiet: true }); return; }
       case 'addPlan': return addPlanToRoutine();
+      case 'fillAnyway': if (current) { current.filled = applyScanToLog(current); current.quality.reliability = Math.max(current.quality.reliability, 50); save(); toast('Filled in from this scan'); render(); } return;
       case 'wire': Viewer.wireOn = !Viewer.wireOn; el.classList.toggle('on', Viewer.wireOn); return;
       case 'pick': {
         cmp = cmp.includes(d.id) ? cmp.filter((x) => x !== d.id) : [...cmp, d.id].slice(-2);
@@ -2258,6 +2306,272 @@ const App = (() => {
     save(); render();
   }
 
+  /* ================= 3D scene kit: studio reflections, space background, water glass, alarm clock ================= */
+  // a soft "photo studio" environment (warm key softbox, cool fill, dark floor) so glass and metal reflect something real
+  function makeEnv(T, renderer) {
+    const pm = new T.PMREMGenerator(renderer), sc = new T.Scene();
+    const c = document.createElement('canvas'); c.width = 16; c.height = 256; const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, '#5a4a40'); g.addColorStop(0.42, '#1b1d26'); g.addColorStop(0.62, '#0d0f15'); g.addColorStop(1, '#06120f');
+    x.fillStyle = g; x.fillRect(0, 0, 16, 256);
+    sc.add(new T.Mesh(new T.SphereGeometry(20, 32, 16), new T.MeshBasicMaterial({ map: new T.CanvasTexture(c), side: T.BackSide })));
+    const box = (w, h, p, col, k) => { const m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ color: new T.Color(col).multiplyScalar(k), side: T.DoubleSide })); m.position.set(...p); m.lookAt(0, 0, 0); sc.add(m); };
+    box(9, 5, [6, 9, 6], 0xffe1c4, 4);      // warm key softbox
+    box(4, 9, [-11, 2, 3], 0xbfe9ff, 1.6);  // cool strip light
+    box(14, 2, [0, -4, -12], 0xffb27a, 0.6); // horizon glow
+    const rt = pm.fromScene(sc, 0.03); pm.dispose(); return rt.texture;
+  }
+  // only assign material properties this three.js build knows (avoids console noise on older builds)
+  function physical(T, o) { const m = new T.MeshPhysicalMaterial(); for (const [k, v] of Object.entries(o)) if (k in m) m[k] = v; m.needsUpdate = true; return m; }
+  function glRenderer(T, canvas, w, h, alpha = true) {
+    const r = new T.WebGLRenderer({ canvas, antialias: true, alpha, powerPreference: 'low-power' });
+    r.setPixelRatio(Math.min(2, devicePixelRatio || 1)); r.setSize(w, h, false);
+    r.outputEncoding = T.sRGBEncoding; r.toneMapping = T.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
+    return r;
+  }
+  const disposeAll = (scene, r) => { scene?.traverse((o) => { o.geometry?.dispose(); [].concat(o.material || []).forEach((m) => { m.map?.dispose(); m.dispose(); }); }); r?.dispose(); r?.forceContextLoss?.(); };
+  const canvasTex = (T, w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; };
+
+  /* ---------- the space behind everything ---------- */
+  const Space = {
+    on: false,
+    init() {
+      const T = window.THREE; if (!T || fx.reduced) return false;
+      try {
+        const cv = document.createElement('canvas'); cv.id = 'space'; document.body.prepend(cv);
+        const lowPower = innerWidth < 700;
+        const r = new T.WebGLRenderer({ canvas: cv, antialias: !lowPower, alpha: false, powerPreference: 'low-power' });
+        r.setPixelRatio(Math.min(lowPower ? 1 : 1.5, devicePixelRatio || 1)); r.setSize(innerWidth, innerHeight, false); r.setClearColor(0x05060a);
+        r.outputEncoding = T.sRGBEncoding; r.toneMapping = T.ACESFilmicToneMapping; r.toneMappingExposure = 1.1;
+        const scene = new T.Scene(); scene.fog = new T.FogExp2(0x05060a, 0.0105);
+        const cam = new T.PerspectiveCamera(52, innerWidth / innerHeight, 0.1, 500); cam.position.set(0, 0, 12);
+        scene.environment = makeEnv(T, r);
+        scene.add(new T.HemisphereLight(0x9fb4c8, 0x0a0805, 0.35));
+        const sun = new T.DirectionalLight(0xffd6b0, 1.6); sun.position.set(14, 10, 8); scene.add(sun);
+        const rim = new T.DirectionalLight(0x7fd8c9, 0.6); rim.position.set(-12, -4, -6); scene.add(rim);
+        const rnd = rng(11), R = () => rnd();
+        // stars in depth layers, slightly varied colour temperature
+        const starLayer = (n, rad, size) => {
+          const g = new T.BufferGeometry(), pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+          for (let i = 0; i < n; i++) {
+            const th = R() * Math.PI * 2, ph = Math.acos(2 * R() - 1), d = rad * (0.6 + R() * 0.4);
+            pos.set([d * Math.sin(ph) * Math.cos(th), d * Math.cos(ph) * 0.7, -Math.abs(d * Math.sin(ph) * Math.sin(th)) - 20], i * 3);
+            const t = R(), c = t < 0.15 ? [1, 0.82, 0.66] : t < 0.3 ? [0.75, 0.86, 1] : [1, 0.97, 0.94], b = 0.5 + R() * 0.5;
+            col.set(c.map((v) => v * b), i * 3);
+          }
+          g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('color', new T.BufferAttribute(col, 3));
+          const p = new T.Points(g, new T.PointsMaterial({ size, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.9, depthWrite: false, fog: false }));
+          scene.add(p); return p;
+        };
+        const starsFar = starLayer(lowPower ? 900 : 1800, 220, 0.55), starsNear = starLayer(lowPower ? 140 : 280, 90, 0.42);
+        // faint nebula clouds
+        const neb = (col, p, s, o) => {
+          const tex = canvasTex(T, 256, 256, (x) => { const g = x.createRadialGradient(128, 128, 0, 128, 128, 128); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 256, 256); });
+          const sp = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, opacity: o, depthWrite: false, blending: T.AdditiveBlending, fog: false }));
+          sp.position.set(...p); sp.scale.set(s, s * 0.7, 1); scene.add(sp);
+        };
+        neb('rgba(255,150,100,0.55)', [40, 18, -140], 160, 0.35); neb('rgba(110,200,190,0.45)', [-60, -20, -160], 190, 0.3); neb('rgba(160,140,255,0.4)', [10, -40, -180], 150, 0.22);
+        // a ringed planet low on the right
+        const planetTex = canvasTex(T, 512, 256, (x, w, h) => {
+          for (let y = 0; y < h; y++) { const t = y / h, n = Math.sin(t * 38) * 0.5 + Math.sin(t * 91 + 1.3) * 0.3 + Math.sin(t * 7) * 0.6; const v = 0.55 + n * 0.12; x.fillStyle = `rgb(${Math.round(210 * v)},${Math.round(150 * v)},${Math.round(108 * v)})`; x.fillRect(0, y, w, 1); }
+          x.globalAlpha = 0.08; for (let i = 0; i < 400; i++) { x.fillStyle = R() < 0.5 ? '#fff' : '#000'; x.fillRect(R() * w, R() * h, 30 + R() * 80, 1 + R() * 2); }
+        });
+        const planet = new T.Group();
+        const ball = new T.Mesh(new T.SphereGeometry(9, 64, 48), new T.MeshStandardMaterial({ map: planetTex, roughness: 0.9, metalness: 0 }));
+        const ringTex = canvasTex(T, 512, 512, (x) => { for (let rr = 150; rr < 256; rr += 1) { const a = (Math.sin(rr * 0.45) * 0.5 + 0.5) * (rr < 170 ? (rr - 150) / 20 : rr > 236 ? (256 - rr) / 20 : 1) * 0.55; x.strokeStyle = `rgba(235,205,170,${a})`; x.beginPath(); x.arc(256, 256, rr, 0, 7); x.stroke(); } });
+        const ring = new T.Mesh(new T.RingGeometry(10.5, 17, 128), new T.MeshBasicMaterial({ map: ringTex, transparent: true, side: T.DoubleSide, depthWrite: false, opacity: 0.85 }));
+        ring.rotation.x = Math.PI / 2.25; planet.add(ball, ring);
+        const halo = new T.Sprite(new T.SpriteMaterial({ map: canvasTex(T, 128, 128, (x) => { const g = x.createRadialGradient(64, 64, 40, 64, 64, 64); g.addColorStop(0, 'rgba(255,190,140,0.35)'); g.addColorStop(1, 'rgba(255,190,140,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); }), transparent: true, depthWrite: false, blending: T.AdditiveBlending }));
+        halo.scale.set(24, 24, 1); planet.add(halo);
+        planet.position.set(26, -13, -58); planet.rotation.z = 0.35; scene.add(planet);
+        const moon = new T.Mesh(new T.SphereGeometry(1.4, 32, 24), new T.MeshStandardMaterial({ color: 0xb9b2a8, roughness: 1 })); moon.position.set(-30, 16, -70); scene.add(moon);
+        const objs = [];
+        const add = (mesh, p, spin, amp) => { mesh.position.set(...p); scene.add(mesh); objs.push({ mesh, base: p.slice(), spin, amp, ph: R() * 6.28 }); };
+        // glass orbs that catch the light
+        const glassM = () => physical(T, { color: new T.Color(0xffffff), metalness: 0, roughness: 0.06, transmission: 0.92, transparent: true, opacity: 0.55, envMapIntensity: 1.8, clearcoat: 1, clearcoatRoughness: 0.05, ior: 1.45, thickness: 1.2 });
+        [[-15, 6, -14, 0.9], [16, 8, -20, 0.7], [-13, -7, -10, 0.5], [17, -6, -16, 1.1], [-22, 1, -26, 0.8]].forEach(([x, y, z, s]) => add(new T.Mesh(new T.SphereGeometry(s, 48, 32), glassM()), [x, y, z], [0.001, 0.002, 0], 0.35));
+        // drifting rocks
+        const rock = (s) => {
+          const g = new T.IcosahedronGeometry(s, 1), p = g.attributes.position, key = (i) => `${p.getX(i).toFixed(3)},${p.getY(i).toFixed(3)},${p.getZ(i).toFixed(3)}`, j = {};
+          for (let i = 0; i < p.count; i++) { const k = key(i); j[k] ??= 0.72 + R() * 0.5; p.setXYZ(i, p.getX(i) * j[k], p.getY(i) * j[k] * 0.85, p.getZ(i) * j[k]); }
+          g.computeVertexNormals();
+          return new T.Mesh(g, new T.MeshStandardMaterial({ color: 0x6f665e, roughness: 0.95, metalness: 0.05, flatShading: true }));
+        };
+        for (let i = 0; i < (lowPower ? 5 : 9); i++) { const side = R() < 0.5 ? -1 : 1; add(rock(0.12 + R() * 0.4), [side * (11 + R() * 14), (R() - 0.5) * 18, -12 - R() * 22], [(R() - 0.5) * 0.01, (R() - 0.5) * 0.01, (R() - 0.5) * 0.008], 0.5); }
+        // water molecules (H₂O): a nod to hydration
+        const molecule = () => {
+          const g = new T.Group(), O = physical(T, { color: new T.Color(0xff8a7a), roughness: 0.25, metalness: 0, clearcoat: 1, envMapIntensity: 1.2 }), H = physical(T, { color: new T.Color(0xf4f1ec), roughness: 0.3, clearcoat: 1, envMapIntensity: 1.2 });
+          const o = new T.Mesh(new T.SphereGeometry(0.42, 32, 24), O); g.add(o);
+          [-1, 1].forEach((sgn) => {
+            const a = sgn * (104.5 / 2) * Math.PI / 180, d = 0.62, hx = Math.sin(a) * d, hy = -Math.cos(a) * d;
+            const h = new T.Mesh(new T.SphereGeometry(0.26, 32, 24), H); h.position.set(hx, hy, 0); g.add(h);
+            const b = new T.Mesh(new T.CylinderGeometry(0.06, 0.06, d, 12), new T.MeshStandardMaterial({ color: 0xd8d2ca, roughness: 0.4 })); b.position.set(hx / 2, hy / 2, 0); b.rotation.z = a; g.add(b);
+          });
+          return g;
+        };
+        [[13, -8, -14], [-16, 8, -18], [20, 4, -24]].forEach((p) => add(molecule(), p, [0.003, 0.006, 0.002], 0.6));
+        const resize = () => { r.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); };
+        addEventListener('resize', resize);
+        let t = 0;
+        this.frame = () => {
+          t += 0.0035;
+          objs.forEach((o) => { o.mesh.rotation.x += o.spin[0]; o.mesh.rotation.y += o.spin[1]; o.mesh.rotation.z += o.spin[2]; o.mesh.position.y = o.base[1] + Math.sin(t * 2 + o.ph) * o.amp; o.mesh.position.x = o.base[0] + Math.cos(t * 1.3 + o.ph) * o.amp * 0.6; });
+          planet.rotation.y += 0.0006; ball.rotation.y += 0.0008; starsNear.rotation.y = t * 0.02; starsFar.rotation.y = t * 0.008;
+          const sy = Math.min(scrollY, 4000) * 0.0016;
+          cam.position.x += (fx.cx * 1.6 - cam.position.x) * 0.05; cam.position.y += (-fx.cy * 1.0 - sy - cam.position.y) * 0.05;
+          cam.lookAt(fx.cx * 0.4, -sy * 0.8, -20);
+          r.render(scene, cam);
+        };
+        this.on = true; return true;
+      } catch (e) { console.warn('Space scene unavailable', e); return false; }
+    },
+  };
+
+  /* ---------- a real glass of water for hydration ---------- */
+  function mountGlass(el, frac, onTap) {
+    const T = window.THREE;
+    if (!T) { el.innerHTML = `<div class="glass2d"><i style="height:${clamp(frac, 0, 1) * 100}%"></i></div>`; el.onclick = onTap; return { set() {} }; }
+    const w = el.clientWidth || 200, h = el.clientHeight || 260, cv = document.createElement('canvas'); el.appendChild(cv);
+    const r = glRenderer(T, cv, w, h), scene = new T.Scene(), cam = new T.PerspectiveCamera(30, w / h, 0.1, 50);
+    cam.position.set(0, 1.55, 6.2); cam.lookAt(0, 0.82, 0);
+    scene.environment = makeEnv(T, r);
+    scene.add(new T.AmbientLight(0xffffff, 0.25));
+    const key = new T.DirectionalLight(0xffe6cc, 1.2); key.position.set(2.5, 4, 3); scene.add(key);
+    const back = new T.PointLight(0x8fded0, 1.2, 8); back.position.set(-1.5, 1.2, -2); scene.add(back);
+    const H = 1.75, rb = 0.5, rt = 0.66, wall = 0.045, base = 0.16;
+    const prof = [[0, 0], [rb, 0], [rb + 0.01, 0.02], [rt, H], [rt - wall, H], [rb - wall + 0.01, base], [0, base]].map(([x, y]) => new T.Vector2(x, y));
+    const glass = new T.Mesh(new T.LatheGeometry(prof, 96), physical(T, { color: new T.Color(0xffffff), roughness: 0.03, metalness: 0, transmission: 0.95, transparent: true, opacity: 0.28, envMapIntensity: 2.2, clearcoat: 1, clearcoatRoughness: 0.02, ior: 1.5, side: T.DoubleSide, depthWrite: false }));
+    glass.renderOrder = 3;
+    const rim = new T.Mesh(new T.TorusGeometry(rt - wall / 2, wall / 2, 12, 96), physical(T, { color: new T.Color(0xffffff), roughness: 0.02, transparent: true, opacity: 0.5, envMapIntensity: 2.5, clearcoat: 1 }));
+    rim.rotation.x = Math.PI / 2; rim.position.y = H; rim.renderOrder = 3;
+    const innerR = (y) => rb - wall + ((rt - wall) - (rb - wall)) * ((y - base) / (H - base)) - 0.008;
+    const waterM = physical(T, { color: new T.Color(0x5fb6d6), roughness: 0.06, metalness: 0, transmission: 0.55, transparent: true, opacity: 0.78, envMapIntensity: 1.4, clearcoat: 1, ior: 1.33, side: T.DoubleSide, depthWrite: false });
+    const water = new T.Mesh(new T.BufferGeometry(), waterM); water.renderOrder = 1;
+    const surfG = new T.CircleGeometry(1, 72), surf = new T.Mesh(surfG, physical(T, { color: new T.Color(0x9fdcf0), roughness: 0.02, transmission: 0.4, transparent: true, opacity: 0.85, envMapIntensity: 2, clearcoat: 1, side: T.DoubleSide, depthWrite: false }));
+    surf.rotation.x = -Math.PI / 2; surf.renderOrder = 2;
+    const sp = surfG.attributes.position, sp0 = Float32Array.from(sp.array);
+    const shadow = new T.Mesh(new T.CircleGeometry(1.1, 48), new T.MeshBasicMaterial({ map: canvasTex(T, 128, 128, (x) => { const g = x.createRadialGradient(64, 64, 10, 64, 64, 64); g.addColorStop(0, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); }), transparent: true, depthWrite: false }));
+    shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.002; shadow.scale.set(1, 1, 1);
+    const caustic = new T.Mesh(new T.CircleGeometry(0.75, 48), new T.MeshBasicMaterial({ color: 0x7fd2ee, transparent: true, opacity: 0, depthWrite: false, blending: T.AdditiveBlending }));
+    caustic.rotation.x = -Math.PI / 2; caustic.position.set(0.35, 0.004, 0.35);
+    const bubbles = Array.from({ length: 16 }, () => { const b = new T.Mesh(new T.SphereGeometry(0.012 + Math.random() * 0.014, 8, 6), new T.MeshBasicMaterial({ color: 0xe8fbff, transparent: true, opacity: 0.55 })); b.userData = { a: Math.random() * 6.28, r: Math.random() * 0.35, v: 0.004 + Math.random() * 0.006, y: base + Math.random() }; return b; });
+    const group = new T.Group(); group.add(water, surf, glass, rim, caustic, ...bubbles); scene.add(group, shadow);
+    let level = 0, target = clamp(frac, 0, 1), wave = 0.05, built = -1, tx = 0, ty = 0, raf = 0, t = 0;
+    const topY = () => base + level * (H - base - 0.14);
+    const rebuild = () => {
+      const yT = topY(); water.geometry.dispose();
+      water.geometry = new T.CylinderGeometry(innerR(yT), innerR(base), Math.max(0.001, yT - base), 72, 1, false); water.position.y = (yT + base) / 2;
+      const s = innerR(yT); surf.scale.set(s, s, 1); surf.position.y = yT; built = level;
+    };
+    el.onpointermove = (e) => { const b = el.getBoundingClientRect(); tx = ((e.clientX - b.left) / b.width - 0.5) * 0.5; ty = ((e.clientY - b.top) / b.height - 0.5) * 0.25; };
+    el.onpointerleave = () => { tx = ty = 0; };
+    el.onclick = onTap;
+    const loop = () => {
+      raf = requestAnimationFrame(loop);
+      if (!el.isConnected) { cancelAnimationFrame(raf); return disposeAll(scene, r); }
+      t += 0.016; level += (target - level) * 0.05;
+      if (Math.abs(level - built) > 0.0008) rebuild();
+      const vis = level > 0.01; water.visible = surf.visible = vis;
+      wave *= 0.965; const A = 0.004 + wave * 0.18;
+      for (let i = 0; i < sp.count; i++) { const x = sp0[i * 3], y = sp0[i * 3 + 1]; sp.setZ(i, A * (Math.sin(x * 7 + t * 4) * 0.6 + Math.cos(y * 6 - t * 3.3) * 0.4) * (0.3 + 0.7 * Math.hypot(x, y))); }
+      sp.needsUpdate = true;
+      const yT = topY();
+      bubbles.forEach((b) => { const u = b.userData; b.visible = vis; u.y += u.v; if (u.y > yT - 0.02) { u.y = base + 0.02; u.a = Math.random() * 6.28; u.r = Math.random() * 0.35; } const rr = u.r * innerR(u.y) / 0.5; b.position.set(Math.cos(u.a + t) * rr * 0.4, u.y, Math.sin(u.a + t) * rr * 0.4); });
+      caustic.material.opacity = vis ? 0.12 + 0.05 * Math.sin(t * 3) : 0;
+      group.rotation.y += (tx + Math.sin(t * 0.5) * 0.15 - group.rotation.y) * 0.05; group.rotation.z += (-tx * 0.15 + Math.sin(t * 2.2) * wave * 0.5 - group.rotation.z) * 0.08; group.rotation.x += (ty * 0.3 - group.rotation.x) * 0.05;
+      r.render(scene, cam);
+    };
+    loop();
+    return { set(f) { const nf = clamp(f, 0, 1); if (nf !== target) { wave = Math.min(0.12, wave + 0.06); target = nf; } } };
+  }
+
+  /* ---------- a twin-bell alarm clock that keeps real time ---------- */
+  const clocks = new Set();
+  function mountClock(el, opts = {}) {
+    const T = window.THREE;
+    if (!T) { el.innerHTML = '<div class="clock2d num" data-clock2d></div>'; return null; }
+    const w = el.clientWidth || 320, h = el.clientHeight || 340, cv = document.createElement('canvas'); el.appendChild(cv);
+    const r = glRenderer(T, cv, w, h), scene = new T.Scene(), cam = new T.PerspectiveCamera(28, w / h, 0.1, 50);
+    cam.position.set(0, 0.35, 8.6); cam.lookAt(0, 0.3, 0);
+    scene.environment = makeEnv(T, r);
+    scene.add(new T.AmbientLight(0xffffff, 0.2));
+    const key = new T.DirectionalLight(0xffe2c4, 1.3); key.position.set(3, 4, 5); scene.add(key);
+    const fill = new T.DirectionalLight(0x9fd9ff, 0.35); fill.position.set(-4, 1, 3); scene.add(fill);
+    const brass = physical(T, { color: new T.Color(0xd8b07a), metalness: 1, roughness: 0.22, envMapIntensity: 1.6, clearcoat: 0.3 });
+    const enamel = physical(T, { color: new T.Color(0x1c2a2c), metalness: 0.1, roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.15, envMapIntensity: 1.2 });
+    const clock = new T.Group(); scene.add(clock);
+    const body = new T.Mesh(new T.CylinderGeometry(1.25, 1.25, 0.62, 96), enamel); body.rotation.x = Math.PI / 2; clock.add(body);
+    const bezel = new T.Mesh(new T.TorusGeometry(1.24, 0.085, 24, 120), brass); bezel.position.z = 0.31; clock.add(bezel);
+    const backRing = new T.Mesh(new T.TorusGeometry(1.22, 0.05, 16, 120), brass); backRing.position.z = -0.31; clock.add(backRing);
+    // the dial, painted like an enamel clock face
+    const dial = canvasTex(T, 1024, 1024, (x, W) => {
+      const c = W / 2, g = x.createRadialGradient(c, c * 0.8, 50, c, c, c); g.addColorStop(0, '#f6efe1'); g.addColorStop(1, '#e2d6bf');
+      x.fillStyle = g; x.beginPath(); x.arc(c, c, c, 0, 7); x.fill();
+      for (let i = 0; i < 60; i++) { const a = (i / 60) * Math.PI * 2, big = i % 5 === 0, r1 = c * 0.93, r2 = c * (big ? 0.82 : 0.88); x.strokeStyle = '#1b1712'; x.lineWidth = big ? 9 : 3; x.beginPath(); x.moveTo(c + Math.sin(a) * r1, c - Math.cos(a) * r1); x.lineTo(c + Math.sin(a) * r2, c - Math.cos(a) * r2); x.stroke(); }
+      x.fillStyle = '#1b1712'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      for (let i = 1; i <= 12; i++) { const a = (i / 12) * Math.PI * 2; x.font = `600 ${i % 3 === 0 ? 92 : 64}px Onest, Helvetica, Arial, sans-serif`; x.fillText(i, c + Math.sin(a) * c * 0.68, c - Math.cos(a) * c * 0.68 + 4); }
+      x.font = '500 34px Unbounded, Helvetica, sans-serif'; x.fillStyle = '#8a5a34'; x.fillText('aura', c, c * 0.62);
+      x.font = '400 22px "JetBrains Mono", monospace'; x.fillStyle = '#6d6252'; x.fillText('SKIN · SLEEP · TIME', c, c * 1.42);
+    });
+    const face = new T.Mesh(new T.CircleGeometry(1.17, 96), new T.MeshStandardMaterial({ map: dial, roughness: 0.55 })); face.position.z = 0.315; clock.add(face);
+    const lens = new T.Mesh(new T.SphereGeometry(4, 64, 16, 0, Math.PI * 2, 0, Math.asin(1.18 / 4)), physical(T, { color: new T.Color(0xffffff), roughness: 0.02, transmission: 0.95, transparent: true, opacity: 0.16, envMapIntensity: 2.4, clearcoat: 1, depthWrite: false }));
+    lens.rotation.x = Math.PI / 2; lens.position.z = 0.42 - 4 + 4 * (1 - Math.cos(Math.asin(1.18 / 4))) - 0.12; lens.renderOrder = 5;
+    // hands (pivoted at the centre)
+    const hand = (len, wid, dep, mat, z, tail = 0.12) => { const g = new T.Group(), m = new T.Mesh(new T.BoxGeometry(wid, len + tail, dep), mat); m.position.y = (len - tail) / 2; g.add(m); g.position.z = z; clock.add(g); return g; };
+    const black = new T.MeshStandardMaterial({ color: 0x15120e, roughness: 0.4, metalness: 0.3 }), red = new T.MeshStandardMaterial({ color: 0xc23b2a, roughness: 0.35, metalness: 0.2 });
+    const alarmHand = hand(0.55, 0.05, 0.012, brass, 0.33, 0.05);
+    const tip = new T.Mesh(new T.ConeGeometry(0.075, 0.16, 3), brass); tip.position.y = 0.6; alarmHand.add(tip);
+    const hourHand = hand(0.62, 0.085, 0.02, black, 0.345), minHand = hand(0.95, 0.055, 0.02, black, 0.36), secHand = hand(1.02, 0.018, 0.012, red, 0.375, 0.25);
+    const cap = new T.Mesh(new T.CylinderGeometry(0.07, 0.07, 0.06, 24), brass); cap.rotation.x = Math.PI / 2; cap.position.z = 0.39; clock.add(cap);
+    // bells, hammer, handle and legs
+    const bellG = new T.SphereGeometry(0.56, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2);
+    const bells = [-1, 1].map((sg) => { const b = new T.Mesh(bellG, brass); b.position.set(sg * 0.74, 1.3, -0.05); b.rotation.z = -sg * 0.62; clock.add(b); const post = new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 0.3, 12), brass); post.position.set(sg * 0.6, 1.17, -0.05); post.rotation.z = -sg * 0.62; clock.add(post); return b; });
+    const hammer = new T.Group(); const hs = new T.Mesh(new T.CylinderGeometry(0.025, 0.025, 0.42, 10), brass); hs.position.y = 0.21; const hb = new T.Mesh(new T.SphereGeometry(0.07, 16, 12), brass); hb.position.y = 0.43; hammer.add(hs, hb); hammer.position.set(0, 1.18, -0.05); clock.add(hammer);
+    const handle = new T.Mesh(new T.TorusGeometry(0.42, 0.045, 16, 64, Math.PI), brass); handle.position.set(0, 1.55, -0.32); handle.rotation.x = -0.25; clock.add(handle);
+    [-1, 1].forEach((sg) => { const leg = new T.Mesh(new T.CylinderGeometry(0.06, 0.04, 0.55, 16), brass); leg.position.set(sg * 0.82, -1.18, -0.05); leg.rotation.z = sg * 0.5; clock.add(leg); const foot = new T.Mesh(new T.SphereGeometry(0.08, 16, 12), brass); foot.position.set(sg * 0.95, -1.42, -0.05); clock.add(foot); });
+    const shadow = new T.Mesh(new T.PlaneGeometry(4, 1.4), new T.MeshBasicMaterial({ map: canvasTex(T, 256, 96, (x) => { const g = x.createRadialGradient(128, 48, 4, 128, 48, 120); g.addColorStop(0, 'rgba(0,0,0,0.6)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 256, 96); }), transparent: true, depthWrite: false }));
+    shadow.rotation.x = -Math.PI / 2; shadow.position.set(0, -1.5, -0.05); scene.add(shadow);
+    clock.position.y = 0.05;
+    // drag the brass hand to set the alarm (snaps to 5 minutes, keeps AM/PM)
+    const ray = new T.Raycaster(), ndc = new T.Vector2(), plane = new T.Plane(new T.Vector3(0, 0, 1), -0.33), hit = new T.Vector3();
+    let dragging = false, tx = 0, ty = 0, raf = 0;
+    const angleAt = (e) => {
+      const b = cv.getBoundingClientRect(); ndc.set(((e.clientX - b.left) / b.width) * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1); ray.setFromCamera(ndc, cam);
+      clock.updateMatrixWorld(); const inv = clock.matrixWorld.clone().invert(); const pl = plane.clone().applyMatrix4(clock.matrixWorld);
+      if (!ray.ray.intersectPlane(pl, hit)) return null; hit.applyMatrix4(inv);
+      return Math.hypot(hit.x, hit.y) < 1.3 ? (Math.atan2(hit.x, hit.y) + Math.PI * 2) % (Math.PI * 2) : null;
+    };
+    const setFromAngle = (a) => {
+      const [h0] = (opts.getAlarm?.() || '07:00').split(':').map(Number), pm = h0 >= 12;
+      let mins = Math.round(((a / (Math.PI * 2)) * 720) / 5) * 5 % 720, hh = Math.floor(mins / 60), mm = mins % 60;
+      hh = (hh % 12) + (pm ? 12 : 0); opts.onAlarm?.(`${pad(hh)}:${pad(mm)}`);
+    };
+    if (opts.onAlarm) {
+      cv.style.touchAction = 'none';
+      cv.onpointerdown = (e) => { const a = angleAt(e); if (a == null) return; dragging = true; cv.setPointerCapture?.(e.pointerId); setFromAngle(a); };
+      cv.onpointerup = cv.onpointercancel = () => { if (dragging) opts.onAlarmEnd?.(); dragging = false; };
+    }
+    el.onpointermove = (e) => { const b = el.getBoundingClientRect(); tx = ((e.clientX - b.left) / b.width - 0.5) * 0.6; ty = ((e.clientY - b.top) / b.height - 0.5) * 0.35; if (dragging) { const a = angleAt(e); if (a != null) setFromAngle(a); } };
+    el.onpointerleave = () => { tx = ty = 0; };
+    const inst = { el };
+    clocks.add(inst);
+    const loop = (now) => {
+      raf = requestAnimationFrame(loop);
+      if (!el.isConnected) { cancelAnimationFrame(raf); clocks.delete(inst); return disposeAll(scene, r); }
+      if (!el.getClientRects().length) return;
+      const d = new Date(), s = d.getSeconds(), ms = d.getMilliseconds(), m = d.getMinutes(), hr = d.getHours();
+      const kick = ms < 160 ? 1 + 0.18 * Math.sin((ms / 160) * Math.PI) * (1 - ms / 160) : 1;   // a small mechanical overshoot on each tick
+      secHand.rotation.z = -((s - 1 + kick) / 60) * Math.PI * 2; minHand.rotation.z = -((m + s / 60) / 60) * Math.PI * 2; hourHand.rotation.z = -(((hr % 12) + m / 60) / 12) * Math.PI * 2;
+      const [ah, am] = (opts.getAlarm?.() || '07:00').split(':').map(Number); alarmHand.rotation.z = -(((ah % 12) + am / 60) / 12) * Math.PI * 2;
+      const ring = opts.ringing?.();
+      if (ring) { hammer.rotation.z = Math.sin(now / 18) * 0.5; clock.rotation.z = Math.sin(now / 23) * 0.05; clock.position.x = Math.sin(now / 13) * 0.02; bells.forEach((b, i) => (b.position.y = 1.3 + Math.sin(now / 15 + i) * 0.012)); }
+      else { hammer.rotation.z *= 0.8; clock.rotation.z *= 0.9; clock.position.x *= 0.9; }
+      clock.rotation.y += (tx - 0.12 - clock.rotation.y) * 0.06; clock.rotation.x += (ty * 0.6 - clock.rotation.x) * 0.06;
+      r.render(scene, cam);
+    };
+    raf = requestAnimationFrame(loop);
+    return inst;
+  }
+
   /* ================= effects: particle field, cursor glow, parallax, 3D tilt ================= */
   const fx = {
     tx: 0, ty: 0, cx: 0, cy: 0, mx: -9999, my: -9999, t: 0, parts: [],
@@ -2269,7 +2583,7 @@ const App = (() => {
         this.cv.width = this.w * dpr; this.cv.height = this.h * dpr; this.cv.style.width = this.w + 'px'; this.cv.style.height = this.h + 'px';
         this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const n = Math.round(clamp((this.w * this.h) / 13000, 30, 110)), r = rng(3);
-        this.parts = Array.from({ length: n }, () => ({ x: r() * this.w, y: r() * this.h, vx: (r() - 0.5) * 0.25, vy: (r() - 0.5) * 0.25, z: 0.3 + r() * 0.7, c: r() < 0.5 ? '60,240,255' : r() < 0.7 ? '167,123,255' : '255,79,216' }));
+        this.parts = Array.from({ length: n }, () => ({ x: r() * this.w, y: r() * this.h, vx: (r() - 0.5) * 0.25, vy: (r() - 0.5) * 0.25, z: 0.3 + r() * 0.7, c: r() < 0.5 ? '143,222,208' : r() < 0.7 ? '184,166,255' : '242,160,207' }));
         if (this.reduced) this.draw();
       };
       resize(); addEventListener('resize', resize);
@@ -2280,7 +2594,9 @@ const App = (() => {
       }, { passive: true });
       document.documentElement.addEventListener('pointerleave', () => { this.mx = this.my = -9999; this.tx = this.ty = 0; });
       if (this.reduced) return;
-      const loop = () => { if (!document.hidden) { this.step(); this.draw(); } requestAnimationFrame(loop); };
+      // the 3D space scene replaces the flat particle field when WebGL is available
+      if (Space.init()) this.cv.style.display = 'none';
+      const loop = () => { if (!document.hidden) { this.step(); Space.on ? Space.frame() : this.draw(); } requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
     },
     step() {
@@ -2357,7 +2673,12 @@ const App = (() => {
     $$('#dock a').forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + nav));
     mount();
   }
+  let glassInst = null, sleepClock = null, nightClock = null;
   function mount() {
+    const ge = $('#glass3d');
+    glassInst = ge ? mountGlass(ge, (db.logs[today()]?.life.water ?? 0) / targets().glasses, () => act({ dataset: { act: 'glass', v: '1' } })) : null;
+    const ce = $('#clock3d');
+    sleepClock = ce ? mountClock(ce, { getAlarm: () => db.sleep.alarm, ringing: () => ringing, onAlarm: (hm) => { db.sleep.alarm = hm; const o = $('#alarmOut'); if (o) o.textContent = fmt12(hm); const ti = $('#alarmTime'); if (ti) ti.value = hm; }, onAlarmEnd: () => { save(); render(); toast('Alarm set for ' + fmt12(db.sleep.alarm)); } }) : null;
     requestAnimationFrame(() => requestAnimationFrame(() => $$('.ring-arc').forEach((c) => c.setAttribute('stroke-dashoffset', c.dataset.off))));
     $('#scanFile')?.addEventListener('change', (e) => e.target.files[0] && runScan(e.target.files[0]));
     $('#dashFile')?.addEventListener('change', (e) => { if (e.target.files[0]) { pendingFile = e.target.files[0]; current = null; go('#/scan'); } });
