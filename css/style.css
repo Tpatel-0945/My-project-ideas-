@@ -347,3 +347,42 @@ ul.clean li::before { content: '▹'; position: absolute; left: 0; color: var(--
 @media (min-width: 861px) and (max-width: 1180px) { .dock a span { display: none; } .dock a { padding: 9px 12px; } }
 @media (max-width: 860px) { .dock a { padding: 6px 6px; font-size: 0.58rem; min-width: 0; } .dock a i { font-size: 1.05rem; } }
 @media (max-width: 380px) { .dock a { padding: 6px 4px; } }
+
+/* ---------- Scan 3D ---------- */
+.hero-drop { padding: 56px 20px; background: radial-gradient(circle at 50% 0%, rgba(60, 240, 255, 0.08), transparent 70%); }
+.drop.compact { padding: 14px; }
+.drop-orb { display: block; width: 74px; height: 74px; margin: 0 auto 16px; border-radius: 50%; position: relative;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--skin) 25%, var(--hair) 60%, #1a0b3a); box-shadow: 0 0 40px rgba(167, 123, 255, 0.6); animation: pulse 3s ease-in-out infinite; }
+.drop-orb::after { content: '⇪'; position: absolute; inset: 0; display: grid; place-items: center; color: #06071a; font-size: 1.6rem; font-weight: 700; }
+.drop-orb.sm { width: 46px; height: 46px; margin: 0; flex: none; }
+.drop-orb.sm::after { font-size: 1.1rem; }
+@keyframes pulse { 50% { transform: scale(1.06); filter: hue-rotate(25deg); } }
+.dash-drop { display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px 18px; max-width: 480px; }
+.viewer { position: relative; width: 100%; min-height: 300px; border-radius: 16px; overflow: hidden; cursor: grab; touch-action: pan-y;
+  background: radial-gradient(circle at 50% 40%, rgba(60, 240, 255, 0.08), transparent 65%), repeating-linear-gradient(0deg, rgba(130, 150, 255, 0.05) 0 1px, transparent 1px 28px), repeating-linear-gradient(90deg, rgba(130, 150, 255, 0.05) 0 1px, transparent 1px 28px); }
+.viewer:active { cursor: grabbing; }
+.viewer canvas { display: block; }
+.mk { position: absolute; left: 0; top: 0; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 2px solid #fff; background: var(--c); color: #06071a;
+  font: 700 0.68rem var(--font-mono); display: grid; place-items: center; cursor: pointer; box-shadow: 0 0 12px var(--c); padding: 0; transition: width 0.2s, height 0.2s; }
+.mk.on { width: 30px; height: 30px; margin: -15px 0 0 -15px; z-index: 2; }
+.mk.static { position: static; margin: 0; flex: none; }
+.find { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); background: rgba(6, 8, 24, 0.45); cursor: pointer; font-size: 0.84rem; }
+.find:hover, .find.on { border-color: var(--line-strong); background: rgba(60, 240, 255, 0.06); }
+.flat3d { position: relative; transition: transform 0.2s; transform-style: preserve-3d; }
+.flat3d canvas { width: 100%; display: block; border-radius: 12px; }
+.viewer:has(.flat3d) { perspective: 900px; padding: 16px; }
+.scanning { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 22px; align-items: center; }
+@media (max-width: 600px) { .scanning { grid-template-columns: minmax(0, 1fr); } }
+.scan-prev { position: relative; border-radius: 14px; overflow: hidden; }
+.scan-prev img { width: 100%; filter: saturate(0.7) brightness(0.8); }
+.scan-prev .beam { position: absolute; left: 0; right: 0; height: 3px; background: var(--skin); box-shadow: 0 0 24px 6px var(--skin); animation: scanl 1.1s linear infinite; }
+.stp { padding: 9px 12px 9px 34px; border-radius: 10px; position: relative; color: var(--muted); font-size: 0.9rem; }
+.stp::before { content: '○'; position: absolute; left: 12px; }
+.stp.run { color: var(--text); background: rgba(60, 240, 255, 0.06); }
+.stp.run::before { content: '◌'; color: var(--skin); animation: spin 1s linear infinite; display: inline-block; }
+.stp.done { color: var(--text); }
+.stp.done::before { content: '✓'; color: var(--good); }
+.fix { border-top: 3px solid var(--c); }
+.steps { padding-left: 18px; margin: 6px 0 10px; }
+.steps li { margin-bottom: 4px; }
+.on-cmp { color: var(--accent); border-color: var(--accent); }

@@ -201,7 +201,7 @@ const App = (() => {
       const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
       L[i] = 0.299 * r + 0.587 * g + 0.114 * b;
       const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b, cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
-      if (cb > 77 && cb < 130 && cr > 133 && cr < 180 && L[i] > 35) { skin[i] = 1; skinN++; }
+      if (cb > 77 && cb < 130 && cr > 133 && cr < 180 && L[i] > 50) { skin[i] = 1; skinN++; }
     }
     if (skinN < N * 0.08) return { coverage: skinN / N };
     const I = new Float64Array((w + 1) * (h + 1));
@@ -218,13 +218,17 @@ const App = (() => {
       const i = y * w + x; if (!skin[i]) continue;
       const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0;
-      if (L[i] > mL + 1.6 * sdL && sat < 0.3) { masks.shine[i] = 1; shine++; }
-      if (r - g > mRG + 1.5 * sdRG && r > 90) { masks.red[i] = 1; red++; }
+      if (L[i] > mL + Math.max(1.6 * sdL, 22) && sat < 0.3) { masks.shine[i] = 1; shine++; }
+      if (r - g > mRG + Math.max(1.5 * sdRG, 16) && r > 90) { masks.red[i] = 1; red++; }
       const lm = local(x, y); tv += Math.abs(L[i] - lm);
       if (L[i] < lm * 0.86) { masks.spots[i] = 1; spots++; }
     }
     const pct = (n, k) => Math.round(clamp((n / skinN) * k));
-    return { coverage: skinN / N, masks, scores: { shine: pct(shine, 1500), redness: pct(red, 2500), spots: pct(spots, 2000), evenness: Math.round(clamp(100 - (tv / skinN) * 7)) } };
+    const cols = new Uint32Array(w), rows = new Uint32Array(h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (skin[y * w + x]) { cols[x]++; rows[y]++; }
+    const pctl = (arr, q) => { let acc = 0; const tgt = skinN * q; for (let k = 0; k < arr.length; k++) { acc += arr[k]; if (acc >= tgt) return k; } return arr.length - 1; };
+    const bbox = { x0: pctl(cols, 0.03), x1: pctl(cols, 0.97), y0: pctl(rows, 0.03), y1: pctl(rows, 0.97) };
+    return { coverage: skinN / N, masks, skin, bbox, scores: { shine: pct(shine, 1500), redness: pct(red, 2500), spots: pct(spots, 2000), evenness: Math.round(clamp(100 - (tv / skinN) * 7)) } };
   }
 
   function analyzeHair(ctx, w, h) {
@@ -251,8 +255,8 @@ const App = (() => {
     return { coverage: 1, masks, scores: { scalp: Math.round(vis), density: Math.round(100 - vis), flakes: Math.round(clamp((flakes / area) * 4000)) } };
   }
 
-  function loadImage(file) {
-    return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = URL.createObjectURL(file); });
+  function loadImage(file, src) {
+    return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = src || URL.createObjectURL(file); });
   }
   function toThumb(src, max = 260) {
     const k = Math.min(1, max / Math.max(src.width, src.height)), c = document.createElement('canvas');
@@ -486,10 +490,9 @@ const App = (() => {
         <span class="eyebrow">${fmtDay(today())} · ${st} day streak</span>
         <h1>${greet}${name}.</h1>
         <p class="lead">Your skin is <b class="grad-text">${word(s7, sPrev)}</b> and your hair is <b class="grad-text">${word(h7, hPrev)}</b>. ${tl ? 'Today is logged.' : 'You have not checked in today yet.'}</p>
-        <div class="row mt">
-          <a class="btn primary" href="#/log">${tl ? 'Update today' : 'Log today'} →</a>
-          <a class="btn" href="#/scan">Take a photo scan</a>
-        </div>
+        <label class="drop dash-drop mt" id="dashDrop" for="dashFile"><input type="file" accept="image/*" id="dashFile" hidden>
+          <span class="drop-orb sm"></span><span><b>Upload a photo to scan</b><br><span class="small muted">Face or hair parting · scanned automatically · 3D model + fix plan</span></span></label>
+        <div class="row" style="margin-top:12px"><a class="btn sm ghost" href="#/log">${tl ? 'Edit today\'s check-in' : 'Quick check-in (optional)'}</a></div>
         <div class="hero-chips">
           <span class="pill skin">Skin 7-day avg ${s7 == null ? '—' : Math.round(s7)}</span>
           <span class="pill hair">Hair 7-day avg ${h7 == null ? '—' : Math.round(h7)}</span>
@@ -563,6 +566,7 @@ const App = (() => {
     return `${demoBanner()}
     <div class="page-head row between" style="align-items:flex-end">
       <div><span class="eyebrow">Daily check-in</span><h1>${logDate === today() ? 'How is today going?' : fmtDay(logDate)}</h1>
+      <p class="small" style="margin:0 0 6px">Optional. A <a href="#/scan">photo scan</a> fills in the skin and scalp parts for you.${l.auto ? ' <span class="pill skin">⚡ filled from today\'s scan</span>' : ''}</p>
       <p class="small" style="margin:0">${logged ? '<span class="pill good">✓ Logged</span>' : '<span class="pill warn">Not logged yet</span> <span class="muted">Change anything to start this day\'s entry.</span>'} <span class="saved" id="saved">● saved</span></p></div>
       <div class="datebar"><button class="btn sm" data-act="day" data-d="-1" aria-label="Previous day">◀</button><input type="date" id="logDate" value="${logDate}" max="${today()}" aria-label="Date"><button class="btn sm" data-act="day" data-d="1" ${logDate >= today() ? 'disabled' : ''} aria-label="Next day">▶</button></div>
     </div>
@@ -637,68 +641,435 @@ const App = (() => {
     set('#liveSkin', skinScore(l)); set('#liveHair', hairScore(l)); set('#liveRoutine', Math.round((adherence(l) || 0) * 100) + '%');
   }
 
-  /* ---------- photo scan ---------- */
-  let scanKind = 'skin', lastScan = null, cmp = [];
+  /* ---------- photo scan: auto-detect, 3D relief model, findings & fix plan ---------- */
   const SCAN_LABELS = {
     skin: [['shine', 'Shine / oil', '#ffc24b'], ['redness', 'Redness', '#ff5c7a'], ['spots', 'Dark spots', '#ff4fd8'], ['evenness', 'Tone evenness', '#9dff6a']],
-    hair: [['scalp', 'Scalp visible', '#ff4fd8'], ['density', 'Coverage', '#a77bff'], ['flakes', 'Flakes', '#d5c2ff']],
+    hair: [['scalp', 'Scalp visible', '#3cf0ff'], ['density', 'Coverage', '#a77bff'], ['flakes', 'Flakes', '#ff4fd8']],
   };
+  const FTYPE = {
+    acne: ['Inflamed spot', '#ff3b5c'], spots: ['Dark mark', '#ff4fd8'], oil: ['Oily zone', '#ffc24b'],
+    thin: ['Thinner area', '#3cf0ff'], flakes: ['Flakes', '#ff4fd8'],
+  };
+  // Fix plans: first-line, evidence-based options. Not a prescription.
+  const FIXES = {
+    acne: {
+      title: 'Inflamed spots (likely acne)', color: '#ff3b5c',
+      why: 'Clogged pores plus inflammation. Humidity, sweat, friction (phone, mask, pillowcase) and high-glycaemic food can make it worse.',
+      am: ['Gentle gel cleanser', 'Niacinamide 4–5% serum', 'Oil-free gel moisturiser', 'Non-comedogenic sunscreen SPF 50'],
+      pm: ['Gentle cleanser', 'Adapalene 0.1% gel, pea-sized for the whole face, 3 nights a week at first', 'Benzoyl peroxide 2.5% on active spots (other nights)', 'Light moisturiser'],
+      habits: ['Do not pick or squeeze: it leaves marks that last longer than the spot', 'Change pillowcases twice a week and wipe your phone screen', 'Prefer slow carbs (millets, dal, whole grains) over sugary snacks'],
+      timeline: 'A small flare in weeks 2–4 is normal. Fewer new spots by weeks 6–8; judge the result at 12 weeks.',
+      derm: 'Painful deep lumps, scarring, or no improvement after 12 weeks. Prescription treatments work well.',
+      evidence: 'Adapalene and benzoyl peroxide are first-line treatments in the American Academy of Dermatology acne guideline (2024).',
+    },
+    spots: {
+      title: 'Dark marks and uneven tone', color: '#ff4fd8',
+      why: 'Extra melanin after acne or sun (post-inflammatory hyperpigmentation). Indian skin is especially prone, and UV keeps it dark.',
+      am: ['Gentle cleanser', 'Vitamin C or niacinamide serum', 'Moisturiser', 'Sunscreen SPF 50 PA++++, two finger-lengths, reapplied every 2–3 h outdoors'],
+      pm: ['Cleanser', 'Azelaic acid 10–20% or alpha arbutin 2%', 'Moisturiser'],
+      habits: ['No lemon, toothpaste or harsh scrubs: irritation makes marks darker', 'Tinted sunscreen also blocks visible light, which worsens melasma', 'Treat active acne first, since every spot can leave a new mark'],
+      timeline: 'Marks fade slowly: visible change in 8–12 weeks, 6 months or more for deeper marks.',
+      derm: 'Any spot that changes shape or colour, itches or bleeds. Stubborn melasma may need prescription creams.',
+      evidence: 'Daily broad-spectrum sunscreen, azelaic acid and niacinamide have trial evidence for hyperpigmentation.',
+    },
+    oil: {
+      title: 'Oily zones', color: '#ffc24b',
+      why: 'Sebum production is mostly genetic and hormonal, and heat and humidity increase it.',
+      am: ['Gel or foaming cleanser', 'Niacinamide + zinc serum', 'Oil-free gel moisturiser', 'Matte gel sunscreen'],
+      pm: ['Cleanser', 'Salicylic acid 2%, 2–3 nights a week', 'Light gel moisturiser'],
+      habits: ['Do not skip moisturiser: stripped skin can feel tight and still be oily', 'Use blotting paper instead of washing 4–5 times a day', 'A clay mask once a week at most'],
+      timeline: 'Shine usually drops within 2–4 weeks of consistent use.',
+      derm: 'Greasy, red, flaky patches around the nose and eyebrows may be seborrhoeic dermatitis.',
+      evidence: 'Topical 2% niacinamide reduced sebum in a controlled study (Draelos et al., 2006).',
+    },
+    red: {
+      title: 'Redness and irritation', color: '#ff8f6b',
+      why: 'Often a stressed skin barrier from too many actives, hot water, fragrance or sun.',
+      am: ['Rinse with water or a cream cleanser', 'Ceramide moisturiser', 'Mineral sunscreen (zinc oxide)'],
+      pm: ['Gentle cleanser', 'Ceramide or centella moisturiser'],
+      habits: ['Pause scrubs, acids and retinoids for 1–2 weeks', 'Use fragrance-free products and patch test anything new', 'Lukewarm water, never hot'],
+      timeline: 'Irritation usually calms within 1–2 weeks once the trigger stops.',
+      derm: 'Persistent flushing, visible vessels or bumps (possible rosacea), or a rash that spreads, blisters or itches badly.',
+      evidence: 'Ceramide-containing moisturisers repair the barrier and reduce water loss.',
+    },
+    thin: {
+      title: 'Visible scalp / thinning', color: '#3cf0ff',
+      why: 'Common causes are pattern hair loss, shedding after stress, illness or crash dieting (telogen effluvium), and low iron, vitamin D, B12 or thyroid problems.',
+      am: ['Loose hairstyles: avoid tight buns and ponytails'],
+      pm: ['Gentle scalp massage, 4 minutes', 'Minoxidil, only after a dermatologist confirms pattern hair loss'],
+      habits: ['Eat enough protein every day (see Fuel) and avoid crash diets', 'Ask your doctor for ferritin, vitamin D, B12 and thyroid (TSH) tests', 'Rescan the same parting every 2 weeks in the same light'],
+      timeline: 'Hair grows about 1 cm a month, so real change shows after 3–6 months.',
+      derm: 'Sudden shedding in clumps, round bald patches, or scalp pain, redness or scarring.',
+      evidence: 'Minoxidil is the best-studied over-the-counter treatment for pattern hair loss; low iron and vitamin D are linked with shedding.',
+    },
+    flakes: {
+      title: 'Flakes / dandruff', color: '#d5c2ff',
+      why: 'Mostly an overgrowth of Malassezia yeast feeding on scalp oil.',
+      am: [],
+      pm: ['Anti-dandruff shampoo with ketoconazole 2% or zinc pyrithione, 2–3 times a week; leave the lather on for 5 minutes', 'Conditioner on the lengths only'],
+      habits: ['Do not leave oil on the scalp overnight: it feeds the yeast', 'Wash after heavy sweating or workouts'],
+      timeline: 'Flakes usually improve within 2–4 weeks.',
+      derm: 'Thick silvery scales, red patches spreading to the face, or bleeding.',
+      evidence: 'Ketoconazole and zinc pyrithione shampoos reduced dandruff in controlled trials.',
+    },
+  };
+  const ZONE_NAME = Object.fromEntries(ZONES.map(([id, label]) => [id, label]));
+  ZONE_NAME.parting = 'Parting'; ZONE_NAME.scalp = 'Scalp';
+
+  let scanKind = 'auto', current = null, pendingFile = null, cmp = [], layer = 'all', relief = 1, busy = false;
+
+  function dilate(m, w, h) {
+    const o = new Uint8Array(m.length);
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x; if (m[i] || m[i - 1] || m[i + 1] || m[i - w] || m[i + w]) o[i] = 1; }
+    return o;
+  }
+  function blobs(mask, w, h, minA, maxA) {
+    const seen = new Uint8Array(w * h), q = new Int32Array(w * h), out = [];
+    for (let i = 0; i < w * h; i++) {
+      if (!mask[i] || seen[i]) continue;
+      let qh = 0, qt = 0, sx = 0, sy = 0, n = 0; q[qt++] = i; seen[i] = 1;
+      while (qh < qt) {
+        const p = q[qh++], x = p % w, y = (p / w) | 0; sx += x; sy += y; n++;
+        if (x > 0 && mask[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; q[qt++] = p - 1; }
+        if (x < w - 1 && mask[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; q[qt++] = p + 1; }
+        if (y > 0 && mask[p - w] && !seen[p - w]) { seen[p - w] = 1; q[qt++] = p - w; }
+        if (y < h - 1 && mask[p + w] && !seen[p + w]) { seen[p + w] = 1; q[qt++] = p + w; }
+      }
+      if (n >= minA && n <= maxA) out.push({ x: sx / n, y: sy / n, n });
+    }
+    return out.sort((a, b) => b.n - a.n);
+  }
+  // nearby fragments of the same spot are merged into one finding
+  function merge(list, dist) {
+    const out = [];
+    for (const b of list) {
+      const m = out.find((o) => Math.hypot(o.x - b.x, o.y - b.y) < dist);
+      if (m) { const n = m.n + b.n; m.x = (m.x * m.n + b.x * b.n) / n; m.y = (m.y * m.n + b.y * b.n) / n; m.n = n; } else out.push({ ...b });
+    }
+    return out.sort((a, b) => b.n - a.n);
+  }
+  function zoneOf(px, py, bb) {
+    const u = (px - bb.x0) / Math.max(1, bb.x1 - bb.x0), v = (py - bb.y0) / Math.max(1, bb.y1 - bb.y0);
+    if (v < 0.28) return 'forehead';
+    if (v > 0.82) return u < 0.3 ? 'jawL' : u > 0.7 ? 'jawR' : 'chin';
+    if (v > 0.66 && (u < 0.25 || u > 0.75)) return u < 0.5 ? 'jawL' : 'jawR';
+    if (u > 0.38 && u < 0.62) return 'nose';
+    return u < 0.5 ? 'cheekL' : 'cheekR';
+  }
+  // eyes, nostrils and lips look like "dark" or "red" spots, so they are skipped
+  const featureZone = (u, v) => (v > 0.3 && v < 0.5 && ((u > 0.1 && u < 0.45) || (u > 0.55 && u < 0.9))) || (v > 0.55 && v < 0.68 && u > 0.36 && u < 0.64) || (v > 0.68 && v < 0.86 && u > 0.3 && u < 0.7);
+
+  function skinFindings(res, W, H) {
+    const bb = res.bbox, fw = Math.max(1, bb.x1 - bb.x0), fh = Math.max(1, bb.y1 - bb.y0), fA = fw * fh;
+    // a real spot sits on skin: check a ring around it (the spot itself may not read as skin)
+    const onSkin = (b) => { const r = Math.sqrt(b.n / Math.PI) + 5; let n = 0; for (let k = 0; k < 8; k++) { const x = Math.round(b.x + r * Math.cos(k * Math.PI / 4)), y = Math.round(b.y + r * Math.sin(k * Math.PI / 4)); if (x >= 0 && y >= 0 && x < W && y < H && res.skin[y * W + x]) n++; } return n >= 5; };
+    const keep = (b) => { const u = (b.x - bb.x0) / fw, v = (b.y - bb.y0) / fh; return u >= 0 && u <= 1 && v >= 0 && v <= 1 && !featureZone(u, v) && onSkin(b); };
+    const minA = Math.max(5, fA * 0.0002), maxA = fA * 0.02;
+    const tag = (type) => (b) => ({ ...b, type, zone: zoneOf(b.x, b.y, bb) });
+    const md = fw * 0.045;
+    const acne = merge(blobs(dilate(res.masks.red, W, H), W, H, minA / 2, maxA), md).filter((b) => b.n >= minA).filter(keep).slice(0, 10).map(tag('acne'));
+    const spots = merge(blobs(dilate(res.masks.spots, W, H), W, H, minA / 2, maxA), md).filter((b) => b.n >= minA).filter(keep).filter((b) => !acne.some((a) => Math.hypot(a.x - b.x, a.y - b.y) < md)).slice(0, 8).map(tag('spots'));
+    const oil = blobs(dilate(dilate(res.masks.shine, W, H), W, H), W, H, fA * 0.004, fA * 0.5).slice(0, 3).map(tag('oil'));
+    return [...acne, ...spots, ...oil];
+  }
+  function hairFindings(res, W, H) {
+    const G = 6, cw = W / G, ch = H / G, cells = [];
+    for (let gy = 0; gy < G; gy++) for (let gx = 0; gx < G; gx++) {
+      let s = 0, n = 0;
+      for (let y = Math.floor(gy * ch); y < Math.floor((gy + 1) * ch); y++) for (let x = Math.floor(gx * cw); x < Math.floor((gx + 1) * cw); x++) { s += res.masks.scalp[y * W + x]; n++; }
+      cells.push({ x: (gx + 0.5) * cw, y: (gy + 0.5) * ch, r: s / n });
+    }
+    const mean = avg(cells.map((c) => c.r));
+    const thin = cells.filter((c) => c.r > Math.max(0.3, mean * 1.4)).sort((a, b) => b.r - a.r).slice(0, 4).map((c) => ({ ...c, n: Math.round(c.r * 100), type: 'thin', zone: 'parting' }));
+    const flakes = merge(blobs(dilate(res.masks.flakes, W, H), W, H, 2, W * H * 0.01), W * 0.06).slice(0, 6).map((b) => ({ ...b, type: 'flakes', zone: 'scalp' }));
+    return [...thin, ...flakes];
+  }
+  function issuesFrom(kind, s, finds) {
+    const n = (t) => finds.filter((f) => f.type === t).length, out = [];
+    if (kind === 'skin') {
+      if (n('acne') >= 2 || s.redness >= 40) out.push('acne');
+      if (n('spots') >= 3 || s.spots >= 40 || s.evenness < 55) out.push('spots');
+      if ((n('oil') && s.shine >= 25) || s.shine >= 45) out.push('oil');
+      if (s.redness >= 55) out.push('red');
+    } else {
+      if (s.scalp >= 22 || n('thin')) out.push('thin');
+      if (s.flakes >= 12 || n('flakes') >= 3) out.push('flakes');
+    }
+    return out;
+  }
+  function analyzePhoto(cv, forced) {
+    const W = cv.width, H = cv.height, ctx = cv.getContext('2d', { willReadFrequently: true });
+    const sk = analyzeSkin(ctx, W, H);
+    const faceLike = sk.scores && sk.bbox && sk.coverage >= 0.12 && (sk.bbox.x1 - sk.bbox.x0) / W >= 0.3;
+    let kind = forced && forced !== 'auto' ? forced : faceLike ? 'skin' : 'hair';
+    let res = kind === 'skin' ? sk : analyzeHair(ctx, W, H);
+    if (!res.scores && !forced) { kind = kind === 'skin' ? 'hair' : 'skin'; res = kind === 'skin' ? sk : analyzeHair(ctx, W, H); }
+    if (!res.scores) return null;
+    const findings = kind === 'skin' ? skinFindings(res, W, H) : hairFindings(res, W, H);
+    return { kind, W, H, base: ctx.getImageData(0, 0, W, H), masks: res.masks, skin: res.skin, bbox: res.bbox, scores: res.scores, findings, issues: issuesFrom(kind, res.scores, findings), thumb: toThumb(cv) };
+  }
+  function applyScanToLog(cur) {
+    const l = ensureLog(today());
+    if (cur.kind === 'skin') {
+      const acne = cur.findings.filter((f) => f.type === 'acne');
+      l.skin.breakouts = acne.length; l.skin.zones = [...new Set(acne.map((f) => f.zone))];
+      l.skin.red = Math.round(clamp(cur.scores.redness / 10, 0, 10)); l.skin.oil = Math.round(clamp(cur.scores.shine / 10, 0, 10));
+    } else l.hair.flakes = Math.round(clamp(cur.scores.flakes / 10, 0, 10));
+    l.auto = { ...(l.auto || {}), [cur.kind]: Date.now() };
+  }
+
+  /* height map + texture for the 3D model */
+  function relieve(cur) {
+    const { W, H, base, masks, kind } = cur, d = base.data, gw = 150, gh = Math.max(2, Math.round((gw * H) / W));
+    const lum = new Float32Array(gw * gh), body = new Float32Array(gw * gh), issue = new Float32Array(gw * gh), cnt = new Float32Array(gw * gh);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x, g = Math.min(gh - 1, Math.floor((y / H) * gh)) * gw + Math.min(gw - 1, Math.floor((x / W) * gw));
+      const L = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255;
+      lum[g] += L; cnt[g]++;
+      if (kind === 'skin') { body[g] += masks.red ? (cur.skin?.[i] ? 1 : 0) : 0; issue[g] += (masks.red[i] ? 1 : 0) + (masks.spots[i] ? 0.7 : 0); }
+      else { body[g] += L < 0.45 ? 1 : 0; issue[g] += masks.scalp[i] ? 1 : 0; }
+    }
+    for (let g = 0; g < gw * gh; g++) { const c = cnt[g] || 1; lum[g] /= c; body[g] /= c; issue[g] /= c; }
+    const blur = (a, r, passes) => {
+      let src = a;
+      for (let p = 0; p < passes; p++) {
+        const out = new Float32Array(src.length);
+        for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+          let s = 0, n = 0;
+          for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const yy = y + dy, xx = x + dx; if (yy < 0 || yy >= gh || xx < 0 || xx >= gw) continue; s += src[yy * gw + xx]; n++; }
+          out[y * gw + x] = s / n;
+        }
+        src = out;
+      }
+      return src;
+    };
+    const dome = blur(body, 4, 3), iss = blur(issue, 1, 1), det = blur(lum, 1, 1);
+    const baseZ = new Float32Array(gw * gh), issueZ = new Float32Array(gw * gh);
+    for (let g = 0; g < gw * gh; g++) {
+      baseZ[g] = kind === 'skin' ? 0.34 * Math.pow(dome[g], 0.75) + 0.05 * (det[g] - 0.5) * dome[g] : 0.16 * dome[g] + 0.03 * (det[g] - 0.5);
+      issueZ[g] = kind === 'skin' ? 0.16 * Math.min(1, iss[g] * 2.5) : -0.12 * Math.min(1, iss[g] * 1.5);
+    }
+    return { gw, gh, baseZ, issueZ };
+  }
+  function scanTexture(cur, lay) {
+    const { W, H, base, masks, kind } = cur, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const ctx = c.getContext('2d'), im = new ImageData(new Uint8ClampedArray(base.data), W, H), d = im.data;
+    const tint = (i, rgb, a) => { d[i * 4] = d[i * 4] * (1 - a) + rgb[0] * a; d[i * 4 + 1] = d[i * 4 + 1] * (1 - a) + rgb[1] * a; d[i * 4 + 2] = d[i * 4 + 2] * (1 - a) + rgb[2] * a; };
+    const on = (k) => lay === 'all' || lay === k;
+    for (let i = 0; i < W * H; i++) {
+      if (kind === 'skin') {
+        if (!cur.skin?.[i]) { d[i * 4] *= 0.35; d[i * 4 + 1] *= 0.35; d[i * 4 + 2] *= 0.45; continue; }
+        if (on('acne') && masks.red[i]) tint(i, [255, 40, 80], 0.7);
+        else if (on('spots') && masks.spots[i]) tint(i, [255, 79, 216], 0.6);
+        else if (on('oil') && masks.shine[i]) tint(i, [255, 194, 75], 0.55);
+      } else {
+        if (on('thin') && masks.scalp[i]) tint(i, [60, 240, 255], 0.45);
+        if (on('flakes') && masks.flakes[i]) tint(i, [255, 79, 216], 0.9);
+      }
+    }
+    ctx.putImageData(im, 0, 0); return c;
+  }
+
+  const Viewer = {
+    raf: 0,
+    stop() {
+      cancelAnimationFrame(this.raf); this.raf = 0;
+      try { this.renderer?.dispose(); this.geo?.dispose(); this.tex?.dispose(); } catch {}
+      this.renderer = this.geo = this.tex = null; this.el = null;
+    },
+    start(el, cur) {
+      this.stop(); this.el = el; this.cur = cur; el.innerHTML = '';
+      const T = window.THREE;
+      if (!T) return this.flat(el, cur);
+      try { this.build(T, el, cur); } catch { this.stop(); this.el = el; this.flat(el, cur); }
+    },
+    build(T, el, cur) {
+      const w = el.clientWidth || 480, h = Math.min(560, Math.round(w * 0.95));
+      const canvas = document.createElement('canvas'); el.appendChild(canvas);
+      const renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); renderer.setSize(w, h);
+      const scene = new T.Scene(), camera = new T.PerspectiveCamera(35, w / h, 0.1, 50); camera.position.set(0, 0, 3.15);
+      const asp = cur.W / cur.H, pw = asp >= 1 ? 1.75 : 1.75 * asp, ph = asp >= 1 ? 1.75 / asp : 1.75;
+      const R = relieve(cur), geo = new T.PlaneGeometry(pw, ph, R.gw - 1, R.gh - 1);
+      const tex = new T.CanvasTexture(scanTexture(cur, layer));
+      const mesh = new T.Mesh(geo, new T.MeshStandardMaterial({ map: tex, roughness: 0.7, metalness: 0.05, side: T.DoubleSide }));
+      const wire = new T.Mesh(geo, new T.MeshBasicMaterial({ color: 0x3cf0ff, wireframe: true, transparent: true, opacity: 0.06 }));
+      const group = new T.Group(); group.add(mesh, wire); scene.add(group);
+      scene.add(new T.AmbientLight(0xffffff, 0.32));
+      const key = new T.DirectionalLight(0xffffff, 0.6); key.position.set(1, 1.2, 2); scene.add(key);
+      const c1 = new T.PointLight(0x3cf0ff, 0.7, 8); c1.position.set(-1.8, 0.6, 1.6); scene.add(c1);
+      const c2 = new T.PointLight(0xff4fd8, 0.55, 8); c2.position.set(1.8, -0.8, 1.6); scene.add(c2);
+      const sweep = new T.Mesh(new T.PlaneGeometry(pw * 1.08, 0.012), new T.MeshBasicMaterial({ color: 0x3cf0ff, transparent: true, opacity: 0.9 }));
+      sweep.position.z = 0.42; group.add(sweep);
+      const zAt = (fx, fy) => { const gx = clamp(Math.round((fx / cur.W) * (R.gw - 1)), 0, R.gw - 1), gy = clamp(Math.round((fy / cur.H) * (R.gh - 1)), 0, R.gh - 1), g = gy * R.gw + gx; return R.baseZ[g] + relief * R.issueZ[g]; };
+      const markers = cur.findings.slice(0, 12).map((f, k) => {
+        const col = new T.Color(FTYPE[f.type][1]);
+        const m = new T.Mesh(new T.SphereGeometry(0.02, 12, 12), new T.MeshBasicMaterial({ color: col }));
+        const ringM = new T.Mesh(new T.RingGeometry(0.034, 0.044, 32), new T.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, side: T.DoubleSide }));
+        m.add(ringM); group.add(m);
+        const lab = document.createElement('button'); lab.className = 'mk'; lab.style.setProperty('--c', FTYPE[f.type][1]); lab.textContent = k + 1; lab.dataset.act = 'focusFind'; lab.dataset.i = k; lab.title = `${FTYPE[f.type][0]} · ${ZONE_NAME[f.zone] || ''}`;
+        el.appendChild(lab);
+        return { m, ringM, f, lab };
+      });
+      const applyZ = () => {
+        const pos = geo.attributes.position;
+        for (let i = 0; i < pos.count; i++) pos.setZ(i, R.baseZ[i] + relief * R.issueZ[i]);
+        pos.needsUpdate = true; geo.computeVertexNormals();
+        markers.forEach(({ m, f }) => m.position.set((f.x / cur.W - 0.5) * pw, (0.5 - f.y / cur.H) * ph, zAt(f.x, f.y) + 0.03));
+      };
+      applyZ();
+      Object.assign(this, { renderer, geo, tex, applyZ, markers, scene, camera, group });
+      let tx = 0, ty = 0, rx = 0, ry = 0, drag = null, last = 0, yawOff = 0, t0 = performance.now();
+      el.onpointermove = (e) => {
+        const r = el.getBoundingClientRect(), u = (e.clientX - r.left) / r.width - 0.5, v = (e.clientY - r.top) / r.height - 0.5;
+        if (drag) yawOff = drag.yaw + (e.clientX - drag.x) * 0.01;
+        tx = u * 0.9; ty = v * 0.55; last = performance.now();
+      };
+      el.onpointerdown = (e) => { if (e.target.closest('.mk')) return; drag = { x: e.clientX, yaw: yawOff }; el.setPointerCapture?.(e.pointerId); };
+      el.onpointerup = el.onpointercancel = () => { drag = null; };
+      el.onpointerleave = () => { last = 0; };
+      el.ondblclick = () => { yawOff = 0; };
+      const v3 = new T.Vector3();
+      const loop = (now) => {
+        this.raf = requestAnimationFrame(loop);
+        if (!el.isConnected) return this.stop();
+        const idle = now - last > 1800;
+        const gx = idle ? Math.sin(now / 2200) * 0.38 : tx, gy = idle ? Math.sin(now / 3100) * 0.12 : ty;
+        ry += (gx + yawOff - ry) * 0.07; rx += (gy - rx) * 0.07;
+        group.rotation.y = ry; group.rotation.x = rx;
+        const st = (now - t0) / 1700;
+        if (st < 1) { sweep.visible = true; sweep.position.y = ph / 2 - st * ph; } else sweep.visible = false;
+        markers.forEach(({ m, ringM, lab }, k) => {
+          const pulse = 1 + 0.25 * Math.sin(now / 300 + k);
+          ringM.scale.setScalar(this.focus === k ? pulse * 1.6 : pulse);
+          ringM.lookAt(camera.position);
+          m.getWorldPosition(v3); v3.project(camera);
+          lab.style.transform = `translate(${(v3.x * 0.5 + 0.5) * w}px, ${(-v3.y * 0.5 + 0.5) * h}px)`;
+          lab.classList.toggle('on', this.focus === k);
+        });
+        renderer.render(scene, camera);
+      };
+      this.raf = requestAnimationFrame(loop);
+    },
+    setLayer() {
+      if (this.tex) { this.tex.image = scanTexture(this.cur, layer); this.tex.needsUpdate = true; }
+      else if (this.el) this.flat(this.el, this.cur);
+    },
+    setRelief() { this.applyZ?.(); },
+    flat(el, cur) {
+      el.innerHTML = '';
+      const wrap = document.createElement('div'); wrap.className = 'flat3d';
+      const cv = scanTexture(cur, layer); wrap.appendChild(cv);
+      cur.findings.slice(0, 12).forEach((f, k) => {
+        const lab = document.createElement('button'); lab.className = 'mk'; lab.style.setProperty('--c', FTYPE[f.type][1]); lab.textContent = k + 1; lab.dataset.act = 'focusFind'; lab.dataset.i = k;
+        lab.style.left = (f.x / cur.W) * 100 + '%'; lab.style.top = (f.y / cur.H) * 100 + '%'; lab.style.position = 'absolute'; wrap.appendChild(lab);
+      });
+      el.appendChild(wrap);
+      el.onpointermove = (e) => { const r = el.getBoundingClientRect(); wrap.style.transform = `rotateY(${((e.clientX - r.left) / r.width - 0.5) * 22}deg) rotateX(${(0.5 - (e.clientY - r.top) / r.height) * 16}deg)`; };
+    },
+  };
+
   pages.scan = () => {
-    const list = db.scans.filter((s) => s.kind === scanKind).sort((a, b) => a.date.localeCompare(b.date));
-    const a = list.find((s) => s.id === cmp[0]), b = list.find((s) => s.id === cmp[1]);
-    const labels = SCAN_LABELS[scanKind];
-    return `${demoBanner()}<div class="page-head"><span class="eyebrow">Photo scan</span><h1>${scanKind === 'skin' ? 'Face' : 'Hair & scalp'} <span class="grad-text">scan</span></h1>
-      <p>${scanKind === 'skin' ? 'Front-facing photo, daylight from a window, no makeup or filters. Same spot each week.' : 'Part your hair in the middle and photograph the parting from above in bright light. Same parting, same distance each time.'} The photo is analysed on this device and never uploaded.</p></div>
-    <div class="chips" style="margin-bottom:18px"><button class="chip ${scanKind === 'skin' ? 'on' : ''}" data-act="scanKind" data-v="skin">◐ Face / skin</button><button class="chip hair ${scanKind === 'hair' ? 'on' : ''}" data-act="scanKind" data-v="hair">⌇ Hair parting / scalp</button></div>
-    <div class="split">
-      <div class="card">
-        <label class="drop" id="drop" for="scanFile"><input type="file" accept="image/*" id="scanFile" hidden><div style="font-size:2rem">⇪</div><b>Drop a photo or tap to choose</b><div class="small muted">JPG or PNG</div></label>
-        <div class="scanbox hidden" id="scanBox"><canvas id="scanCanvas"></canvas></div>
-        <div class="row mt hidden" id="overlayCtl"><span class="small muted">Highlight:</span><button class="chip on" data-act="overlay" data-v="none">Off</button>${(scanKind === 'skin' ? [['shine', 'Shine'], ['red', 'Redness'], ['spots', 'Spots']] : [['scalp', 'Visible scalp'], ['flakes', 'Flakes']]).map(([k, t]) => `<button class="chip" data-act="overlay" data-v="${k}">${t}</button>`).join('')}</div>
+    const list = db.scans.filter((s) => s.kind === (current?.kind || 'skin')).sort((a, b) => a.date.localeCompare(b.date));
+    const allList = db.scans.slice().sort((a, b) => b.date.localeCompare(a.date));
+    const a = db.scans.find((s) => s.id === cmp[0]), b = db.scans.find((s) => s.id === cmp[1]);
+    const cur = current;
+    const drop = `<label class="drop ${cur ? 'compact' : 'hero-drop'}" id="drop" for="scanFile"><input type="file" accept="image/*" id="scanFile" hidden>
+      ${cur ? '<b>⇪ Scan another photo</b>' : `<div class="drop-orb"></div><b style="font-size:1.15rem">Drop a photo, or tap to choose</b><div class="small muted" style="margin-top:6px">A face selfie or a photo of your hair parting. It is scanned automatically.</div>`}</label>`;
+    let body = '';
+    if (cur) {
+      const labels = SCAN_LABELS[cur.kind], prev = db.scans.filter((s) => s.kind === cur.kind && s.id !== cur.id).sort((x, y) => y.date.localeCompare(x.date))[0];
+      const types = [...new Set(cur.findings.map((f) => f.type))];
+      body = `
+      <div class="split section" style="margin-top:18px">
+        <div class="card viewer-card"><div class="row between"><h3>${cur.kind === 'skin' ? '◐ Face' : '⌇ Scalp'} · 3D relief model</h3><span class="tiny muted">drag to rotate · double-click to reset</span></div>
+          <div class="viewer" id="viewer"></div>
+          <div class="row" style="margin-top:10px"><div class="chips"><button class="chip ${layer === 'all' ? 'on' : ''}" data-act="layer" data-v="all">All</button>${types.map((t) => `<button class="chip ${layer === t ? 'on' : ''}" data-act="layer" data-v="${t}" style="${layer === t ? `background:${FTYPE[t][1]};border-color:${FTYPE[t][1]}` : ''}">${FTYPE[t][0]}s</button>`).join('')}<button class="chip ${layer === 'none' ? 'on' : ''}" data-act="layer" data-v="none">Photo only</button></div>
+            <label style="margin:0 0 0 auto;display:flex;align-items:center;gap:8px;min-width:160px">Relief<input type="range" id="reliefRange" min="0" max="2.5" step="0.1" value="${relief}" style="--p:${relief / 2.5 * 100}"></label></div>
+          <p class="tiny muted" style="margin:8px 0 0">A single photo has no real depth, so this is a relief model built from the image: affected areas are raised${cur.kind === 'hair' ? ' (visible scalp sinks)' : ''} and numbered so you can see where they are.</p>
+        </div>
+        <div class="card"><div class="row between"><h3>Scan result</h3><span class="pill ${cur.kind}">${cur.kind === 'skin' ? 'Face detected' : 'Scalp detected'}</span></div>
+          <div class="grid" style="grid-template-columns:repeat(${labels.length === 4 ? 4 : 3},minmax(0,1fr));gap:8px">${labels.map(([k, t, c]) => `<div><div class="gauge" style="--v:${cur.scores[k]};--c:${c}"><span>${cur.scores[k]}</span></div><div class="tiny" style="text-align:center">${t}${prev?.scores?.[k] != null ? `<br><span class="muted">last ${prev.scores[k]}</span>` : ''}</div></div>`).join('')}</div>
+          <h3 class="mt">Found ${cur.findings.length ? cur.findings.length + ' area' + (cur.findings.length > 1 ? 's' : '') : 'nothing that stands out'}</h3>
+          <div class="stack" style="gap:6px;max-height:300px;overflow:auto">${cur.findings.slice(0, 12).map((f, k) => `<button class="find" data-act="focusFind" data-i="${k}"><span class="mk static" style="--c:${FTYPE[f.type][1]}">${k + 1}</span><span><b>${FTYPE[f.type][0]}</b> <span class="muted">· ${ZONE_NAME[f.zone] || ''}</span></span><span class="tiny muted" style="margin-left:auto">${f.type === 'thin' ? f.n + '% scalp' : f.type === 'oil' ? 'zone' : f.n > 80 ? 'larger' : 'small'}</span></button>`).join('') || '<p class="small muted">Nothing stands out in this photo.</p>'}</div>
+          <div class="insight info mt"><div class="ic">✓</div><div><b>Saved and filled in</b><p>${cur.fromHistory ? 'Opened from your history.' : `Added to your history, and today's check-in was filled in${cur.kind === 'skin' ? ` (${cur.findings.filter((f) => f.type === 'acne').length} spots, redness, oiliness)` : ' (flakes)'}. Nothing to type.`}</p></div></div>
+          ${cur.fromHistory ? '' : `<button class="btn sm ghost mt" data-act="delScan" data-id="${cur.id}">Delete this scan</button>`}
+        </div>
       </div>
-      <div class="card" id="scanResult"><h3>What it measures</h3>
-        ${scanKind === 'skin' ? `<div class="stack small"><div class="insight info"><div class="ic">◍</div><div><b>Shine</b><p>Bright, colourless highlights. A rough guide to oiliness.</p></div></div><div class="insight info"><div class="ic">◉</div><div><b>Redness</b><p>Areas much redder than your average tone: pimples, irritation.</p></div></div><div class="insight info"><div class="ic">◐</div><div><b>Dark spots & evenness</b><p>Patches darker than their surroundings: marks, pigmentation.</p></div></div></div>`
-        : `<div class="stack small"><div class="insight info"><div class="ic">⌇</div><div><b>Scalp visible</b><p>Share of the parting where scalp shows through. Falling over weeks means denser hair.</p></div></div><div class="insight info"><div class="ic">❄</div><div><b>Flakes</b><p>Tiny white specks on the hair: dandruff build-up.</p></div></div></div>`}
-        <p class="tiny muted mt" style="margin-bottom:0">This is a colour-based estimate, not a medical device. Lighting changes results, so compare scans taken the same way.</p></div>
-    </div>
-    <div class="section">
-      <div class="row between"><h2 style="margin:0">History</h2><span class="small muted">${list.length} scans${list.length > 1 ? ' · tap two photos to compare' : ''}</span></div>
-      ${list.length > 1 ? `<div class="card mt">${lineChart('scanChart', list.map((s) => s.date), labels.map(([k, t, c]) => ({ label: t, color: c, vals: list.map((s) => s.scores?.[k] ?? null), max: 100 })), { h: 220 })}</div>` : ''}
-      ${a && b ? `<div class="card mt"><div class="row between"><h3>Compare ${fmtShort(a.date)} → ${fmtShort(b.date)}</h3><button class="btn sm ghost" data-act="cmpClear">Close</button></div>
-        <div class="ba mt" style="--pos:50%"><div class="layer"><img src="${a.img}" alt="Earlier scan"></div><div class="layer after"><img src="${b.img}" alt="Later scan"></div><span class="tag" style="left:10px">${fmtShort(a.date)}</span><span class="tag" style="right:10px">${fmtShort(b.date)}</span><div class="handle"></div>
-        <input type="range" min="0" max="100" value="50" id="baRange" aria-label="Drag to compare"></div>
-        <div class="grid g4 mt">${labels.map(([k, t, c]) => `<div class="metric"><span class="tiny muted">${t}</span><span class="num" style="color:${c}">${a.scores?.[k] ?? '—'} → ${b.scores?.[k] ?? '—'}</span></div>`).join('')}</div></div>` : ''}
-      <div class="thumbs mt">${list.slice().reverse().map((s) => `<div><button class="thumb ${cmp.includes(s.id) ? 'sel' : ''}" data-act="pick" data-id="${s.id}" style="width:100%" aria-pressed="${cmp.includes(s.id)}"><img src="${s.img}" alt="Scan ${s.date}"><div><b>${fmtShort(s.date)}</b><br><span class="muted">${labels.slice(0, 2).map(([k, t]) => `${t.split(' ')[0]} ${s.scores?.[k] ?? '—'}`).join(' · ')}</span></div></button><button class="btn sm ghost" style="width:100%;margin-top:4px" data-act="delScan" data-id="${s.id}">Delete</button></div>`).join('') || '<p class="muted">No scans yet.</p>'}</div>
-    </div>`;
+
+      <div class="section"><span class="eyebrow">How to fix it</span><h2 style="margin-bottom:14px">${cur.issues.length ? 'Your plan' : 'Keep doing what you are doing'}</h2>
+        ${cur.issues.length ? `<div class="grid g2">${cur.issues.map((k) => { const f = FIXES[k]; return `<div class="card fix" style="--c:${f.color}">
+          <h3 style="color:${f.color}">● ${f.title}</h3><p class="small">${f.why}</p>
+          <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+            ${f.am.length ? `<div><div class="tiny muted" style="letter-spacing:.15em">☀ MORNING</div><ol class="small steps">${f.am.map((s) => `<li>${s}</li>`).join('')}</ol></div>` : ''}
+            <div><div class="tiny muted" style="letter-spacing:.15em">☾ NIGHT</div><ol class="small steps">${f.pm.map((s) => `<li>${s}</li>`).join('')}</ol></div></div>
+          <ul class="clean small">${f.habits.map((h) => `<li>${h}</li>`).join('')}</ul>
+          <p class="small" style="margin:10px 0 6px"><b>Timeline:</b> ${f.timeline}</p>
+          <p class="small" style="margin:0 0 6px;color:var(--bad)"><b>See a dermatologist if:</b> ${f.derm}</p>
+          <p class="tiny muted" style="margin:0">Evidence: ${f.evidence}</p></div>`; }).join('')}</div>
+          <div class="row mt"><button class="btn primary" data-act="addPlan">Add these steps to my routine</button><span class="small muted">Patch test new products for 2–3 days, and start one new active at a time.</span></div>`
+        : '<div class="card"><p style="margin:0">No clear problem areas in this photo. Keep up daily sunscreen and a gentle routine, and rescan in a week in the same light.</p></div>'}
+        <p class="tiny muted mt">These are general, first-line options from dermatology guidelines, not a diagnosis or prescription. Retinoids such as adapalene are not for use in pregnancy.</p>
+      </div>`;
+    } else {
+      body = `<div class="grid g3 section">
+        <div class="card"><h3>1 · Upload</h3><p class="small muted" style="margin:0">A front-facing selfie in daylight, or your hair parting from above.</p></div>
+        <div class="card"><h3>2 · Auto scan</h3><p class="small muted" style="margin:0">It works out face or scalp and finds spots, marks, oily zones, thinning and flakes.</p></div>
+        <div class="card"><h3>3 · 3D model & plan</h3><p class="small muted" style="margin:0">Turn the 3D model to see each area, then follow the fix plan. Your check-in fills itself.</p></div>
+      </div>`;
+    }
+    return `${demoBanner()}<div class="page-head"><span class="eyebrow">Photo scan</span><h1>Upload. Scan. <span class="grad-text">See it in 3D.</span></h1>
+      <p>The photo is analysed on this device and never uploaded anywhere.</p></div>
+      ${drop}
+      <div id="scanStage" class="hidden"></div>
+      ${body}
+      ${allList.length ? `<div class="section"><div class="row between"><h2 style="margin:0">History</h2><span class="small muted">Tap a scan to open it in 3D · ✓ two to compare</span></div>
+        ${list.length > 1 ? `<div class="card mt">${lineChart('scanChart', list.map((s) => s.date), SCAN_LABELS[current?.kind || 'skin'].map(([k, t, c]) => ({ label: t, color: c, vals: list.map((s) => s.scores?.[k] ?? null), max: 100 })), { h: 200 })}</div>` : ''}
+        ${a && b ? `<div class="card mt"><div class="row between"><h3>Compare ${fmtShort(a.date)} → ${fmtShort(b.date)}</h3><button class="btn sm ghost" data-act="cmpClear">Close</button></div>
+          <div class="ba mt" style="--pos:50%"><div class="layer"><img src="${a.img}" alt="Earlier scan"></div><div class="layer after"><img src="${b.img}" alt="Later scan"></div><span class="tag" style="left:10px">${fmtShort(a.date)}</span><span class="tag" style="right:10px">${fmtShort(b.date)}</span><div class="handle"></div>
+          <input type="range" min="0" max="100" value="50" id="baRange" aria-label="Drag to compare"></div></div>` : ''}
+        <div class="thumbs mt">${allList.map((s) => `<div><button class="thumb ${current?.id === s.id ? 'sel' : ''}" data-act="openScan" data-id="${s.id}" style="width:100%"><img src="${s.img}" alt="${s.kind} scan ${s.date}"><div><span class="pill ${s.kind}">${s.kind === 'skin' ? 'face' : 'scalp'}</span> <b>${fmtShort(s.date)}</b></div></button>
+          <button class="btn sm ghost ${cmp.includes(s.id) ? 'on-cmp' : ''}" style="width:100%;margin-top:4px" data-act="pick" data-id="${s.id}">${cmp.includes(s.id) ? '✓ comparing' : 'Compare'}</button></div>`).join('')}</div></div>` : ''}`;
   };
-  async function runScan(file) {
-    if (!file || !file.type.startsWith('image/')) return toast('Please choose an image file');
-    let img; try { img = await loadImage(file); } catch { return toast('That image could not be opened'); }
-    const cv = $('#scanCanvas'), W = Math.min(520, img.width), H = Math.round((img.height / img.width) * W);
-    cv.width = W; cv.height = H; const ctx = cv.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0, W, H);
-    $('#scanBox').classList.remove('hidden'); $('#scanBox').classList.add('busy'); $('#drop').classList.add('hidden');
-    await new Promise((r) => setTimeout(r, 1000));
-    const res = scanKind === 'skin' ? analyzeSkin(ctx, W, H) : analyzeHair(ctx, W, H);
-    $('#scanBox').classList.remove('busy');
-    if (!res.scores) {
-      $('#scanResult').innerHTML = `<h3>Couldn't read this photo</h3><p class="muted">${scanKind === 'skin' ? 'Not enough skin was found. Try a closer, evenly lit, front-facing photo.' : 'Could not separate hair from scalp. Try a sharper photo of your parting in bright light.'}</p><button class="btn" data-act="rescan">Try another photo</button>`;
+
+  async function runScan(file, opts = {}) {
+    if (busy) return;
+    if (!file || !(opts.src || file.type?.startsWith('image/'))) return toast('Please choose an image file');
+    busy = true;
+    let img; try { img = await loadImage(file, opts.src); } catch { busy = false; return toast('That image could not be opened'); }
+    const cv = document.createElement('canvas'), W = Math.min(440, img.width), H = Math.round((img.height / img.width) * W);
+    cv.width = W; cv.height = H; cv.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, W, H);
+    const stage = $('#scanStage');
+    if (stage && !opts.quiet) {
+      stage.className = 'card scanning section';
+      stage.innerHTML = `<div class="scan-prev"><img src="${cv.toDataURL('image/jpeg', 0.7)}" alt="Your photo"><div class="beam"></div></div><div class="stack" id="steps">${['Detecting face or scalp', 'Mapping skin tone and texture', 'Finding affected areas', 'Building 3D model', 'Writing your fix plan'].map((s) => `<div class="stp">${s}</div>`).join('')}</div>`;
+      for (const el of $$('#steps .stp')) { el.classList.add('run'); await new Promise((r) => setTimeout(r, 380)); el.classList.replace('run', 'done'); }
+    }
+    const res = analyzePhoto(cv, opts.kind || scanKind);
+    busy = false;
+    if (!res) {
+      if (stage) { stage.className = 'card section'; stage.innerHTML = `<h3>Couldn't read this photo</h3><p class="muted" style="margin:0">Try a closer, sharper photo in daylight: a front-facing selfie, or your hair parting from above.</p>`; }
       return;
     }
-    lastScan = { ...res, base: ctx.getImageData(0, 0, W, H), W, H, thumb: toThumb(cv) };
-    $('#overlayCtl').classList.remove('hidden');
-    const prev = db.scans.filter((s) => s.kind === scanKind).sort((a, b) => b.date.localeCompare(a.date))[0];
-    $('#scanResult').innerHTML = `<h3>Result</h3><div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">${SCAN_LABELS[scanKind].map(([k, t, c]) => `<div><div class="gauge" style="--v:${res.scores[k]};--c:${c}"><span>${res.scores[k]}</span></div><div class="small" style="text-align:center">${t}${prev?.scores?.[k] != null ? `<br><span class="tiny muted">last: ${prev.scores[k]}</span>` : ''}</div></div>`).join('')}</div>
-      <div class="row mt"><button class="btn primary" data-act="saveScan">Save to history</button><button class="btn ghost" data-act="rescan">Discard</button></div>
-      <p class="tiny muted mt" style="margin-bottom:0">${scanKind === 'hair' ? 'Lower "scalp visible" over the weeks means denser coverage.' : 'Compare with earlier scans taken in the same light.'}</p>`;
+    if (opts.history) { res.id = opts.history.id; res.fromHistory = true; }
+    else {
+      res.id = uid();
+      db.scans.push({ id: res.id, date: today(), kind: res.kind, img: res.thumb, scores: res.scores, issues: res.issues, count: res.findings.length });
+      applyScanToLog(res);
+      if (save()) toast(`Scan saved · ${res.findings.length} area${res.findings.length === 1 ? '' : 's'} found`);
+    }
+    current = res; layer = 'all'; Viewer.focus = null;
+    if (route !== '/scan') go('#/scan'); else render();
   }
-  function overlay(k) {
-    if (!lastScan) return; const ctx = $('#scanCanvas').getContext('2d'); ctx.putImageData(lastScan.base, 0, 0);
-    $$('#overlayCtl .chip').forEach((c) => c.classList.toggle('on', c.dataset.v === k));
-    if (k === 'none') return;
-    const m = lastScan.masks[k], col = { shine: [255, 194, 75], red: [255, 60, 90], spots: [255, 79, 216], scalp: [60, 240, 255], flakes: [255, 79, 216] }[k];
-    const im = ctx.getImageData(0, 0, lastScan.W, lastScan.H);
-    for (let i = 0; i < m.length; i++) if (m[i]) { im.data[i * 4] = col[0]; im.data[i * 4 + 1] = col[1]; im.data[i * 4 + 2] = col[2]; }
-    ctx.putImageData(im, 0, 0);
+  function addPlanToRoutine() {
+    if (!current) return;
+    let added = 0;
+    current.issues.forEach((k) => ['am', 'pm'].forEach((w) => FIXES[k][w].forEach((s) => {
+      const short = s.split(',')[0].split(' (')[0];
+      if (db.routine[w].some((x) => x.name.toLowerCase() === short.toLowerCase())) return;
+      db.routine[w].push({ id: uid(), name: short, kind: k === 'thin' || k === 'flakes' ? 'hair' : 'skin' }); added++;
+    })));
+    save(); toast(added ? `${added} step${added > 1 ? 's' : ''} added to your routine` : 'Your routine already has these steps');
   }
 
   /* ---------- trends ---------- */
@@ -864,7 +1235,7 @@ const App = (() => {
         </div>
         <p class="tiny muted" style="margin:12px 0 0">These are population reference values, not a prescription. If you have diabetes, PCOS, kidney disease or are pregnant, ask a doctor or dietitian for your numbers.</p>
       </div>
-      <form class="card" data-form="body"><h3>Your details</h3>
+      <form class="card" data-form="body"><h3>Personalise (optional)</h3><p class="tiny muted" style="margin-top:-4px">Sensible defaults are used until you change these.</p>
         <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
           <div><label for="bSex">Sex</label><select id="bSex" name="sex"><option value="female" ${p.sex !== 'male' ? 'selected' : ''}>Female</option><option value="male" ${p.sex === 'male' ? 'selected' : ''}>Male</option></select></div>
           <div><label for="bAge">Age</label><input type="number" id="bAge" name="age" min="14" max="90" value="${p.age}" required></div>
@@ -1191,20 +1562,17 @@ const App = (() => {
       case 'alarmDay': { const v = +d.v, ds = db.sleep.days; db.sleep.days = ds.includes(v) ? ds.filter((x) => x !== v) : [...ds, v].sort(); save(); return render(); }
       case 'quality': { const x = db.sleep.sessions.find((q) => q.id === d.id); if (x) x.quality = +d.v; save(); $('#modal').classList.add('hidden'); toast('Thanks, saved'); return render(); }
       case 'heatKey': heatKey = d.v; return render();
-      case 'scanKind': scanKind = d.v; cmp = []; lastScan = null; return render();
-      case 'overlay': return overlay(d.v);
-      case 'rescan': lastScan = null; return render();
-      case 'saveScan':
-        if (!lastScan) return;
-        db.scans.push({ id: uid(), date: today(), kind: scanKind, img: lastScan.thumb, scores: lastScan.scores });
-        if (save()) toast('Scan saved to history'); lastScan = null; return render();
+      case 'layer': layer = d.v; $$('[data-act="layer"]').forEach((c) => { const on = c.dataset.v === layer, col = FTYPE[c.dataset.v]?.[1]; c.classList.toggle('on', on); c.style.background = on && col ? col : ''; c.style.borderColor = on && col ? col : ''; }); return Viewer.setLayer();
+      case 'focusFind': Viewer.focus = Viewer.focus === +d.i ? null : +d.i; $$('.find').forEach((x) => x.classList.toggle('on', +x.dataset.i === Viewer.focus)); return;
+      case 'openScan': { const sc = db.scans.find((x) => x.id === d.id); if (sc) runScan({}, { src: sc.img, history: sc, kind: sc.kind, quiet: true }); return; }
+      case 'addPlan': return addPlanToRoutine();
       case 'pick': {
         cmp = cmp.includes(d.id) ? cmp.filter((x) => x !== d.id) : [...cmp, d.id].slice(-2);
-        const dt = (id) => db.scans.find((s) => s.id === id)?.date || '';
+        const dt = (id) => db.scans.find((x) => x.id === id)?.date || '';
         cmp.sort((x, y) => dt(x).localeCompare(dt(y))); return render();
       }
       case 'cmpClear': cmp = []; return render();
-      case 'delScan': return askConfirm('Delete this scan photo?', () => { db.scans = db.scans.filter((s) => s.id !== d.id); cmp = cmp.filter((x) => x !== d.id); save(); render(); });
+      case 'delScan': return askConfirm('Delete this scan photo?', () => { db.scans = db.scans.filter((x) => x.id !== d.id); cmp = cmp.filter((x) => x !== d.id); if (current?.id === d.id) current = null; save(); render(); });
       case 'range': trendRange = +d.v; return render();
       case 'metric': { const i = trendSel.indexOf(d.v); if (i >= 0) trendSel.splice(i, 1); else { trendSel.push(d.v); if (trendSel.length > 4) trendSel.shift(); } return render(); }
       case 'mv': { const l = db.routine[d.w], i = +d.i, j = i + +d.d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; save(); return render(); }
@@ -1356,14 +1724,16 @@ const App = (() => {
   }
   function mount() {
     requestAnimationFrame(() => requestAnimationFrame(() => $$('.ring-arc').forEach((c) => c.setAttribute('stroke-dashoffset', c.dataset.off))));
-    const fi = $('#scanFile');
-    if (fi) {
-      const drop = $('#drop');
-      fi.addEventListener('change', () => runScan(fi.files[0]));
+    $('#scanFile')?.addEventListener('change', (e) => e.target.files[0] && runScan(e.target.files[0]));
+    $('#dashFile')?.addEventListener('change', (e) => { if (e.target.files[0]) { pendingFile = e.target.files[0]; current = null; go('#/scan'); } });
+    $$('#drop, #dashDrop').forEach((drop) => {
       ['dragover', 'dragenter'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
       ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('over')));
-      drop.addEventListener('drop', (e) => { e.preventDefault(); runScan(e.dataTransfer.files[0]); });
-    }
+      drop.addEventListener('drop', (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (drop.id === 'dashDrop') { pendingFile = f; current = null; go('#/scan'); } else runScan(f); });
+    });
+    const vw = $('#viewer'); if (vw && current) Viewer.start(vw, current); else Viewer.stop();
+    $('#reliefRange')?.addEventListener('input', (e) => { relief = +e.target.value; e.target.style.setProperty('--p', (relief / 2.5) * 100); Viewer.setRelief(); });
+    if (pendingFile && route === '/scan') { const f = pendingFile; pendingFile = null; runScan(f); }
     $('#logDate')?.addEventListener('change', (e) => e.target.value && go('#/log/' + e.target.value));
     $('#baRange')?.addEventListener('input', (e) => e.target.parentElement.style.setProperty('--pos', e.target.value + '%'));
     $$('[data-rem-time]').forEach((el) => el.addEventListener('change', () => { db.reminders.find((r) => r.id === el.dataset.remTime).time = el.value; save(); render(); }));
