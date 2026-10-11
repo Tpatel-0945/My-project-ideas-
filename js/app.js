@@ -1025,7 +1025,7 @@ const App = (() => {
       return k >= 13;
     };
     const maxSpot = Math.PI * (pxMm * 3.5) ** 2;
-    const acneC = comps(red, aw, ah, minA, maxSpot).filter(round_).filter(ringOnSkin).filter((c) => surrounded(c, Aa, -1, 3)).sort((a, b) => b.n - a.n).slice(0, 12);
+    const acneC = comps(red, aw, ah, minA, maxSpot).filter(round_).filter(ringOnSkin).filter((c) => surrounded(c, Aa, -1, 3)).sort((a, b) => b.n - a.n).slice(0, 10);
     const spotC = comps(dark, aw, ah, minA, maxSpot).filter(round_).filter(ringOnSkin).filter((c) => surrounded(c, L, 1, 4.5)).filter((c) => !acneC.some((a) => Math.hypot(a.x - c.x, a.y - c.y) < Math.sqrt(a.n) + Math.sqrt(c.n))).sort((a, b) => b.n - a.n).slice(0, 12);
     const spotPx = spotC.reduce((a, c) => a + c.n, 0);
     const mm = (c) => round((2 * Math.sqrt(c.n / Math.PI)) / pxMm, 1);
@@ -1081,6 +1081,18 @@ const App = (() => {
     regions.filter((r) => r.sev !== 'none').forEach((r) => { const p = { x: cx0 + r.cx / s, y: cy0 + r.cy / s }; findings.push({ ...p, n: r.score, type: 'wrinkles', zone: r.key, label: r.label, detail: `${r.sev} · ${r.lines} line${r.lines === 1 ? '' : 's'}` }); });
     const oil = comps(dilate(dilate(shine, aw, ah), aw, ah), aw, ah, fw * fw * 0.004, N).sort((a, b) => b.n - a.n).slice(0, 2);
     oil.forEach((c) => { const p = toImg(c); findings.push({ ...p, n: c.n, type: 'oil', zone: zoneAt(p.x, p.y), detail: 'shine' }); });
+    // problem map: every face area gets a score from the lines, spots and shine found in it
+    const circ = (i, r) => Array.from({ length: 18 }, (_, k) => ({ x: Q[i].x + r * Math.cos((k * Math.PI) / 9), y: Q[i].y + r * Math.sin((k * Math.PI) / 9) }));
+    const ZPOLY = { ...polys, cheekL: circ(50, fw * 0.12), cheekR: circ(280, fw * 0.12), nose: hull([168, 6, 197, 195, 5, 4, 1, 19, 94, 2, 98, 327, 129, 358, 49, 279].map((i) => Q[i])), chin: hull([152, 148, 176, 149, 377, 400, 378, 17, 18, 200, 199, 175].map((i) => Q[i])) };
+    const ZLABEL = { forehead: 'Forehead', glabella: 'Between brows', crowL: 'Left eye corner', crowR: 'Right eye corner', eyeL: 'Under left eye', eyeR: 'Under right eye', nasoL: 'Left smile line', nasoR: 'Right smile line', cheekL: 'Left cheek', cheekR: 'Right cheek', nose: 'Nose', chin: 'Chin' };
+    const toMap = { forehead: 'forehead', glabella: 'glabella', nose: 'nose', cheekL: 'cheekL', cheekR: 'cheekR', chin: 'chin', jawL: 'cheekL', jawR: 'cheekR', underEyeL: 'eyeL', underEyeR: 'eyeR', templeL: 'crowL', templeR: 'crowR' };
+    const zones = Object.entries(ZPOLY).map(([key, poly]) => {
+      const items = findings.map((f, i) => [f, i]).filter(([f]) => (f.type === 'wrinkles' ? f.zone === key : toMap[f.zone] === key));
+      let score = regions.find((r) => r.key === key)?.score || 0;
+      items.forEach(([f]) => { score += f.type === 'acne' ? 26 : f.type === 'spots' ? 20 : f.type === 'oil' ? 15 : 0; });
+      score = Math.round(clamp(score));
+      return { key, label: ZLABEL[key], poly, score, level: score < 15 ? 'ok' : score < 45 ? 'watch' : 'problem', items: items.map(([, i]) => i) };
+    });
     const rs = regions.map((r) => r.score);
     const scores = {
       shine: Math.round(clamp((shineN / mN) * 1500)), redness: Math.round(clamp((redN / mN) * 1800)),
@@ -1093,7 +1105,7 @@ const App = (() => {
     if (scores.wrinkles >= 25 || regions.some((r) => r.score >= 38)) issues.push('wrinkles');
     if (scores.shine >= 40) issues.push('oil');
     if (scores.redness >= 55) issues.push('red');
-    return { kind: 'skin', mesh: true, W: FW, H: FH, full, P, crop: { cx0, cy0, s, aw, ah }, ov: { red, dark: spotMaskOf(spotC, N), wr, shine }, regions, scores, findings, issues, pxMm, thumb: toThumb(full, 480) };
+    return { kind: 'skin', mesh: true, W: FW, H: FH, full, P, crop: { cx0, cy0, s, aw, ah }, ov: { red, dark: spotMaskOf(spotC, N), wr, shine }, regions, zones, scores, findings, issues, pxMm, thumb: toThumb(full, 480) };
   }
   function spotMaskOf(cs, N) { const m = new Uint8Array(N); cs.forEach((c) => c.px.forEach((p) => (m[p] = 1))); return m; }
 
@@ -1102,14 +1114,20 @@ const App = (() => {
     x.drawImage(cur.full, 0, 0);
     if (lay === 'none') return c;
     const { cx0, cy0, s, aw, ah } = cur.crop, o = document.createElement('canvas'); o.width = aw; o.height = ah;
-    const ox = o.getContext('2d'), im = ox.createImageData(aw, ah), d = im.data, on = (k) => lay === 'all' || lay === k;
+    const ox = o.getContext('2d'), im = ox.createImageData(aw, ah), d = im.data, on = (k) => lay === 'all' || lay === 'map' || lay === k;
     const paint = (m, rgb, a) => { for (let i = 0; i < m.length; i++) if (m[i]) { d[i * 4] = rgb[0]; d[i * 4 + 1] = rgb[1]; d[i * 4 + 2] = rgb[2]; d[i * 4 + 3] = a; } };
     if (on('oil')) paint(cur.ov.shine, [255, 194, 75], 120);
     if (on('acne')) paint(cur.ov.red, [255, 40, 80], 170);
     if (on('spots')) paint(cur.ov.dark, [255, 79, 216], 190);
     if (on('wrinkles')) paint(cur.ov.wr, [127, 211, 255], 235);
     ox.putImageData(im, 0, 0);
-    if (on('wrinkles')) cur.regions.filter((r) => r.sev !== 'none').forEach((r) => {
+    if (lay === 'map' && cur.zones) {
+      ox.globalCompositeOperation = 'destination-over';
+      cur.zones.filter((z) => z.level !== 'ok').forEach((z) => { const [c, a] = { watch: ['255,194,75', 0.28], problem: ['255,92,122', 0.38] }[z.level]; ox.fillStyle = `rgba(${c},${a})`; pathPoly(ox, z.poly); ox.fill(); });
+      ox.globalCompositeOperation = 'source-over';
+      cur.zones.filter((z) => z.level !== 'ok').forEach((z) => { ox.strokeStyle = z.level === 'problem' ? 'rgba(255,92,122,.95)' : 'rgba(255,194,75,.9)'; ox.lineWidth = Math.max(1.5, aw / 220); ox.setLineDash([]); pathPoly(ox, z.poly); ox.stroke(); });
+    }
+    if (on('wrinkles') && lay !== 'map') cur.regions.filter((r) => r.sev !== 'none').forEach((r) => {
       ox.strokeStyle = r.sev === 'marked' ? '#ff5c7a' : r.sev === 'moderate' ? '#ffc24b' : '#7fd3ff'; ox.lineWidth = Math.max(1.5, aw / 260); ox.setLineDash([6, 4]); pathPoly(ox, r.poly); ox.stroke();
     });
     x.drawImage(o, cx0, cy0, aw / s, ah / s);
@@ -1126,10 +1144,35 @@ const App = (() => {
     return (TRIS = out);
   }
 
+  const TIPS = {
+    acne: 'Benzoyl peroxide 2.5% on the spot at night, or adapalene over the whole area. Do not squeeze it.',
+    spots: 'Fade it with daily SPF 50 plus azelaic acid or niacinamide. Expect 8–12 weeks.',
+    oil: 'Gel moisturiser and niacinamide here; blot during the day instead of washing.',
+    thin: 'Rescan this parting every 2 weeks; ask a doctor for ferritin, vitamin D, B12 and thyroid tests.',
+    flakes: 'Ketoconazole or zinc pyrithione shampoo, lather left on for 5 minutes, 2–3 times a week.',
+    forehead: 'Expression lines. Daily SPF 50 and retinol at night soften them; moisturise so they look shallower.',
+    glabella: 'Frown lines from repeated frowning. SPF and night retinol help; deep ones respond to treatments a dermatologist offers.',
+    crowL: 'Smile and squint lines. Sunglasses, SPF, and retinol around (not on) the eyelids.', crowR: 'Smile and squint lines. Sunglasses, SPF, and retinol around (not on) the eyelids.',
+    eyeL: 'Often dryness. Moisturise morning and night and sleep 7+ hours.', eyeR: 'Often dryness. Moisturise morning and night and sleep 7+ hours.',
+    nasoL: 'A natural fold that deepens with sun damage. SPF and retinol help; deep folds are a dermatologist question.', nasoR: 'A natural fold that deepens with sun damage. SPF and retinol help; deep folds are a dermatologist question.',
+  };
+  const findTip = (f) => (f.type === 'wrinkles' ? TIPS[f.zone] : TIPS[f.type]) || '';
+  const priority = (f) => (f.type === 'acne' ? 80 + f.n / 50 : f.type === 'spots' ? 60 + (f.mm || 0) * 3 : f.type === 'wrinkles' ? f.n : f.type === 'thin' ? 70 + f.n / 10 : f.type === 'flakes' ? 40 : 20);
   const Viewer = {
     raf: 0,
+    setFocus(i) {
+      this.focus = i == null || this.focus === i ? null : i;
+      $$('.find').forEach((x) => x.classList.toggle('on', +x.dataset.i === this.focus));
+      this.renderTour?.();
+    },
+    step(dir) {
+      const ord = (this.cur?.findings || []).map((f, i) => [priority(f), i]).sort((a, b) => b[0] - a[0]).map(([, i]) => i).filter((i) => i < 24);
+      if (!ord.length) return toast('Nothing to show: no problem areas were found');
+      const at = ord.indexOf(this.focus);
+      this.focus = null; this.setFocus(ord[at < 0 ? (dir > 0 ? 0 : ord.length - 1) : (at + dir + ord.length) % ord.length]);
+    },
     stop() {
-      cancelAnimationFrame(this.raf); this.raf = 0;
+      cancelAnimationFrame(this.raf); this.raf = 0; this.renderTour = null;
       try { this.renderer?.dispose(); this.geo?.dispose(); this.tex?.dispose(); } catch {}
       this.renderer = this.geo = this.tex = null; this.el = null;
     },
@@ -1140,8 +1183,9 @@ const App = (() => {
       try { cur.mesh ? this.buildFace(T, el, cur) : this.build(T, el, cur); } catch (e) { console.warn(e); this.stop(); this.el = el; this.flat(el, cur); }
     },
     buildFace(T, el, cur) {
-      const w = el.clientWidth || 480, h = Math.min(580, Math.round(w * 1.05));
+      const w = el.clientWidth || 480, wide = w >= 720, h = wide ? Math.min(660, Math.max(480, Math.round(w * 0.56))) : Math.min(580, Math.round(w * 1.1));
       const canvas = document.createElement('canvas'); el.appendChild(canvas);
+      this.dist = this.dist || 4.0; this.focus = null;
       const renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: true });
       renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); renderer.setSize(w, h);
       const scene = new T.Scene(), camera = new T.PerspectiveCamera(32, w / h, 0.1, 50); camera.position.set(0, 0, 4.0);
@@ -1178,7 +1222,7 @@ const App = (() => {
         }
         let bi = 0, bd = Infinity; P.forEach((p, i) => { const d = Math.hypot(p.x - ix, p.y - iy); if (d < bd) { bd = d; bi = i; } }); return [[bi, 1]];
       };
-      const markers = cur.findings.slice(0, 14).map((f, k) => {
+      const markers = cur.findings.slice(0, 24).map((f, k) => {
         const col = new T.Color(FTYPE[f.type][1]);
         const m = new T.Mesh(new T.SphereGeometry(0.018, 12, 12), new T.MeshBasicMaterial({ color: col }));
         const ringM = new T.Mesh(new T.RingGeometry(0.03, 0.04, 32), new T.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, side: T.DoubleSide }));
@@ -1187,6 +1231,31 @@ const App = (() => {
         el.appendChild(lab);
         return { m, ringM, f, lab, w: surf(f.x, f.y) };
       });
+      // callout cards beside the face, joined to their spot by a leader line
+      const faceCx = (Math.min(...xs) + Math.max(...xs)) / 2, cardW = 200;
+      const svgL = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svgL.setAttribute('class', 'leaders'); svgL.setAttribute('width', w); svgL.setAttribute('height', h); el.appendChild(svgL);
+      const top = markers.map((mk, i) => [priority(mk.f), i]).sort((a, b) => b[0] - a[0]).slice(0, wide ? 8 : 0).map(([, i]) => i);
+      const callouts = top.map((i) => {
+        const f = markers[i].f, card = document.createElement('button'); card.className = 'callout'; card.dataset.act = 'focusFind'; card.dataset.i = i; card.style.setProperty('--c', FTYPE[f.type][1]);
+        card.innerHTML = `<span class="mk static" style="--c:${FTYPE[f.type][1]}">${i + 1}</span><span><b>${esc(f.label || FTYPE[f.type][0])}</b><small>${f.type === 'wrinkles' ? esc(f.detail) : esc((ZONE_NAME[f.zone] || '') + (f.detail ? ' · ' + f.detail : ''))}</small></span>`;
+        el.appendChild(card);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line'); line.setAttribute('stroke', FTYPE[f.type][1]); line.setAttribute('stroke-width', '1.4'); line.setAttribute('stroke-opacity', '.8'); svgL.appendChild(line);
+        return { i, card, line, left: f.x < faceCx };
+      });
+      // tour card: what the focused problem is and how to fix it
+      const tour = document.createElement('div'); tour.className = 'tour hidden'; el.appendChild(tour);
+      this.renderTour = () => {
+        const i = this.focus, f = cur.findings[i];
+        if (i == null || !f) { tour.classList.add('hidden'); return; }
+        const ord = cur.findings.map((x, j) => [priority(x), j]).sort((a, b) => b[0] - a[0]).map(([, j]) => j).filter((j) => j < 24);
+        tour.style.setProperty('--c', FTYPE[f.type][1]);
+        tour.innerHTML = `<div class="row between" style="flex-wrap:nowrap"><span class="tiny muted">PROBLEM ${ord.indexOf(i) + 1} OF ${ord.length}</span><button class="icon-x" data-act="focusFind" data-i="${i}" aria-label="Close">✕</button></div>
+          <div class="row" style="gap:10px;flex-wrap:nowrap;margin:6px 0"><span class="mk static" style="--c:${FTYPE[f.type][1]};width:28px;height:28px">${i + 1}</span><div><b>${esc(f.label || FTYPE[f.type][0])}</b><div class="small muted">${f.type === 'wrinkles' ? esc(f.detail) : esc((ZONE_NAME[f.zone] || '') + (f.detail ? ' · ' + f.detail : ''))}</div></div></div>
+          <p class="small" style="margin:0 0 10px"><b style="color:var(--c)">How to fix:</b> ${findTip(f)}</p>
+          <div class="row"><button class="btn sm" data-act="tour" data-v="-1">◀ Previous</button><button class="btn sm primary" data-act="tour" data-v="1">Next problem ▶</button></div>`;
+        tour.classList.remove('hidden');
+      };
+      el.onwheel = (e) => { e.preventDefault(); this.dist = clamp(this.dist + e.deltaY * 0.002, 2.2, 6); };
       let depth = 0;
       const applyZ = () => {
         const p = geo.attributes.position;
@@ -1198,7 +1267,7 @@ const App = (() => {
       let tx = 0, ty = 0, rx = 0, ry = 0, drag = null, last = 0, yawOff = 0;
       const t0 = performance.now();
       el.onpointermove = (e) => { const r = el.getBoundingClientRect(); if (drag) yawOff = clamp(drag.yaw + (e.clientX - drag.x) * 0.01, -1.1, 1.1); tx = ((e.clientX - r.left) / r.width - 0.5) * 1.1; ty = ((e.clientY - r.top) / r.height - 0.5) * 0.6; last = performance.now(); };
-      el.onpointerdown = (e) => { if (e.target.closest('.mk')) return; drag = { x: e.clientX, yaw: yawOff }; el.setPointerCapture?.(e.pointerId); };
+      el.onpointerdown = (e) => { if (e.target.closest('.mk, .callout, .tour')) return; drag = { x: e.clientX, yaw: yawOff }; el.setPointerCapture?.(e.pointerId); };
       el.onpointerup = el.onpointercancel = () => { drag = null; };
       el.onpointerleave = () => { last = 0; };
       el.ondblclick = () => { yawOff = 0; };
@@ -1210,15 +1279,36 @@ const App = (() => {
         if (depth !== e) { depth = e; applyZ(); }
         sweep.visible = k < 1; sweep.position.y = 1.1 - k * 2.2;
         ptsMat.opacity = 1 - 0.85 * e; wireMat.opacity = this.wireOn ? 0.35 : 0.5 * (1 - e);
-        const idle = now - last > 1800, gx = idle ? Math.sin(now / 2400) * 0.45 : clamp(tx + yawOff, -1.1, 1.1), gy = idle ? Math.sin(now / 3300) * 0.12 : ty;
+        const fm = this.focus != null ? markers[this.focus] : null, idle = now - last > 1800;
+        let gx = idle ? Math.sin(now / 2400) * 0.45 : clamp(tx + yawOff, -1.1, 1.1), gy = idle ? Math.sin(now / 3300) * 0.12 : ty;
+        if (fm) { gx = clamp(-fm.m.position.x * 0.9, -0.75, 0.75); gy = clamp(fm.m.position.y * 0.35, -0.3, 0.3); }   // turn the problem towards you
         ry += (gx - ry) * 0.07; rx += (gy - rx) * 0.07; group.rotation.y = ry; group.rotation.x = rx;
+        group.updateMatrixWorld();
+        const camT = { x: 0, y: 0, z: this.dist }, lookT = { x: 0, y: 0, z: 0 };
+        if (fm) { fm.m.getWorldPosition(v3); camT.x = v3.x * 0.9; camT.y = v3.y * 0.9; camT.z = Math.min(this.dist, 2.45); lookT.x = v3.x; lookT.y = v3.y; lookT.z = v3.z; }
+        camera.position.x += (camT.x - camera.position.x) * 0.08; camera.position.y += (camT.y - camera.position.y) * 0.08; camera.position.z += (camT.z - camera.position.z) * 0.08;
+        look.x += (lookT.x - look.x) * 0.08; look.y += (lookT.y - look.y) * 0.08; look.z += (lookT.z - look.z) * 0.08; camera.lookAt(look);
+        const scr = [];
         markers.forEach(({ m, ringM, lab }, i) => {
           ringM.scale.setScalar(this.focus === i ? 1.7 + 0.3 * Math.sin(now / 200) : 1 + 0.2 * Math.sin(now / 300 + i));
           ringM.lookAt(camera.position); m.getWorldPosition(v3); v3.project(camera);
-          lab.style.transform = `translate(${(v3.x * 0.5 + 0.5) * w}px, ${(-v3.y * 0.5 + 0.5) * h}px)`; lab.classList.toggle('on', this.focus === i);
+          const sx = (v3.x * 0.5 + 0.5) * w, sy = (-v3.y * 0.5 + 0.5) * h; scr[i] = [sx, sy];
+          lab.style.transform = `translate(${sx}px, ${sy}px)`; lab.classList.toggle('on', this.focus === i); lab.classList.toggle('dim', this.focus != null && this.focus !== i);
         });
+        for (const side of [true, false]) {
+          const col = callouts.filter((c) => c.left === side).sort((a, b) => scr[a.i][1] - scr[b.i][1]);
+          let yPrev = -Infinity;
+          col.forEach((c) => {
+            const y = clamp(Math.max(scr[c.i][1] - 24, yPrev + 58), 8, h - 56); yPrev = y;
+            const x = side ? 10 : w - cardW - 10;
+            c.card.style.transform = `translate(${x}px, ${y}px)`; c.card.classList.toggle('on', this.focus === c.i); c.card.classList.toggle('dim', this.focus != null && this.focus !== c.i);
+            c.line.setAttribute('x1', side ? x + cardW : x); c.line.setAttribute('y1', y + 24); c.line.setAttribute('x2', scr[c.i][0]); c.line.setAttribute('y2', scr[c.i][1]);
+            c.line.setAttribute('stroke-opacity', this.focus != null && this.focus !== c.i ? '.15' : '.8');
+          });
+        }
         renderer.render(scene, camera);
       };
+      const look = new T.Vector3();
       this.raf = requestAnimationFrame(loop);
     },
 
@@ -1264,7 +1354,7 @@ const App = (() => {
         if (drag) yawOff = drag.yaw + (e.clientX - drag.x) * 0.01;
         tx = u * 0.9; ty = v * 0.55; last = performance.now();
       };
-      el.onpointerdown = (e) => { if (e.target.closest('.mk')) return; drag = { x: e.clientX, yaw: yawOff }; el.setPointerCapture?.(e.pointerId); };
+      el.onpointerdown = (e) => { if (e.target.closest('.mk, .callout, .tour')) return; drag = { x: e.clientX, yaw: yawOff }; el.setPointerCapture?.(e.pointerId); };
       el.onpointerup = el.onpointercancel = () => { drag = null; };
       el.onpointerleave = () => { last = 0; };
       el.ondblclick = () => { yawOff = 0; };
@@ -1320,10 +1410,13 @@ const App = (() => {
       const labels = SCAN_LABELS[cur.kind], prev = db.scans.filter((s) => s.kind === cur.kind && s.id !== cur.id).sort((x, y) => y.date.localeCompare(x.date))[0];
       const types = [...new Set(cur.findings.map((f) => f.type))];
       body = `
-      <div class="split section" style="margin-top:18px">
+      <div class="${cur.mesh ? 'grid' : 'split'} section" style="margin-top:18px">
         <div class="card viewer-card"><div class="row between"><h3>${cur.mesh ? '◐ 3D face model · 468 points' : cur.kind === 'skin' ? '◐ Face · 3D relief model' : '⌇ Scalp · 3D relief model'}</h3><span class="tiny muted">drag to rotate · double-click to reset</span></div>
           <div class="viewer" id="viewer"></div>
-          <div class="row" style="margin-top:10px"><div class="chips"><button class="chip ${layer === 'all' ? 'on' : ''}" data-act="layer" data-v="all">All</button>${types.map((t) => `<button class="chip ${layer === t ? 'on' : ''}" data-act="layer" data-v="${t}" style="${layer === t ? `background:${FTYPE[t][1]};border-color:${FTYPE[t][1]}` : ''}">${t === 'wrinkles' ? 'Lines' : FTYPE[t][0] + 's'}</button>`).join('')}<button class="chip ${layer === 'none' ? 'on' : ''}" data-act="layer" data-v="none">Photo only</button></div>
+          ${cur.mesh ? `<div class="row" style="margin-top:12px"><button class="btn primary sm" data-act="tour" data-v="1">▶ Show me each problem</button><button class="btn sm ghost" data-act="zoom" data-v="-1" aria-label="Zoom in">＋</button><button class="btn sm ghost" data-act="zoom" data-v="1" aria-label="Zoom out">－</button>
+            <span class="legend" style="margin-left:auto"><span style="--c:#ff5c7a">problem</span><span style="--c:#ffc24b">keep an eye on</span><span style="--c:#9dff6a">clear</span></span></div>
+          <div class="zones">${cur.zones.slice().sort((a, b) => b.score - a.score).map((z) => `<button class="zone-chip ${z.level}" data-act="zoneFocus" data-k="${z.key}">${z.label}<b>${z.level === 'ok' ? 'clear' : z.level === 'watch' ? 'watch' : 'problem'}</b></button>`).join('')}</div>` : ''}
+          <div class="row" style="margin-top:10px"><div class="chips">${cur.mesh ? `<button class="chip ${layer === 'map' ? 'on' : ''}" data-act="layer" data-v="map">Problem map</button>` : ''}<button class="chip ${layer === 'all' ? 'on' : ''}" data-act="layer" data-v="all">${cur.mesh ? 'All marks' : 'All'}</button>${types.map((t) => `<button class="chip ${layer === t ? 'on' : ''}" data-act="layer" data-v="${t}" style="${layer === t ? `background:${FTYPE[t][1]};border-color:${FTYPE[t][1]}` : ''}">${t === 'wrinkles' ? 'Lines' : FTYPE[t][0] + 's'}</button>`).join('')}<button class="chip ${layer === 'none' ? 'on' : ''}" data-act="layer" data-v="none">Photo only</button></div>
             ${cur.mesh ? `<button class="chip ${Viewer.wireOn ? 'on' : ''}" data-act="wire">Mesh</button>` : ''}<label style="margin:0 0 0 auto;display:flex;align-items:center;gap:8px;min-width:160px">${cur.mesh ? 'Depth' : 'Relief'}<input type="range" id="reliefRange" min="0" max="2.5" step="0.1" value="${relief}" style="--p:${relief / 2.5 * 100}"></label></div>
           <p class="tiny muted" style="margin:8px 0 0">${cur.mesh ? 'Your face shape is reconstructed from 468 landmark points estimated by a face-mesh model, with your photo mapped onto it. Depth is an estimate from one photo, not a medical 3D scan.' : `A single photo has no real depth, so this is a relief model built from the image: affected areas are raised${cur.kind === 'hair' ? ' (visible scalp sinks)' : ''} and numbered so you can see where they are.`}</p>
         </div>
@@ -1410,7 +1503,7 @@ const App = (() => {
       applyScanToLog(res);
       if (save()) toast(`Scan saved · ${res.findings.length} area${res.findings.length === 1 ? '' : 's'} found`);
     }
-    current = res; layer = 'all'; Viewer.focus = null;
+    current = res; layer = res.mesh ? 'map' : 'all'; Viewer.focus = null;
     if (route !== '/scan') go('#/scan'); else render();
   }
   function addPlanToRoutine() {
@@ -1915,7 +2008,15 @@ const App = (() => {
       case 'quality': { const x = db.sleep.sessions.find((q) => q.id === d.id); if (x) x.quality = +d.v; save(); $('#modal').classList.add('hidden'); toast('Thanks, saved'); return render(); }
       case 'heatKey': heatKey = d.v; return render();
       case 'layer': layer = d.v; $$('[data-act="layer"]').forEach((c) => { const on = c.dataset.v === layer, col = FTYPE[c.dataset.v]?.[1]; c.classList.toggle('on', on); c.style.background = on && col ? col : ''; c.style.borderColor = on && col ? col : ''; }); return Viewer.setLayer();
-      case 'focusFind': Viewer.focus = Viewer.focus === +d.i ? null : +d.i; $$('.find').forEach((x) => x.classList.toggle('on', +x.dataset.i === Viewer.focus)); return;
+      case 'focusFind': Viewer.setFocus(+d.i); if (Viewer.focus != null && innerWidth < 900) $('#viewer')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return;
+      case 'tour': Viewer.step(+d.v); return $('#viewer')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      case 'zoom': Viewer.dist = clamp((Viewer.dist || 4) + +d.v * 0.5, 2.2, 6); return;
+      case 'zoneFocus': {
+        const z = current?.zones?.find((x) => x.key === d.k);
+        if (!z?.items.length) return toast(`${z?.label || 'This area'} looks clear`);
+        Viewer.focus = null; Viewer.setFocus(z.items.slice().sort((a, b) => priority(current.findings[b]) - priority(current.findings[a]))[0]);
+        return $('#viewer')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       case 'openScan': { const sc = db.scans.find((x) => x.id === d.id); if (sc) runScan({}, { src: sc.img, history: sc, kind: sc.kind, quiet: true }); return; }
       case 'addPlan': return addPlanToRoutine();
       case 'wire': Viewer.wireOn = !Viewer.wireOn; el.classList.toggle('on', Viewer.wireOn); return;

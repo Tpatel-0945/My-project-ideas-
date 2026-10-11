@@ -392,3 +392,24 @@ ul.clean li::before { content: '▹'; position: absolute; left: 0; color: var(--
 .wr { padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: rgba(6, 8, 24, 0.45); }
 .wr.moderate { border-color: rgba(255, 194, 75, 0.4); }
 .wr.marked { border-color: rgba(255, 92, 122, 0.5); }
+
+/* ---------- 3D problem view ---------- */
+.leaders { position: absolute; inset: 0; pointer-events: none; }
+.callout { position: absolute; left: 0; top: 0; width: 200px; display: flex; gap: 8px; align-items: center; text-align: left; padding: 7px 10px; border-radius: 12px; cursor: pointer;
+  background: rgba(10, 13, 31, 0.86); border: 1px solid var(--c); box-shadow: 0 0 16px rgba(0, 0, 0, 0.5); backdrop-filter: blur(6px); transition: opacity 0.25s, box-shadow 0.2s; font-size: 0.8rem; line-height: 1.25; }
+.callout b { display: block; }
+.callout small { color: var(--muted); font-size: 0.72rem; }
+.callout.on { box-shadow: 0 0 22px var(--c); }
+.callout.dim, .mk.dim { opacity: 0.25; }
+.tour { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(440px, calc(100% - 24px)); padding: 14px 16px; border-radius: 16px;
+  background: rgba(10, 13, 31, 0.92); border: 1px solid var(--c); box-shadow: 0 0 30px rgba(0, 0, 0, 0.6), 0 0 18px var(--c); backdrop-filter: blur(8px); z-index: 3; cursor: default; }
+.icon-x { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 0.9rem; }
+.zones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.zone-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 99px; font-size: 0.8rem; cursor: pointer; border: 1px solid var(--line); background: rgba(6, 8, 24, 0.5); color: var(--text); }
+.zone-chip b { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; }
+.zone-chip.problem { border-color: rgba(255, 92, 122, 0.6); } .zone-chip.problem b { color: var(--bad); }
+.zone-chip.watch { border-color: rgba(255, 194, 75, 0.5); } .zone-chip.watch b { color: var(--warn); }
+.zone-chip.ok b { color: var(--good); }
+@media (max-width: 719px) {
+  .tour { position: relative; left: auto; bottom: auto; transform: none; width: auto; margin: 10px 4px 4px; }
+}
