@@ -61,9 +61,11 @@ const App = (() => {
   const DEMO_V = 2;
   const fresh = () => ({
     v: 2, scanWipe: 1, logs: {}, scans: [], routine: structuredClone(DEFAULT_ROUTINE), reminders: structuredClone(DEFAULT_REM), demo: false,
-    profile: { name: '', skinType: 'Combination', hairType: 'Wavy', sex: 'female', age: 25, weight: 60, height: 162, activity: 'light', goal: 'maintain' },
+    profile: { name: '', skinType: 'Combination', hairType: 'Wavy', sex: 'female', age: 25, weight: 60, height: 162, activity: 'light', goal: 'maintain', diet: 'any', lunch: 'muesli' },
     sleep: { alarm: '07:00', alarmOn: true, days: [0, 1, 2, 3, 4, 5, 6], need: 8, sessions: [], active: null },
     plate: { items: { paneer: 1, sabzi: 1, salad: 1, millet: 1, chaas: 1 } },
+    bowl: { items: { muesliNS: 1, greek: 1, chia: 1, pumpkin: 1, berries: 1 } },
+    chat: [],
   });
   const newLog = () => ({
     skin: { oil: 3, dry: 2, red: 1, sens: 1, breakouts: 0, zones: [], pustules: null, blackheads: null, spots: null, lines: null, even: null },
@@ -1522,7 +1524,7 @@ const App = (() => {
           <p class="small" style="margin:10px 0 6px"><b>Timeline:</b> ${f.timeline}</p>
           <p class="small" style="margin:0 0 6px;color:var(--bad)"><b>See a dermatologist if:</b> ${f.derm}</p>
           <p class="tiny muted" style="margin:0">Evidence: ${f.evidence}</p></div>`; }).join('')}</div>
-          <div class="row mt"><button class="btn primary" data-act="addPlan">Add these steps to my routine</button><span class="small muted">Patch test new products for 2–3 days, and start one new active at a time.</span></div>`
+          <div class="row mt"><button class="btn primary" data-act="addPlan">Add these steps to my routine</button><button class="btn" data-act="askDerma" data-q="Explain the scan that's open on my screen. What are the top problems, what's likely causing them, and what's my step-by-step plan for the next 8 weeks?">✦ Ask Derma about this scan</button><span class="small muted">Patch test new products for 2–3 days, and start one new active at a time.</span></div>`
         : '<div class="card"><p style="margin:0">No clear problem areas in this photo. Keep up daily sunscreen and a gentle routine, and rescan in a week in the same light.</p></div>'}
         <p class="tiny muted mt">These are general, first-line options from dermatology guidelines, not a diagnosis or prescription. Retinoids such as adapalene are not for use in pregnancy.</p>
       </div>`;
@@ -1706,7 +1708,38 @@ const App = (() => {
     ['chana', 'Roasted chana', '30 g', 110, 13, 6, 1.8, 5, 'Fruit & snacks'],
     ['almonds', 'Almonds', '10 (12 g)', 70, 1, 2.5, 6, 1.5, 'Fruit & snacks'],
   ].map(([id, name, serving, kcal, c, p, f, fib, group]) => ({ id, name, serving, kcal, c, p, f, fib, group }));
-  const FOOD = Object.fromEntries(FOODS.map((f) => [f.id, f]));
+  // muesli-bowl ingredients (per serving; carbs exclude fibre; s = added/free sugar). Sources: brand labels averaged, USDA FoodData Central, IFCT 2017
+  const BOWL_FOODS = [
+    ['muesliNS', 'Muesli, no added sugar', '50 g (½ cup)', 185, 29, 5, 3.5, 4.5, 0],
+    ['muesliSw', 'Fruit & nut / crunchy muesli', '50 g (½ cup)', 205, 33, 4.5, 5, 3, 9],
+    ['oats', 'Rolled oats (to mix in)', '30 g', 113, 17, 3.9, 2.1, 3, 0],
+    ['milk', 'Toned milk', '200 ml', 120, 9.4, 6.4, 6, 0, 0],
+    ['soymilk', 'Soy milk, unsweetened', '200 ml', 66, 1.2, 6.6, 3.6, 0.6, 0],
+    ['whey', 'Whey protein', '1 scoop (30 g)', 120, 3, 24, 1.5, 0, 0],
+    ['chia', 'Chia seeds', '1 tbsp (10 g)', 49, 0.8, 1.7, 3.1, 3.4, 0],
+    ['flax', 'Flaxseed, ground', '1 tbsp (7 g)', 37, 0.1, 1.3, 3, 1.9, 0],
+    ['pumpkin', 'Pumpkin seeds', '1 tbsp (10 g)', 56, 0.5, 3, 4.9, 0.6, 0],
+    ['walnuts', 'Walnuts', '2 whole (14 g)', 92, 1, 2.1, 9, 1, 0],
+    ['pb', 'Peanut butter, unsweetened', '1 tbsp (16 g)', 95, 2.5, 4, 8, 1, 0],
+    ['berries', 'Strawberries / berries', '80 g', 30, 5.5, 0.6, 0.3, 1.6, 0],
+    ['papaya', 'Papaya', '150 g', 65, 14, 0.7, 0.4, 2.6, 0],
+    ['pom', 'Pomegranate', '½ cup (87 g)', 72, 13, 1.5, 1, 3.5, 0],
+    ['honey', 'Honey', '1 tsp (7 g)', 21, 5.8, 0, 0, 0, 5.8],
+  ].map(([id, name, serving, kcal, c, p, f, fib, s]) => ({ id, name, serving, kcal, c, p, f, fib, s, group: 'Bowl' }));
+  const FOOD = Object.fromEntries([...FOODS, ...BOWL_FOODS].map((f) => [f.id, f]));
+  const BOWL_GROUPS = [['Muesli base', ['muesliNS', 'muesliSw', 'oats']], ['Milk & yoghurt', ['milk', 'soymilk', 'curd', 'greek', 'whey']], ['Seeds & nuts', ['chia', 'flax', 'pumpkin', 'almonds', 'walnuts', 'pb']], ['Fruit & sweetener', ['berries', 'apple', 'papaya', 'pom', 'banana', 'honey']]];
+  const BOWLS = {
+    skin: ['Skin & hair bowl', { muesliNS: 1, greek: 1, chia: 1, pumpkin: 1, berries: 1 }],
+    soak: ['Bircher (soaked overnight in curd)', { muesliNS: 1, greek: 1, chia: 1, almonds: 1, berries: 1 }],
+    vegan: ['Vegan bowl', { muesliNS: 1, soymilk: 1, flax: 1, pumpkin: 1, pb: 1, papaya: 1 }],
+    gym: ['Workout-day bowl', { muesliNS: 1, milk: 1, whey: 1, pumpkin: 1, berries: 1 }],
+  };
+  // the rest of the day, built around a muesli lunch (examples by diet)
+  const DAY_MEALS = {
+    b: { veg: '2 moong-dal or besan chillas with 50 g paneer + mint chutney + a guava', egg: '2-egg vegetable omelette + 1 multigrain toast or roti + an orange', non: '2-egg vegetable omelette + 1 multigrain toast or roti + an orange' },
+    s: { veg: 'Roasted chana (30 g) + a glass of chaas, or a bowl of sprouts chaat', egg: 'Roasted chana (30 g) + chaas, or 1 boiled egg + a fruit', non: 'Roasted chana (30 g) + chaas, or 1 boiled egg + a fruit' },
+    d: { veg: '1 katori dal or rajma + paneer / tofu sabzi + leafy greens + 1–2 millet rotis + salad', egg: '1 katori dal + egg bhurji or anda curry + leafy sabzi + 1–2 rotis + salad', non: 'Grilled fish or chicken (100–120 g) + 1 katori dal + leafy sabzi + 1 roti or ½ cup rice + salad' },
+  };
   const PLATES = {
     low: ['Lower-carb lunch', { paneer: 1, sabzi: 1, salad: 1, millet: 1, chaas: 1 }],
     thali: ['Dal-roti thali', { roti: 2, dal: 1, sabzi: 1, curd: 1, salad: 1 }],
@@ -1724,7 +1757,8 @@ const App = (() => {
     ['Omega-3', () => '≈250 mg EPA + DHA (EFSA)', 'May help dryness and inflammation. Evidence for skin is moderate.', 'Fish (mackerel, salmon, rohu), flaxseed, walnuts, chia'],
     ['Biotin', () => '40 µg', 'Deficiency is rare. Extra biotin does not grow hair if you are not deficient, and high doses can distort thyroid and other blood tests.', 'Eggs, nuts, seeds, pulses'],
   ];
-  const plateTotals = (items) => { const t = { kcal: 0, c: 0, p: 0, f: 0, fib: 0 }; Object.entries(items).forEach(([id, q]) => { const f = FOOD[id]; if (f && q) for (const k in t) t[k] += f[k] * q; }); return t; };
+  const plateTotals = (items) => { const t = { kcal: 0, c: 0, p: 0, f: 0, fib: 0, s: 0 }; Object.entries(items || {}).forEach(([id, q]) => { const f = FOOD[id]; if (f && q) for (const k in t) t[k] += (f[k] || 0) * q; }); return t; };
+  let lunchTab = null;
   let plateMode = 'low';
   const tbar = (label, v, target, unit, color, invert) => {
     const pc = target ? v / target : 0, over = invert ? pc > 1.15 : pc < 0.8;
@@ -1734,6 +1768,29 @@ const App = (() => {
   pages.fuel = () => {
     const p = db.profile, t = targets(), tl = db.logs[today()], water = tl?.life.water ?? 0;
     const items = db.plate.items, tot = plateTotals(items);
+    const tab = lunchTab || (p.lunch === 'muesli' ? 'bowl' : 'plate'), bowl = db.bowl?.items || {}, bt = plateTotals(bowl);
+    const bowlP = Math.max(25, t.protein * 0.3), bowlC = 45, bowlFib = 8, bowlK = t.kcal * 0.28;
+    const hasBase = ['muesliNS', 'muesliSw', 'oats'].some((k) => bowl[k]), hasSeed = ['chia', 'flax', 'pumpkin', 'almonds', 'walnuts', 'pb'].some((k) => bowl[k]), hasFruit = ['berries', 'apple', 'papaya', 'pom', 'banana'].some((k) => bowl[k]);
+    const bnotes = [];
+    if (!bt.kcal) bnotes.push(['info', 'Add a muesli base, something to pour over it, seeds and a fruit.']);
+    else {
+      if (!hasBase) bnotes.push(['info', 'Add a muesli base (50 g is a good portion).']);
+      bnotes.push(bt.p < bowlP * 0.8 ? ['warn', `Protein ${Math.round(bt.p)} g, under the ${Math.round(bowlP)} g you need at lunch. Muesli with milk alone gives about 11 g. Add 150 g hung curd / Greek yoghurt (+14 g), soy milk, or on workout days a scoop of whey (+24 g).`] : ['good', `Protein ${Math.round(bt.p)} g. That keeps you full until evening and feeds hair keratin.`]);
+      bnotes.push(bt.c > bowlC * 1.1 ? ['warn', `Carbs ${Math.round(bt.c)} g. Keep the bowl near ${bowlC} g: stick to 50 g muesli and drop the banana or honey.`] : ['good', `Carbs ${Math.round(bt.c)} g, a moderate, slow-release amount.`]);
+      if (bowl.muesliSw || bt.s > 6) bnotes.push(['warn', `About ${Math.round(bt.s)} g added sugar. Crunchy and fruit-&-nut muesli are often 15–25% sugar; pick one labelled "no added sugar" (under 5 g added sugar per 100 g).`]);
+      if (!hasSeed) bnotes.push(['warn', 'Add 1 tbsp pumpkin seeds (zinc for hair) or chia / flax (omega-3 and fibre).']);
+      if (!hasFruit) bnotes.push(['info', 'Add berries, papaya or pomegranate: vitamin C for collagen, plus fibre.']);
+      if (bt.fib >= bowlFib) bnotes.push(['good', `Fibre ${round(bt.fib, 1)} g. Good for steady blood sugar.`]);
+    }
+    const lunchNow = p.lunch === 'muesli' ? bt : p.lunch === 'skip' ? { kcal: 0, p: 0, c: 0 } : { kcal: t.kcal * 0.3, p: t.protein * 0.3, c: t.carbs * 0.3 };
+    const rest = { k: Math.max(0, t.kcal - lunchNow.kcal), p: Math.max(0, t.protein - lunchNow.p) }, dk = p.diet === 'any' ? 'egg' : p.diet;
+    const bedT = bedFor(db.sleep.need || 8), dinnerBy = (() => { const [h, m] = bedT.split(':').map(Number); return fmt12(`${pad((h + 21) % 24)}:${pad(m)}`); })();
+    const dayPlan = [
+      ['Breakfast', '7:30–9:00', 0.34, DAY_MEALS.b[dk]],
+      [p.lunch === 'muesli' ? 'Lunch · your muesli bowl' : p.lunch === 'skip' ? 'Lunch (skipped)' : 'Lunch', '1:00–2:00', null, p.lunch === 'muesli' ? Object.entries(bowl).filter(([, q]) => q).map(([id, q]) => (q > 1 ? q + '× ' : '') + FOOD[id]?.name.toLowerCase()).join(' + ') || 'Build it below' : p.lunch === 'skip' ? 'If you skip, move 15–20 g protein into breakfast and the snack so the day still adds up' : 'A plate from the builder below'],
+      ['Snack', '4:30–5:30', 0.2, DAY_MEALS.s[dk]],
+      ['Dinner', `by ${dinnerBy}`, 0.46, DAY_MEALS.d[dk]],
+    ];
     const lunchC = plateMode === 'low' ? 30 : t.carbs * 0.3, lunchP = Math.max(25, t.protein * 0.3), lunchFib = Math.max(8, t.fiber * 0.3), lunchK = t.kcal * 0.3;
     const ratio = tot.fib ? tot.c / tot.fib : tot.c ? Infinity : 0;
     const notes = [];
@@ -1769,6 +1826,8 @@ const App = (() => {
           <div><label for="bH">Height (cm)</label><input type="number" id="bH" name="height" min="120" max="220" value="${p.height}" required></div>
           <div><label for="bAct">Activity</label><select id="bAct" name="activity">${[['sedentary', 'Desk job, little exercise'], ['light', 'Light (1–3 workouts/week)'], ['moderate', 'Moderate (3–5/week)'], ['very', 'Very active (6–7/week)']].map(([v, l]) => `<option value="${v}" ${p.activity === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
           <div><label for="bGoal">Goal</label><select id="bGoal" name="goal"><option value="maintain" ${p.goal !== 'lose' ? 'selected' : ''}>Maintain weight</option><option value="lose" ${p.goal === 'lose' ? 'selected' : ''}>Lose slowly</option></select></div>
+          <div><label for="bDiet">Diet</label><select id="bDiet" name="diet">${[['any', 'No preference'], ['veg', 'Vegetarian'], ['egg', 'Eggetarian'], ['non', 'Non-vegetarian']].map(([v, l]) => `<option value="${v}" ${p.diet === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+          <div><label for="bLunch">At lunchtime I…</label><select id="bLunch" name="lunch">${[['muesli', 'Have muesli'], ['meal', 'Eat a full meal'], ['skip', 'Usually skip it']].map(([v, l]) => `<option value="${v}" ${p.lunch === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         </div>
         <button class="btn primary sm mt">Update targets</button>
       </form>
@@ -1790,20 +1849,45 @@ const App = (() => {
         </ul>
       </div>
 
-      <div class="card"><h3>◍ Thinking of skipping lunch to avoid carbs?</h3>
+      <div class="card"><h3>◍ Muesli instead of lunch: what the evidence says</h3>
         <ul class="clean small">
-          <li><b>Total carbs and carb quality matter more than one meal.</b> ICMR-NIN's 2024 guidelines suggest keeping cereals to about 45% of calories and filling the rest with pulses, vegetables, fruit, nuts and dairy.</li>
-          <li><b>Skipping is not harmful by itself.</b> In a 12-month trial, time-restricted eating gave similar weight loss to ordinary calorie restriction (Liu et al., NEJM 2022).</li>
-          <li><b>The risk for your hair is under-eating.</b> If skipping lunch means you miss your protein, iron or calories, shedding can follow 2–3 months later.</li>
-          <li><b>For your skin, choose slow carbs rather than zero carbs.</b> A low-glycaemic-load diet reduced acne lesions in a 12-week trial (Smith et al., AJCN 2007).</li>
+          <li><b>A muesli bowl is a real lunch, not a skipped one,</b> if you build it right. Plain muesli has a low-to-medium glycaemic index (about 40–65 depending on the brand; International GI Tables, Atkinson et al. 2021), so it avoids the post-lunch slump a big rice meal can bring.</li>
+          <li><b>The weak spot is protein.</b> 50 g muesli with milk gives about 11 g. Your lunch target is about ${Math.round(bowlP)} g, which hung curd, soy milk, seeds or whey can supply. Low protein over months is linked with hair shedding.</li>
+          <li><b>Watch the sugar, not the oats.</b> Many "crunchy" and fruit-&-nut mueslis are 15–25% sugar. A low-glycaemic-load diet reduced acne lesions in a 12-week trial (Smith et al., AJCN 2007).</li>
+          <li><b>Acne-prone?</b> Milk, especially skimmed, is linked with slightly higher acne odds in meta-analyses (Juhl et al., Nutrients 2018); yoghurt and cheese were not. Whey supplements have been reported to trigger flares. Hung curd or soy milk are safer bases.</li>
+          <li><b>Oats help.</b> Oat beta-glucan slows the glucose rise after a meal and, at about 3 g a day, lowers LDL cholesterol (EFSA 2011).</li>
+          <li><b>Keep tea and coffee an hour away</b> from the bowl so the iron in seeds and muesli is absorbed.</li>
         </ul>
-        <div class="insight good"><div class="ic">✓</div><div><b>Better than skipping: a lower-carb lunch</b><p>About ${Math.round(lunchP)} g protein, half a plate of vegetables, and one small serving of a whole grain or millet (about 20–30 g carbs). Try it in the plate builder below.</p></div></div>
-        <p class="small mt" style="margin-bottom:6px">Your last 30 days: lunch skipped on <b>${skip.length}</b> of ${d30.length} logged days.</p>
-        ${skip.length >= 3 && eat.length >= 3 ? `<div class="table-wrap"><table><thead><tr><th>Average</th><th>Lunch skipped</th><th>Lunch eaten</th></tr></thead><tbody>${cmpRow('Protein', 'protein', ' g')}${cmpRow('Hair fall', 'fall', '/day')}${cmpRow('Breakouts', 'breakouts', '', 1)}${cmpRow('Skin score', 'skinScore', '')}</tbody></table></div>` : '<p class="tiny muted">Log meals for a couple of weeks to see how skipping lunch affects you.</p>'}
+        <p class="small mt" style="margin-bottom:6px">Your last 30 days: lunch skipped on <b>${skip.length}</b> of ${d30.length} logged days. Logging your bowl counts as lunch.</p>
+        ${skip.length >= 3 && eat.length >= 3 ? `<div class="table-wrap"><table><thead><tr><th>Average</th><th>Lunch skipped</th><th>Lunch eaten</th></tr></thead><tbody>${cmpRow('Protein', 'protein', ' g')}${cmpRow('Hair fall', 'fall', '/day')}${cmpRow('Breakouts', 'breakouts', '', 1)}${cmpRow('Skin score', 'skinScore', '')}</tbody></table></div>` : '<p class="tiny muted">Log meals for a couple of weeks to see how your lunch habits affect your skin and hair.</p>'}
+        <button class="btn sm mt" data-act="askDerma" data-q="Plan my muesli lunch and the rest of today's meals around my targets and my latest skin scan.">✦ Ask Derma to plan today</button>
       </div>
     </div>
 
-    <div class="card section"><div class="row between"><h3>Plate builder · lunch</h3><div class="chips"><button class="chip ${plateMode === 'low' ? 'on' : ''}" data-act="plateMode" data-v="low">Lower-carb (≤30 g)</button><button class="chip ${plateMode === 'bal' ? 'on' : ''}" data-act="plateMode" data-v="bal">Balanced (${Math.round(t.carbs * 0.3)} g)</button></div></div>
+    <div class="card section day-plan"><div class="row between"><h3>Your day, built around a muesli lunch</h3><span class="small muted">${Math.round(t.kcal)} kcal · ${Math.round(t.protein)} g protein · ${dk === 'veg' ? 'vegetarian' : dk === 'non' ? 'non-veg' : 'eggetarian'} examples</span></div>
+      <div class="timeline">${dayPlan.map(([m, when, f, ex]) => { const k = f == null ? lunchNow.kcal : rest.k * f, pr = f == null ? lunchNow.p : rest.p * f; return `<div class="tl-item ${f == null ? 'lunch' : ''}"><div class="tl-when num">${when}</div><div class="tl-dot"></div><div class="tl-body"><b>${m}</b><div class="tl-macros num">${Math.round(k)} kcal · ${Math.round(pr)} g protein</div><p class="small muted">${esc(ex)}</p></div></div>`; }).join('')}</div>
+      <p class="tiny muted" style="margin:10px 0 0">The rest of the day is sized to make up what the bowl doesn't cover. Dinner is timed about 3 hours before your ${fmt12(bedT)} bedtime (from your alarm on the Sleep page). Change the diet type and lunch habit in Personalise above.</p>
+    </div>
+
+    <div class="card section"><div class="row between"><h3>${tab === 'bowl' ? 'Muesli bowl builder · lunch' : 'Plate builder · lunch'}</h3><div class="chips"><button class="chip ${tab === 'bowl' ? 'on' : ''}" data-act="lunchTab" data-v="bowl">Muesli bowl</button><button class="chip ${tab === 'plate' ? 'on' : ''}" data-act="lunchTab" data-v="plate">Regular plate</button></div></div>
+    ${tab === 'bowl' ? `
+      <div class="chips" style="margin-bottom:14px"><span class="small muted" style="align-self:center">Start from:</span>${Object.entries(BOWLS).map(([k, [n]]) => `<button class="chip" data-act="bowlPreset" data-v="${k}">${n}</button>`).join('')}<button class="chip" data-act="bowlPreset" data-v="">Clear</button></div>
+      <div class="split">
+        <div class="stack" style="gap:14px">${BOWL_GROUPS.map(([g, ids]) => `<div><div class="tiny muted" style="letter-spacing:.15em;margin-bottom:6px">${g.toUpperCase()}</div><div class="foods">${ids.map((id) => {
+          const f = FOOD[id], q = bowl[id] || 0;
+          return `<div class="food ${q ? 'on' : ''}"><div class="nm"><b>${esc(f.name)}</b><br><span class="tiny muted">${esc(f.serving)} · ${f.c} g carbs · ${f.p} g protein${f.s ? ` · ${f.s} g sugar` : ''}</span></div><div class="q"><button data-act="bfood" data-id="${id}" data-d="-1" aria-label="Less ${esc(f.name)}">−</button><span class="num" style="min-width:14px;text-align:center">${q}</span><button data-act="bfood" data-id="${id}" data-d="1" aria-label="More ${esc(f.name)}">+</button></div></div>`;
+        }).join('')}</div></div>`).join('')}</div>
+        <div class="card bowl-card" style="position:sticky;top:84px;background:var(--panel-solid)"><h3>This bowl</h3>
+          <div class="bowl-vis" aria-hidden="true">${Object.entries(bowl).filter(([, q]) => q).slice(0, 8).map(([id], i) => `<i class="b-${FOOD[id]?.id}" style="--i:${i}"></i>`).join('')}</div>
+          <div class="v num" style="font-family:var(--font-display);font-size:2rem">${Math.round(bt.kcal)}<span class="small muted"> kcal</span></div>
+          <div class="stack mt">${tbar('Protein', bt.p, bowlP, 'g', '#ffd27a')}${tbar('Carbs', bt.c, bowlC, 'g', 'var(--skin)', true)}${tbar('Fibre', bt.fib, bowlFib, 'g', 'var(--good)')}${tbar('Energy', bt.kcal, bowlK, 'kcal', 'var(--hair)', true)}</div>
+          <div class="stack mt">${bnotes.map(([lv, txt]) => `<div class="insight ${lv}"><div class="ic">${lv === 'good' ? '✓' : lv === 'warn' ? '!' : 'i'}</div><div><p style="color:var(--text);margin:0">${txt}</p></div></div>`).join('')}</div>
+          <button class="btn primary mt" style="width:100%" data-act="logBowl" ${bt.kcal ? '' : 'disabled'}>Log as today's lunch (+${Math.round(bt.p)} g protein)</button>
+          <p class="tiny muted" style="margin:8px 0 0">Values per serving are averages of common Indian brands' labels and USDA data; check your pack. Carbs exclude fibre. Soaking muesli for 10 minutes (or overnight in the fridge) makes it easier to digest but doesn't lower the carbs.</p>
+        </div>
+      </div>
+    </div>` : `
+<div class="chips" style="margin-bottom:10px"><button class="chip ${plateMode === 'low' ? 'on' : ''}" data-act="plateMode" data-v="low">Lower-carb (≤30 g)</button><button class="chip ${plateMode === 'bal' ? 'on' : ''}" data-act="plateMode" data-v="bal">Balanced (${Math.round(t.carbs * 0.3)} g)</button></div>
       <div class="chips" style="margin-bottom:14px"><span class="small muted" style="align-self:center">Start from:</span>${Object.entries(PLATES).map(([k, [n]]) => `<button class="chip" data-act="platePreset" data-v="${k}">${n}</button>`).join('')}<button class="chip" data-act="platePreset" data-v="">Clear</button></div>
       <div class="split">
         <div class="stack" style="gap:14px">${groups.map((g) => `<div><div class="tiny muted" style="letter-spacing:.15em;margin-bottom:6px">${g.toUpperCase()}</div><div class="foods">${FOODS.filter((f) => f.group === g).map((f) => {
@@ -1818,7 +1902,7 @@ const App = (() => {
           <p class="tiny muted" style="margin:8px 0 0">Values are approximate per serving (IFCT 2017, USDA). Carbs exclude fibre. Oil, ghee and tadka add about 45 kcal per teaspoon.</p>
         </div>
       </div>
-    </div>
+    </div>`}
 
     <div class="card section"><h3>Nutrients that matter for skin & hair</h3>
       <div class="table-wrap"><table><thead><tr><th>Nutrient</th><th>Your daily target</th><th>Why it matters</th><th>Indian food sources</th></tr></thead><tbody>
@@ -1826,11 +1910,6 @@ const App = (() => {
       </tbody></table></div>
       <p class="tiny muted" style="margin:10px 0 0">Targets are ICMR-NIN 2020 RDAs for adults unless marked. Take supplements only for a confirmed deficiency: too much vitamin A or selenium can itself cause hair loss. If you are shedding a lot, ask your doctor for ferritin, vitamin D, B12 and thyroid (TSH) tests.</p>
     </div>
-
-    <div class="card section"><h3>A day that hits your targets</h3>
-      <div class="table-wrap"><table><thead><tr><th>Meal</th><th>Energy</th><th>Protein</th><th>Example</th></tr></thead><tbody>
-        ${[['Breakfast', 0.25, '2 besan chillas with paneer + 1 cup curd, or 2 eggs + 1 roti + guava'], ['Lunch', 0.3, 'Lower-carb plate: paneer or chicken + sabzi + salad + 1 millet roti + chaas'], ['Snack', 0.15, 'Roasted chana + an apple, or sprouts chaat + buttermilk'], ['Dinner', 0.3, 'Dal or fish + leafy sabzi + 1–2 rotis or ½ cup rice + salad']].map(([m, f, ex]) => `<tr><td><b>${m}</b></td><td class="num">${Math.round(t.kcal * f)} kcal</td><td class="num">${Math.round(t.protein * f)} g</td><td class="small muted">${ex}</td></tr>`).join('')}
-      </tbody></table></div></div>
 
     <div class="card section"><h3>Sources</h3><ul class="refs">
       <li>ICMR-NIN (2020). Nutrient Requirements for Indians: Recommended Dietary Allowances and Estimated Average Requirements.</li>
@@ -1840,6 +1919,9 @@ const App = (() => {
       <li>EFSA Panel (2010). Scientific Opinion on Dietary Reference Values for water; and for fats, including EPA + DHA.</li>
       <li>Liu D et al. (2022). Calorie restriction with or without time-restricted eating in weight loss. N Engl J Med.</li>
       <li>Smith RN et al. (2007). A low-glycemic-load diet improves symptoms in acne vulgaris patients. Am J Clin Nutr.</li>
+      <li>Atkinson FS et al. (2021). International tables of glycemic index and glycemic load values 2021: a systematic review. Am J Clin Nutr.</li>
+      <li>Juhl CR et al. (2018). Dairy intake and acne vulgaris: a systematic review and meta-analysis of 78,529 children, adolescents, and young adults. Nutrients.</li>
+      <li>EFSA NDA Panel (2011). Scientific Opinion on the substantiation of health claims related to beta-glucans from oats and barley. EFSA Journal.</li>
       <li>Almohanna HM et al. (2019). The role of vitamins and minerals in hair loss: a review. Dermatol Ther.</li>
       <li>Longvah T et al. (2017). Indian Food Composition Tables. NIN, Hyderabad.</li>
     </ul></div>`;
@@ -2022,6 +2104,12 @@ const App = (() => {
     const p = db.profile, n = Object.keys(db.logs).length;
     return `<div class="page-head"><span class="eyebrow">Me</span><h1>Account, profile & <span class="grad-text">reminders</span></h1></div>
     <div class="grid g2">
+      ${lockCard()}
+      <div class="card derma-card"><h3><span class="d-orb sm" aria-hidden="true"><i></i></span> Derma · AI coach</h3>
+        <p class="small">${derma.key ? `Connected to Google Gemini (<b>${esc(derma.model)}</b>). Derma knows your scans, check-ins, sleep, routine and your muesli lunch.` : 'Chat with Derma about your skin, hair, sleep and food. It runs on Google Gemini using your own free API key, which stays on this device.'}</p>
+        <div class="row"><button class="btn sm primary" data-act="askDerma">${derma.key ? 'Open chat' : 'Connect Google API key'}</button>${derma.key ? '<button class="btn sm" data-act="dSettings">Derma settings</button>' : ''}</div></div>
+    </div>
+    <div class="grid g2 section">
       ${accountCard()}
       <form class="card" data-form="profile"><h3>Profile</h3>
         <label for="pName">Name</label><input type="text" id="pName" name="name" value="${esc(p.name)}" placeholder="What should we call you?">
@@ -2068,7 +2156,7 @@ const App = (() => {
      Sign-in keeps your data in your own Firebase project so it follows you to every device.
      Configure it in js/firebase-config.js (see README). Without a config the app stays local-only. */
   const FB_VER = '10.12.2';
-  const cloud = { status: 'off', user: null, err: '', sent: new Set(), unsubs: [], pushT: null, device: Math.random().toString(36).slice(2, 10) };
+  const cloud = { status: 'off', authKnown: false, user: null, err: '', sent: new Set(), unsubs: [], pushT: null, device: Math.random().toString(36).slice(2, 10) };
   let authMode = 'in';
   const fbConfig = () => (window.AURA_FIREBASE_CONFIG && window.AURA_FIREBASE_CONFIG.apiKey ? window.AURA_FIREBASE_CONFIG : null);
   const loadScript = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
@@ -2089,12 +2177,12 @@ const App = (() => {
   function mergeRemote(r) {
     if (!r) return;
     for (const [d, l] of Object.entries(r.logs || {})) { const mine = db.logs[d]; if (!mine || (l.u || 0) > (mine.u || 0)) db.logs[d] = l; }
-    if ((r.metaAt || 0) > (db.metaAt || 0)) for (const k of ['profile', 'routine', 'reminders', 'sleep', 'plate']) if (r[k]) db[k] = r[k];
+    if ((r.metaAt || 0) > (db.metaAt || 0)) for (const k of ['profile', 'routine', 'reminders', 'sleep', 'plate', 'bowl', 'chat']) if (r[k]) db[k] = r[k];
     db.demo = false;
   }
   function mergeScan(sc) { if (sc?.id && !db.scans.some((x) => x.id === sc.id)) db.scans.push(sc); cloud.sent.add(sc.id); }
   async function onUser(u) {
-    cloud.unsubs.forEach((f) => f()); cloud.unsubs = []; cloud.user = u; cloud.sent = new Set();
+    cloud.unsubs.forEach((f) => f()); cloud.unsubs = []; cloud.user = u; cloud.sent = new Set(); cloud.authKnown = true;
     if (!u) { cloud.status = 'ready'; renderAcct(); if (route === '/me') render(); return; }
     cloud.status = 'syncing'; renderAcct();
     try {
@@ -2149,7 +2237,7 @@ const App = (() => {
     } catch (e) { cloud.err = authMsg(e); render(); }
   }
   async function cloudReset() {
-    const email = $('#authEmail')?.value.trim(); if (!email) return toast('Type your email first');
+    const email = ($('#authEmail') || $('#gEmail'))?.value.trim(); if (!email) return toast('Type your email first');
     try { await cloud.auth.sendPasswordResetEmail(email); toast('Password reset email sent'); } catch (e) { cloud.err = authMsg(e); render(); }
   }
   async function cloudSignOut(wipe) {
@@ -2161,6 +2249,8 @@ const App = (() => {
     const el = $('#acct'); if (!el) return;
     const st = cloud.user ? { synced: '☁ Synced', syncing: '☁ Syncing…', error: '☁ Sync error' }[cloud.status] || '☁ Signed in' : 'Sign in';
     el.textContent = st; el.classList.toggle('on', !!cloud.user); el.classList.toggle('err', cloud.status === 'error');
+    $('#lockBtn')?.toggleAttribute('hidden', !lock.cfg?.hash);
+    gateCheck();
   }
   function accountCard() {
     const err = cloud.err ? `<div class="insight bad" style="margin-bottom:10px"><div class="ic">!</div><div><p style="color:var(--text);margin:0">${esc(cloud.err)}</p></div></div>` : '';
@@ -2187,6 +2277,359 @@ const App = (() => {
       <p class="tiny muted" style="margin:10px 0 0">What's on this device now is copied into your account when you sign in.${db.demo ? ' Sample data is not copied.' : ''}</p></div>`;
   }
 
+  /* ================= Derma: AI skin, hair & food coach (Google Gemini API) =================
+     The key is pasted by you and kept only in this browser (localStorage "auram.gkey"); it is never synced or put in the code.
+     Each message sends your question plus a short summary of your logs to Google's Gemini API. */
+  const GEM = 'https://generativelanguage.googleapis.com/v1beta';
+  const derma = { open: false, busy: false, view: 'chat', key: store.get('gkey', ''), model: store.get('gmodel', ''), models: store.get('gmodels', []), speak: store.get('dspeak', false), img: null, ctrl: null, err: '', listening: false, draft: '' };
+  const md = (txt) => {
+    const inl = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*(?!\s)(.+?)\*/g, '$1<i>$2</i>').replace(/`([^`]+)`/g, '<code>$1</code>');
+    const out = []; let list = null;
+    for (const raw of String(txt).split('\n')) {
+      const line = raw.trimEnd(), b = line.match(/^\s*[-*•]\s+(.*)/), n = line.match(/^\s*\d+[.)]\s+(.*)/), h = line.match(/^#{1,4}\s+(.*)/);
+      const want = b ? 'ul' : n ? 'ol' : null;
+      if (list && list !== want) { out.push(`</${list}>`); list = null; }
+      if (want) { if (!list) { out.push(`<${want}>`); list = want; } out.push(`<li>${inl((b || n)[1])}</li>`); continue; }
+      if (h) out.push(`<h4>${inl(h[1])}</h4>`); else if (line.trim()) out.push(`<p>${inl(line)}</p>`);
+    }
+    if (list) out.push(`</${list}>`);
+    return out.join('');
+  };
+  // choose the newest stable "flash" model the key can use (fast, generous free tier)
+  function rankModels(list) {
+    const score = (n) => { const v = +(n.match(/gemini-(\d+(?:\.\d+)?)/)?.[1] || 0); return v * 10 + (/flash/.test(n) && !/lite/.test(n) ? 5 : /pro/.test(n) ? 3 : /lite/.test(n) ? 2 : 0) - (/preview|exp|thinking/.test(n) ? 6 : 0) - (/-\d{3}$|-\d{2}-\d{4}|latest/.test(n) ? 1 : 0); };
+    return list.filter((n) => /^gemini-/.test(n) && !/embedding|aqa|imagen|image|tts|audio|live|vision|learnlm|gemma/.test(n)).sort((a, b) => score(b) - score(a));
+  }
+  async function dermaConnect(key, remember) {
+    key = key.trim(); if (!key) return;
+    derma.busy = true; derma.err = ''; dermaRender();
+    try {
+      const res = await fetch(`${GEM}/models?pageSize=200`, { headers: { 'x-goog-api-key': key } });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(res.status === 400 || res.status === 403 ? 'Google rejected that key. Check you copied all of it, and that the Generative Language API is enabled for it.' : j.error?.message || 'HTTP ' + res.status);
+      const names = rankModels((j.models || []).filter((m) => (m.supportedGenerationMethods || []).includes('generateContent')).map((m) => m.name.replace(/^models\//, '')));
+      if (!names.length) throw new Error('This key has no Gemini chat models available.');
+      Object.assign(derma, { key, models: names, model: names[0], view: 'chat' });
+      if (remember) { store.set('gkey', key); store.set('gmodel', derma.model); store.set('gmodels', names); }
+      toast('Derma is connected');
+    } catch (e) { derma.err = e instanceof TypeError ? 'Couldn\'t reach Google from this page. In the claude.ai preview outside connections are blocked; it works on your own deployed site.' : e.message; }
+    derma.busy = false; dermaRender();
+  }
+  function dermaContext() {
+    const p = db.profile, t = targets(), tl = db.logs[today()], d14 = lastDays(14).map((d) => db.logs[d]).filter(Boolean);
+    const a = (fn, dp = 0) => { const v = avg(d14.map(fn)); return v == null ? 'n/a' : round(v, dp); };
+    const scan = [...db.scans].reverse().find((x) => x.kind === 'skin'), hscan = [...db.scans].reverse().find((x) => x.kind === 'hair');
+    const bt = plateTotals(db.bowl?.items), bowl = Object.entries(db.bowl?.items || {}).filter(([, q]) => q).map(([id, q]) => `${q > 1 ? q + '× ' : ''}${FOOD[id]?.name} (${FOOD[id]?.serving})`).join(', ');
+    const L = [`Today: ${fmtDay(today())}, local time ${hm(new Date())}.`,
+      `Profile: ${p.name || 'owner'}; ${p.sex}, ${p.age} y, ${p.weight} kg, ${p.height} cm; activity ${p.activity}; goal ${p.goal}; diet ${({ any: 'no preference', veg: 'vegetarian', egg: 'eggetarian', non: 'non-vegetarian' })[p.diet] || 'n/a'}; skin type ${p.skinType}; hair type ${p.hairType}. Lives in India.`,
+      `Lunch habit: ${p.lunch === 'muesli' ? 'avoids a full lunch to limit carbs and eats a muesli bowl at lunchtime' : p.lunch === 'skip' ? 'usually skips lunch to avoid carbs' : 'eats a full lunch'}. Current muesli bowl: ${bowl || 'not set'} = ${Math.round(bt.kcal)} kcal, ${Math.round(bt.p)} g protein, ${Math.round(bt.c)} g carbs, ${round(bt.fib, 1)} g fibre.`,
+      `Daily targets: ${Math.round(t.kcal)} kcal, protein ${Math.round(t.protein)} g, carbs ${Math.round(t.carbs)} g, fat ${Math.round(t.fat)} g, fibre ${Math.round(t.fiber)} g, water ${round(t.water, 1)} L from drinks.`,
+      tl ? `Today's log: skin oil ${tl.skin.oil}/10, dryness ${tl.skin.dry}/10, redness ${tl.skin.red}/10, sensitivity ${tl.skin.sens}/10, breakouts ${tl.skin.breakouts}${tl.skin.zones.length ? ' on ' + tl.skin.zones.join(', ') : ''}; hair fall ~${tl.hair.fall}/day, scalp itch ${tl.hair.itch}/10, flakes ${tl.hair.flakes}/10; sleep ${tl.life.sleep} h, water ${tl.life.water} glasses, stress ${tl.life.stress}/10, protein logged ${tl.life.protein ?? 'n/a'} g, lunch ${meals(tl).l ? 'eaten' : 'skipped'}.${tl.flags.length ? ' Warning signs ticked: ' + tl.flags.join(', ') + '.' : ''}${tl.note ? ' Note: ' + tl.note.slice(0, 200) : ''}` : 'Nothing logged today yet.',
+      d14.length ? `Last 14 days (${d14.length} logged): skin score ${a(skinScore)}/100, hair score ${a(hairScore)}/100, breakouts ${a((l) => l.skin.breakouts, 1)}/day, hair fall ${a((l) => l.hair.fall)}/day, sleep ${a((l) => l.life.sleep, 1)} h, water ${a((l) => l.life.water, 1)} glasses, stress ${a((l) => l.life.stress, 1)}/10, lunch skipped on ${d14.filter((l) => !meals(l).l).length} days.` : 'No history logged yet.',
+      `Routine AM: ${db.routine.am.map((x) => x.name).join(', ') || 'none'}. PM: ${db.routine.pm.map((x) => x.name).join(', ') || 'none'}. Warnings: ${routineWarnings().join(' ') || 'none'}.`,
+      `Sleep: alarm ${db.sleep.alarm}${db.sleep.alarmOn ? '' : ' (off)'}, needs ${db.sleep.need} h.`,
+      scan ? `Latest face scan (${scan.date}): scores 0-100 where higher = more of the problem except evenness: ${JSON.stringify(scan.scores)}; flagged: ${(scan.issues || []).join(', ') || 'nothing'}; ${scan.count ?? 0} findings.` : 'No face scan yet.',
+      hscan ? `Latest hair/scalp scan (${hscan.date}): ${JSON.stringify(hscan.scores)}; flagged: ${(hscan.issues || []).join(', ') || 'nothing'}.` : '',
+    ];
+    if (current?.findings?.length) L.push(`Scan open on screen right now: ${current.acne ? `acne grade ${current.acne.grade}, ${current.acne.count} pimples (${current.acne.pustules} with white heads), ${current.acne.blackheads} blackheads; ` : ''}${current.quality ? `photo reliability ${current.quality.reliability}/100; ` : ''}findings: ${current.findings.slice(0, 18).map((f) => `${f.label || FTYPE[f.type]?.[0]} (${f.zone}${f.detail ? ', ' + f.detail : ''})`).join('; ')}.`);
+    return L.filter(Boolean).join('\n');
+  }
+  const DERMA_RULES = `You are Derma, the personal skin, hair and nutrition coach inside the AURA Monitor app. You talk to the app's one owner, who lives in India.
+Style: warm, direct and practical, like a knowledgeable friend. Keep answers short (usually under 180 words) unless asked for detail. Use short bullet points or a numbered plan when it helps, bold key words sparingly, no tables. Use Indian foods, products available in India, Indian climate and metric units.
+Ground every suggestion in evidence and in the user's own data below; mention the source briefly when useful (e.g. "AAD guideline", "ICMR-NIN"), and say plainly when evidence is weak.
+Diet: the user avoids a full lunch to limit carbs and eats muesli at lunchtime. Respect that choice and plan around it (make the bowl protein-rich, low in added sugar, and balance breakfast, snack and dinner).
+Safety: you are not a doctor and cannot diagnose. Recommend a dermatologist for a changing or bleeding mole, sudden or patchy hair loss, painful cystic or scarring acne, a rash that spreads, blisters or comes with fever, or no improvement after 8-12 weeks. Say when a treatment needs a prescription (tretinoin, isotretinoin, oral antibiotics, oral minoxidil, hydroquinone above 2%). Never suggest stopping a prescribed medicine.
+The app's photo scores are colour-based estimates that change with lighting and camera, so treat them as rough signals. If a photo is attached, describe only what is visible and be cautious.`;
+  async function dermaSend(text) {
+    text = (text || '').trim();
+    if (derma.busy || (!text && !derma.img)) return;
+    if (!derma.key) { derma.view = 'key'; derma.draft = text; return dermaRender(); }
+    db.chat ||= [];
+    const img = derma.img; derma.img = null;
+    db.chat.push({ r: 'u', t: text || 'What do you see in this photo?', img: !!img, at: Date.now() });
+    const msg = { r: 'm', t: '', at: Date.now() }; db.chat.push(msg);
+    derma.busy = true; derma.err = ''; dermaRender();
+    const hist = db.chat.slice(-17, -1).filter((m) => m.t).map((m, i, arr) => {
+      const parts = [{ text: m.t }];
+      if (i === arr.length - 1 && img) parts.push({ inlineData: { mimeType: 'image/jpeg', data: img.split(',')[1] } });
+      return { role: m.r === 'u' ? 'user' : 'model', parts };
+    });
+    const body = { systemInstruction: { parts: [{ text: DERMA_RULES + '\n\nUSER DATA (from the app, may be incomplete):\n' + dermaContext() }] }, contents: hist, generationConfig: { temperature: 0.6 } };
+    const bubble = () => $('#dmsgs .msg.m:last-child .bubble');
+    derma.ctrl = new AbortController();
+    try {
+      const res = await fetch(`${GEM}/models/${derma.model || 'gemini-2.5-flash'}:streamGenerateContent?alt=sse`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': derma.key }, body: JSON.stringify(body), signal: derma.ctrl.signal });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})), m = j.error?.message || '';
+        throw new Error(res.status === 429 ? 'Google\'s free limit for this minute or day is used up. Wait a minute and try again, or pick a lighter model in Derma settings.' : res.status === 400 && /API key/i.test(m) ? 'Google says this key is not valid any more. Paste a new one in Derma settings.' : res.status === 404 ? `The model "${derma.model}" isn't available to this key. Pick another in Derma settings.` : m || 'HTTP ' + res.status);
+      }
+      const rd = res.body.getReader(), dec = new TextDecoder(); let buf = '', why = '';
+      for (;;) {
+        const { done, value } = await rd.read(); if (done) break;
+        buf += dec.decode(value, { stream: true }); let i;
+        while ((i = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+          if (!line.startsWith('data:')) continue;
+          let j; try { j = JSON.parse(line.slice(5)); } catch { continue; }
+          (j.candidates?.[0]?.content?.parts || []).forEach((pt) => { if (pt.text && !pt.thought) msg.t += pt.text; });
+          why = j.promptFeedback?.blockReason || (j.candidates?.[0]?.finishReason === 'SAFETY' ? 'SAFETY' : why);
+        }
+        const b = bubble(); if (b) { b.innerHTML = md(msg.t) + '<span class="caret"></span>'; dScroll(); }
+      }
+      if (!msg.t) msg.t = why ? 'I can\'t answer that one. Try asking it a different way.' : '(No reply came back. Please try again.)';
+      if (derma.speak) speakOut(msg.t);
+    } catch (e) {
+      if (e.name === 'AbortError') msg.t ||= '(stopped)';
+      else { db.chat.pop(); derma.err = e instanceof TypeError ? 'Couldn\'t reach Google. Check your connection. (In the claude.ai preview outside connections are blocked; Derma works on your deployed site.)' : e.message; }
+    }
+    db.chat = db.chat.slice(-40); derma.busy = false; derma.ctrl = null; save(); dermaRender();
+  }
+  const dScroll = () => { const el = $('#dmsgs'); if (el) el.scrollTop = el.scrollHeight; };
+  function speakOut(t) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t.replace(/[*#`_>]/g, '').slice(0, 1500)); u.lang = 'en-IN'; u.rate = 1.02; speechSynthesis.speak(u); } catch {} }
+  function dermaListen() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return toast('Voice input isn\'t supported in this browser');
+    if (derma.listening) { derma.rec?.stop(); return; }
+    const rec = new SR(); rec.lang = 'en-IN'; rec.interimResults = true; derma.rec = rec;
+    rec.onresult = (e) => { const ta = $('#dInput'); if (ta) ta.value = [...e.results].map((r) => r[0].transcript).join(' '); };
+    rec.onend = () => { derma.listening = false; $('#dMic')?.classList.remove('on'); const v = $('#dInput')?.value.trim(); if (v) dermaSend(v); };
+    rec.onerror = () => toast('Couldn\'t hear you. Check microphone permission.');
+    derma.listening = true; $('#dMic')?.classList.add('on'); rec.start();
+  }
+  async function dermaAttach(file) {
+    if (!file) return;
+    const img = await loadImage(file), m = 1024, k = Math.min(1, m / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+    const c = document.createElement('canvas'); c.width = Math.round((img.naturalWidth || img.width) * k); c.height = Math.round((img.naturalHeight || img.height) * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); derma.img = c.toDataURL('image/jpeg', 0.85); dermaRender(); $('#dInput')?.focus();
+  }
+  function dermaSuggestions() {
+    const s = [];
+    if (current?.kind === 'skin' || db.scans.some((x) => x.kind === 'skin')) s.push(['✦', 'Explain my latest scan', 'Explain my latest face scan in simple words. What are the top 2 things to fix first and how?']);
+    s.push(['◍', 'Plan today\'s muesli lunch', 'Plan my muesli lunch for today and tell me what to eat for breakfast, snack and dinner to hit my protein target.']);
+    s.push(['☾', 'Sleep & skin this week', 'Look at my sleep and skin this week. Is there a link, and what should I change tonight?']);
+    s.push(['≋', 'Hair fall check', 'Is my hair fall normal? What should I check or change, and when should I see a doctor?']);
+    s.push(['◐', 'Fix my routine', 'Review my AM and PM routine. Is anything missing, clashing or unnecessary for my skin?']);
+    if (db.scans.length) s.push(['▣', 'Look at my scan photo', '__scanimg__']);
+    return s.slice(0, 6);
+  }
+  function dermaRender() {
+    const el = $('#derma'); if (!el) return;
+    el.classList.toggle('hidden', !derma.open); $('#dermaFab')?.classList.toggle('open', derma.open); document.body.classList.toggle('derma-open', derma.open);
+    if (!derma.open) return;
+    const status = derma.key ? `${esc(derma.model || 'Gemini')} · ${derma.busy ? 'thinking…' : 'online'}` : 'not connected';
+    const head = `<div class="d-head"><span class="d-orb ${derma.busy ? 'busy' : ''}" aria-hidden="true"><i></i></span><div class="d-title"><b>Derma</b><span class="tiny ${derma.key ? 'ok' : 'muted'}">${status}</span></div>
+      <div class="d-tools">${derma.view === 'chat' && db.chat?.length ? '<button class="ib" data-act="dClear" title="Clear chat" aria-label="Clear chat"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M6.5 7l1 12.5h9L17.5 7M9.5 7V4.5h5V7"/></svg></button>' : ''}
+      <button class="ib ${derma.view !== 'chat' ? 'on' : ''}" data-act="dView" data-v="${derma.view === 'chat' ? 'settings' : 'chat'}" title="Derma settings" aria-label="Derma settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg></button>
+      <button class="ib" data-act="derma" title="Close" aria-label="Close Derma"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></div>`;
+    const err = derma.err ? `<div class="insight bad d-err"><div class="ic">!</div><div><p style="color:var(--text);margin:0">${esc(derma.err)}</p></div></div>` : '';
+    let body;
+    if (derma.view === 'key' || (derma.view === 'settings' && !derma.key)) {
+      body = `<div class="d-pane"><div class="d-hero"><span class="d-orb big" aria-hidden="true"><i></i></span><h3>Connect Derma</h3><p class="small muted">Derma runs on Google's Gemini models using your own free API key.</p></div>
+        <ol class="small steps"><li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → API keys</a> and sign in with your Google account.</li><li>Tap <b>Create API key</b> and copy it.</li><li>Paste it here.</li></ol>
+        ${err}<form class="stack" data-form="gkey"><div><label for="gKey">Gemini API key</label><input id="gKey" name="key" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…" required></div>
+        <label class="dcheck"><input type="checkbox" name="remember" checked> Remember on this device</label>
+        <button class="btn primary" ${derma.busy ? 'disabled' : ''}>${derma.busy ? 'Checking…' : 'Connect'}</button></form>
+        <div class="d-note tiny muted"><b>Privacy.</b> Your key stays in this browser only. It is never synced to your account or saved in the website's code. When you chat, your message and a short summary of your logs (scores, today's check-in, targets, routine) go to Google. On the free tier Google may use them to improve its products; a paid (billing-enabled) key keeps them private.<br><br><b>Protect the key:</b> in Google Cloud Console → APIs & Services → Credentials, restrict it to your website's address (HTTP referrer) and to the Generative Language API.</div></div>`;
+    } else if (derma.view === 'settings') {
+      body = `<div class="d-pane"><h3>Derma settings</h3>${err}
+        <label for="gModel">Model</label><select id="gModel" data-dmodel>${(derma.models.length ? derma.models : [derma.model]).map((m) => `<option ${m === derma.model ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select>
+        <p class="tiny muted">The newest "flash" model is picked automatically: fast, with the most generous free limits. "Pro" models think longer but have lower free limits.</p>
+        <label class="dcheck mt"><input type="checkbox" data-act="dSpeak" ${derma.speak ? 'checked' : ''}> Read replies aloud</label>
+        <div class="row mt"><button class="btn sm" data-act="dView" data-v="key">Change key</button><button class="btn sm ghost" data-act="dForget">Disconnect & forget key</button></div>
+        <div class="d-note tiny muted">Derma sees: your profile, targets, muesli bowl, today's check-in, 14-day averages, routine, alarm and latest scan scores. It does not see your photos unless you attach one.</div>
+        <button class="btn primary mt" data-act="dView" data-v="chat">Back to chat</button></div>`;
+    } else {
+      const msgs = db.chat || [];
+      body = msgs.length ? `<div class="d-msgs" id="dmsgs">${msgs.map((m, i) => `<div class="msg ${m.r}">${m.r === 'm' ? '<span class="d-orb sm" aria-hidden="true"><i></i></span>' : ''}<div class="bubble">${m.img ? '<span class="d-photo">▣ photo</span>' : ''}${m.r === 'm' ? (m.t ? md(m.t) : '<span class="dots"><i></i><i></i><i></i></span>') : esc(m.t)}${m.r === 'm' && m.t && !(derma.busy && i === msgs.length - 1) ? `<div class="m-tools"><button data-act="dCopy" data-i="${i}">Copy</button><button data-act="dSay" data-i="${i}">Listen</button></div>` : ''}</div></div>`).join('')}</div>${err}`
+        : `<div class="d-msgs d-welcome" id="dmsgs"><div class="d-hero"><span class="d-orb big" aria-hidden="true"><i></i></span><h3>Hi${db.profile.name ? ' ' + esc(db.profile.name) : ''}, I'm Derma.</h3><p class="small muted">Your skin, hair and food coach. I can see your scans, check-ins, sleep and your muesli lunch, so ask me anything.</p></div>
+          <div class="d-sugg">${dermaSuggestions().map(([ic, l, q]) => `<button data-act="dAsk" data-q="${esc(q)}"><span>${ic}</span>${esc(l)}</button>`).join('')}</div>${err}</div>`;
+      body += `<form class="d-compose" data-form="derma">${derma.img ? `<div class="d-att"><img src="${derma.img}" alt=""><button type="button" data-act="dImgX" aria-label="Remove photo">×</button></div>` : ''}
+        <label class="ib" title="Attach a photo" aria-label="Attach a photo"><input type="file" accept="image/*" id="dFile" hidden><svg viewBox="0 0 24 24"><path d="M20 12.5 12.6 20a5 5 0 0 1-7.1-7.1l8-8a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.2-7.2"/></svg></label>
+        <textarea id="dInput" name="q" rows="1" placeholder="${derma.key ? 'Ask Derma…' : 'Connect a key to start chatting'}" enterkeyhint="send">${esc(derma.draft)}</textarea>
+        <button type="button" class="ib" id="dMic" data-act="dMic" title="Speak" aria-label="Speak your question"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
+        ${derma.busy ? '<button type="button" class="send stop" data-act="dStop" aria-label="Stop"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></svg></button>' : '<button class="send" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-2.5-6.5z"/></svg></button>'}</form>
+        <p class="d-disc tiny muted">Derma can be wrong and is not medical advice.</p>`;
+    }
+    el.innerHTML = head + body; derma.draft = '';
+    dScroll();
+    $('#dFile')?.addEventListener('change', (e) => dermaAttach(e.target.files[0]));
+    $('[data-dmodel]')?.addEventListener('change', (e) => { derma.model = e.target.value; store.set('gmodel', derma.model); toast('Model: ' + derma.model); });
+    const ta = $('#dInput');
+    if (ta) {
+      const fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; }; fit();
+      ta.addEventListener('input', fit);
+      ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); dermaSend(ta.value); } });
+    }
+  }
+  function dermaOpen(q) {
+    derma.open = true; if (!derma.key) derma.view = 'key';
+    if (q) { if (derma.key) { derma.view = 'chat'; dermaRender(); return dermaSend(q); } derma.draft = q; }
+    dermaRender(); setTimeout(() => ($('#gKey') || $('#dInput'))?.focus(), 60);
+  }
+
+  /* ================= privacy lock & sign-in gate =================
+     A PIN (PBKDF2-hashed, kept only on this device) and optional Face ID / fingerprint (WebAuthn, on-device) lock the app on open
+     and after it sits in the background. With Firebase configured, signing in is required as well.
+     This keeps casual eyes out on a shared device; your synced data is protected by your account and the Firestore rules. */
+  const lock = { cfg: store.get('lock', null), locked: false, mode: null, entry: '', first: '', len: 6, fails: 0, until: 0, hiddenAt: 0, busy: false, bioOK: false, orb: null, setup: false };
+  lock.locked = !!lock.cfg?.hash;
+  const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))), unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const randBytes = (n) => crypto.getRandomValues(new Uint8Array(n));
+  async function pinHash(pin, salt, it = 150000) {
+    const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+    return b64(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unb64(salt), iterations: it }, k, 256));
+  }
+  (async () => { try { lock.bioOK = !!(window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); } catch {} })();
+  async function bioRegister() {
+    try {
+      const cred = await navigator.credentials.create({ publicKey: { challenge: randBytes(32), rp: { name: 'AURA Monitor' }, user: { id: randBytes(16), name: 'aura-owner', displayName: db.profile.name || 'AURA owner' }, pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }], authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' }, timeout: 60000, attestation: 'none' } });
+      lock.cfg.bio = b64(cred.rawId); store.set('lock', lock.cfg); toast('Face ID / fingerprint unlock is on'); return true;
+    } catch (e) { toast(e.name === 'NotAllowedError' ? 'Cancelled' : 'This device or page can\'t use Face ID / fingerprint'); return false; }
+  }
+  async function bioUnlock() {
+    if (!lock.cfg?.bio) return;
+    try { await navigator.credentials.get({ publicKey: { challenge: randBytes(32), allowCredentials: [{ type: 'public-key', id: unb64(lock.cfg.bio), transports: ['internal'] }], userVerification: 'required', timeout: 60000 } }); unlockOK(); }
+    catch (e) { if (e.name !== 'NotAllowedError') toast('Face ID / fingerprint didn\'t work. Use your PIN.'); }
+  }
+  function gateMode() {
+    if (fbConfig() && !cloud.user && !['blocked', 'unconfigured'].includes(cloud.status)) return cloud.authKnown ? 'auth' : 'loading';
+    if (lock.setup) return 'setup';
+    if (lock.cfg?.hash && lock.locked) return 'pin';
+    if (!store.get('gateSeen', false)) return 'welcome';
+    return null;
+  }
+  const greet = () => { const h = new Date().getHours(); return h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; };
+  function gateCheck(force) {
+    const m = gateMode(), g = $('#gate'); if (!g) return;
+    document.body.classList.toggle('locked', !!m);
+    if (!m) { if (lock.mode) { g.classList.add('leaving'); setTimeout(() => { g.classList.add('hidden'); g.classList.remove('leaving'); lock.orb?.dispose(); lock.orb = null; }, 700); } lock.mode = null; return; }
+    if (m !== lock.mode || force) { lock.mode = m; gateRender(); }
+    g.classList.remove('hidden');
+    if (!lock.orb) lock.orb = mountOrb($('#gateOrb'));
+  }
+  function gateRender() {
+    const box = $('#gateBox'); if (!box) return;
+    const m = lock.mode, email = $('#gEmail')?.value || '', n = new Date();
+    const pad6 = (len, val) => `<div class="pin-dots ${lock.shake ? 'shake' : ''}" aria-live="polite">${Array.from({ length: len }, (_, i) => `<i class="${i < val.length ? 'on' : ''}"></i>`).join('')}</div>`;
+    const keypad = (bio) => `<div class="keypad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => `<button data-act="pinKey" data-v="${k}">${k}<small>${['', 'ABC', 'DEF', 'GHI', 'JKL', 'MNO', 'PQRS', 'TUV', 'WXYZ'][k - 1]}</small></button>`).join('')}${bio ? `<button class="k-bio" data-act="bioUnlock" aria-label="Unlock with Face ID or fingerprint"><svg viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M9 9.5v1M15 9.5v1M12 9.5v3.5h-1M9.5 16c1.5 1 3.5 1 5 0"/></svg></button>` : '<span></span>'}<button data-act="pinKey" data-v="0">0</button><button class="k-del" data-act="pinKey" data-v="del" aria-label="Delete"><svg viewBox="0 0 24 24"><path d="M9 6h11v12H9l-6-6zM12.5 9.5l5 5M17.5 9.5l-5 5"/></svg></button></div>`;
+    const top = `<div class="g-time num">${hm(n)}</div><div class="g-date">${n.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>`;
+    let html = '';
+    if (m === 'loading') html = `${top}<p class="g-sub">Connecting securely…</p><div class="g-spin"></div>`;
+    else if (m === 'auth') {
+      const err = cloud.err ? `<div class="g-err">${esc(cloud.err)}</div>` : '';
+      html = `${top}<h2>${greet()}.</h2><p class="g-sub">${authMode === 'up' ? 'Create your private account. Your data then follows you to your phone, iPad and computer.' : 'Sign in to open your skin & hair lab.'}</p>${err}
+        <button class="btn google wide" data-act="gLogin"><span class="g">G</span> Continue with Google</button>
+        <div class="or"><span>or with email</span></div>
+        <form class="stack g-form" data-form="auth"><input type="email" id="gEmail" name="email" autocomplete="email" placeholder="Email" required value="${esc(email)}"><input type="password" name="password" autocomplete="${authMode === 'up' ? 'new-password' : 'current-password'}" placeholder="Password (6+ characters)" minlength="6" required><button class="btn primary wide">${authMode === 'up' ? 'Create account' : 'Sign in'}</button></form>
+        <div class="row between small g-links">${authMode === 'up' ? '<a href="#" data-act="authMode" data-v="in">I already have an account</a>' : '<a href="#" data-act="authMode" data-v="up">Create an account</a><a href="#" data-act="gReset">Forgot password?</a>'}</div>`;
+    } else if (m === 'welcome') {
+      html = `${top}<h2>Welcome to your private lab.</h2><p class="g-sub">Everything here (your face scans, check-ins, sleep) is personal. Lock it so only you can open it on this device.</p>
+        <div class="g-opts"><button class="g-opt" data-act="pinSetup"><span class="gi">⬢</span><b>Lock with a PIN</b><small>${lock.bioOK ? 'Then add Face ID / fingerprint' : '4 or 6 digits, stored as a secure hash'}</small></button>
+        <button class="g-opt ghost" data-act="gateSkip"><span class="gi">→</span><b>Not now</b><small>You can add a lock later under Me</small></button></div>`;
+    } else if (m === 'setup') {
+      const confirm = !!lock.first;
+      html = `<h2>${confirm ? 'Confirm your PIN' : 'Choose a PIN'}</h2><p class="g-sub">${confirm ? 'Type it once more.' : 'You\'ll use it to open AURA on this device.'}</p>
+        ${confirm ? '' : `<div class="chips g-len"><button class="chip ${lock.len === 4 ? 'on' : ''}" data-act="pinLen" data-v="4">4 digits</button><button class="chip ${lock.len === 6 ? 'on' : ''}" data-act="pinLen" data-v="6">6 digits</button></div>`}
+        ${pad6(lock.len, lock.entry)}${keypad(false)}<a href="#" class="small g-links" data-act="pinCancel">Cancel</a>`;
+    } else if (m === 'pin') {
+      const wait = Math.ceil((lock.until - Date.now()) / 1000);
+      html = `${top}<h2>${greet()}${db.profile.name ? ', ' + esc(db.profile.name) : ''}.</h2><p class="g-sub">${wait > 0 ? `Too many tries. Wait ${wait} s.` : lock.fails ? `Wrong PIN. ${Math.max(0, 5 - lock.fails)} tries left before a pause.` : 'Enter your PIN to unlock.'}</p>
+        ${pad6(lock.cfg.len || 6, lock.entry)}${keypad(!!lock.cfg.bio && lock.bioOK)}<a href="#" class="small g-links" data-act="pinForgot">Forgot PIN?</a>`;
+    }
+    box.innerHTML = `<div class="g-brand"><span class="mark" aria-hidden="true"></span>aura<em>monitor</em></div>${html}<p class="g-foot tiny">🔒 ${fbConfig() ? 'Secured by your account' : 'Private to this device'}${lock.cfg?.hash ? ' · PIN lock on' : ''}</p>`;
+    lock.shake = false;
+  }
+  async function pinKey(v) {
+    if (lock.busy || Date.now() < lock.until) return;
+    const len = lock.mode === 'setup' ? lock.len : lock.cfg?.len || 6;
+    if (v === 'del') lock.entry = lock.entry.slice(0, -1); else if (lock.entry.length < len) { lock.entry += v; lock.orb?.pulse(); }
+    gateRender();
+    if (lock.entry.length < len) return;
+    const pin = lock.entry; lock.busy = true;
+    if (lock.mode === 'setup') {
+      if (!lock.first) { lock.first = pin; lock.entry = ''; lock.busy = false; return gateRender(); }
+      if (pin !== lock.first) { lock.first = ''; lock.entry = ''; lock.busy = false; lock.shake = true; lock.orb?.shake(); toast('The PINs didn\'t match. Choose again.'); return gateRender(); }
+      if (!crypto.subtle) { lock.busy = false; return toast('A PIN lock needs a secure (https) page'); }
+      const salt = b64(randBytes(16));
+      lock.cfg = { salt, hash: await pinHash(pin, salt), it: 150000, len, bio: null, after: lock.cfg?.after ?? 5 };
+      store.set('lock', lock.cfg); store.set('gateSeen', true);
+      lock.setup = false; lock.first = ''; lock.entry = ''; lock.busy = false; lock.locked = false;
+      toast('PIN lock is on');
+      if (lock.bioOK) dialog('<h3>Unlock with Face ID or fingerprint?</h3><p class="small muted">Use your device\'s own biometrics instead of typing the PIN. Your face or fingerprint never leaves the device.</p>', [{ label: 'Not now', cls: 'ghost' }, { label: 'Turn on', cls: 'primary', fn: () => { bioRegister(); } }]);
+      lock.orb?.burst(); setTimeout(() => gateCheck(), 350); if (route === '/me') render(); return;
+    }
+    const ok = (await pinHash(pin, lock.cfg.salt, lock.cfg.it)) === lock.cfg.hash;
+    lock.busy = false; lock.entry = '';
+    if (ok) return unlockOK();
+    lock.fails++; lock.shake = true; lock.orb?.shake();
+    if (lock.fails >= 5) { lock.until = Date.now() + 30000 * 2 ** Math.min(4, lock.fails - 5); const tk = setInterval(() => { gateRender(); if (Date.now() >= lock.until) clearInterval(tk); }, 1000); }
+    gateRender(); navigator.vibrate?.(120);
+  }
+  function unlockOK() { lock.fails = 0; lock.until = 0; lock.locked = false; lock.orb?.burst(); setTimeout(() => gateCheck(), 380); }
+  function lockNow() { if (!lock.cfg?.hash) return; lock.locked = true; lock.entry = ''; derma.open = false; dermaRender(); gateCheck(true); }
+  setInterval(() => { const el = $('#gateBox .g-time'); if (el) el.textContent = hm(new Date()); }, 5000);
+  document.addEventListener('visibilitychange', () => {
+    if (!lock.cfg?.hash) return;
+    if (document.hidden) lock.hiddenAt = Date.now();
+    else if (lock.cfg.after >= 0 && lock.hiddenAt && Date.now() - lock.hiddenAt >= lock.cfg.after * 60e3) lockNow();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!['pin', 'setup'].includes(lock.mode) || e.target.closest?.('input,textarea')) return;
+    if (/^\d$/.test(e.key)) { e.preventDefault(); pinKey(e.key); } else if (e.key === 'Backspace') { e.preventDefault(); pinKey('del'); }
+  });
+  function lockCard() {
+    const c = lock.cfg;
+    return `<div class="card"><h3>⬢ Privacy lock</h3>${c?.hash ? `<p class="small">AURA asks for your ${c.len}-digit PIN${c.bio ? ' or Face ID / fingerprint' : ''} when it opens${c.after >= 0 ? ` and after ${c.after ? c.after + ' min' : 'any time'} in the background` : ''}.</p>
+      <label for="lockAfter">Lock again after</label><select id="lockAfter" data-lockafter>${[[0, 'Immediately when I leave'], [1, '1 minute away'], [5, '5 minutes away'], [15, '15 minutes away'], [-1, 'Only when I reopen the site']].map(([v, l]) => `<option value="${v}" ${c.after === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <div class="row mt"><button class="btn sm primary" data-act="lockNow">Lock now</button><button class="btn sm" data-act="pinSetup">Change PIN</button>${lock.bioOK ? `<button class="btn sm" data-act="${c.bio ? 'bioOff' : 'bioOn'}">${c.bio ? 'Turn off Face ID / fingerprint' : 'Add Face ID / fingerprint'}</button>` : ''}<button class="btn sm ghost" data-act="pinOff">Remove lock</button></div>`
+      : `<p class="small">Lock AURA with a PIN${lock.bioOK ? ' and Face ID / fingerprint' : ''} so nobody else can open your scans and logs on this device.</p><button class="btn sm primary" data-act="pinSetup">Set up a PIN</button>`}
+      <p class="tiny muted" style="margin:10px 0 0">The PIN is stored as a salted PBKDF2 hash on this device only and is never synced. It keeps the app private from people using your device; anyone with full access to the browser's storage could still read local data${fbConfig() ? '. Your synced data is protected by your account' : ''}.</p></div>`;
+  }
+  // the glowing, breathing orb on the lock screen (reacts to the pointer and to each key press)
+  function mountOrb(el) {
+    const T = window.THREE; if (!T || !el) return null;
+    try {
+      const sz = Math.round(el.clientWidth || Math.min(320, innerWidth * 0.62)), cv = document.createElement('canvas'); el.innerHTML = ''; el.appendChild(cv);
+      const r = glRenderer(T, cv, sz, sz); cv.style.width = cv.style.height = sz + 'px';
+      const scene = new T.Scene(), cam = new T.PerspectiveCamera(35, 1, 0.1, 50); cam.position.set(0, 0, 8.8);
+      scene.environment = makeEnv(T, r);
+      scene.add(new T.AmbientLight(0xffffff, 0.25)); const k = new T.PointLight(0xffc9a0, 2.2, 30); k.position.set(4, 3, 5); scene.add(k); const f = new T.PointLight(0x8fded0, 1.8, 30); f.position.set(-4, -2, 3); scene.add(f);
+      const geo = new T.SphereGeometry(1.4, 96, 72), P = geo.attributes.position, orig = P.array.slice();   // indexed, so normals stay smooth
+      const colA = new T.Color(0xff8a4c).convertSRGBToLinear(), colB = new T.Color(0x2fc2b0).convertSRGBToLinear(), colC = new T.Color(0x7d5cff).convertSRGBToLinear(), red = new T.Color(0xff3b4a).convertSRGBToLinear(), cols = new Float32Array(P.count * 3);
+      geo.setAttribute('color', new T.BufferAttribute(cols, 3));
+      const mat = physical(T, { vertexColors: true, color: new T.Color(0xffffff), metalness: 0.2, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 0.55 });
+      const blob = new T.Mesh(geo, mat); scene.add(blob);
+      const ringG = new T.Group(); [2.05, 2.35].forEach((rr, i) => { const tm = new T.Mesh(new T.TorusGeometry(rr, 0.012, 8, 160), new T.MeshBasicMaterial({ color: i ? 0xb8a6ff : 0xffd2b0, transparent: true, opacity: 0.55 })); tm.rotation.x = Math.PI / 2 + (i ? 0.5 : -0.35); tm.rotation.y = i ? 0.3 : -0.2; ringG.add(tm); }); scene.add(ringG);
+      const sats = Array.from({ length: 3 }, (_, i) => { const m = new T.Mesh(new T.SphereGeometry(0.07, 16, 12), new T.MeshBasicMaterial({ color: [0xffd2b0, 0x8fded0, 0xb8a6ff][i] })); ringG.children[i % 2].add(m); return m; });
+      let t = 0, pulse = 0, shake = 0, burst = 0, raf, alive = true, tx = 0, ty = 0;
+      const mv = (e) => { tx = (e.clientX / innerWidth - 0.5) * 0.9; ty = (e.clientY / innerHeight - 0.5) * 0.7; };
+      addEventListener('pointermove', mv, { passive: true });
+      const tc = new T.Color();
+      const loop = () => {
+        if (!alive) return; raf = requestAnimationFrame(loop); if (document.hidden) return;
+        t += 0.012; pulse *= 0.9; shake *= 0.88; burst = burst ? burst + 0.06 : 0;
+        for (let i = 0; i < P.count; i++) {
+          const x = orig[i * 3], y = orig[i * 3 + 1], z = orig[i * 3 + 2];
+          const n = Math.sin(x * 1.7 + t * 1.3) * Math.sin(y * 1.9 + t * 1.1) * Math.sin(z * 1.6 + t * 0.9) * 0.11 + Math.sin(x * 3.6 - t * 2) * Math.cos(z * 3.2 + t) * 0.035 * (1 + pulse * 3);
+          const s = 1 + n + pulse * 0.08; P.setXYZ(i, x * s, y * s, z * s);
+          const h = (y / 1.4 + 1) / 2 + n * 2; tc.copy(colB).lerp(colA, Math.min(1, Math.max(0, h))).lerp(colC, Math.max(0, Math.sin(x * 1.5 + t) * 0.5)); if (shake > 0.05) tc.lerp(red, Math.min(1, shake));
+          cols[i * 3] = tc.r; cols[i * 3 + 1] = tc.g; cols[i * 3 + 2] = tc.b;
+        }
+        P.needsUpdate = true; geo.attributes.color.needsUpdate = true; geo.computeVertexNormals();
+        blob.rotation.y += 0.004 + pulse * 0.05; blob.rotation.x += (ty - blob.rotation.x) * 0.05; blob.rotation.z += (-tx * 0.4 - blob.rotation.z) * 0.05;
+        blob.position.x = Math.sin(t * 40) * shake * 0.25;
+        ringG.rotation.y += 0.006; ringG.rotation.x = ty * 0.5; sats.forEach((m, i) => { const a = t * (1.2 + i * 0.4) + i * 2.1, rr = i % 2 ? 2.35 : 2.05; m.position.set(Math.cos(a) * rr, Math.sin(a) * rr, 0); });
+        if (burst) { const sc = 1 + burst * burst * 6; blob.scale.setScalar(sc); ringG.scale.setScalar(1 + burst * 3); mat.opacity = Math.max(0, 1 - burst); mat.transparent = true; ringG.children.forEach((c) => (c.material.opacity = Math.max(0, 0.55 - burst))); }
+        r.render(scene, cam);
+      };
+      loop();
+      return {
+        pulse() { pulse = 1; }, shake() { shake = 1; }, burst() { burst = 0.01; Space.burst?.(innerWidth / 2, innerHeight * 0.35); },
+        dispose() { alive = false; cancelAnimationFrame(raf); removeEventListener('pointermove', mv); disposeAll(scene, r); el.innerHTML = ''; },
+      };
+    } catch (e) { console.warn('orb unavailable', e); return null; }
+  }
+
   /* ================= actions ================= */
   function act(el) {
     const a = el.dataset.act, d = el.dataset;
@@ -2210,6 +2653,14 @@ const App = (() => {
       }
       case 'food': db.plate.items[d.id] = clamp((db.plate.items[d.id] || 0) + +d.d, 0, 6); save(); return render();
       case 'plateMode': plateMode = d.v; return render();
+      case 'lunchTab': lunchTab = d.v; return render();
+      case 'bfood': db.bowl ||= { items: {} }; db.bowl.items[d.id] = clamp((db.bowl.items[d.id] || 0) + +d.d, 0, 4); save(); return render();
+      case 'bowlPreset': db.bowl = { items: d.v ? { ...BOWLS[d.v][1] } : {} }; save(); return render();
+      case 'logBowl': {
+        const tot = plateTotals(db.bowl.items), l = ensureLog(today());
+        l.life.meals.l = true; l.life.protein = Math.round((l.life.protein || 0) + tot.p); save();
+        toast(`Muesli lunch logged: +${Math.round(tot.p)} g protein today`); return render();
+      }
       case 'platePreset': db.plate.items = d.v ? { ...PLATES[d.v][1] } : {}; save(); return render();
       case 'logPlate': {
         const tot = plateTotals(db.plate.items), l = ensureLog(today());
@@ -2251,6 +2702,40 @@ const App = (() => {
       case 'delScan': return askConfirm('Delete this scan photo?', () => { db.scans = db.scans.filter((x) => x.id !== d.id); cloudDeleteScans([d.id]); cmp = cmp.filter((x) => x !== d.id); if (current?.id === d.id) current = null; save(); render(); });
       case 'delAllScans': return askConfirm(`Delete all ${db.scans.length} scans and their photos${cloud.user ? ' on every device' : ''}?`, () => { cloudDeleteScans(db.scans.map((x) => x.id)); db.scans = []; cmp = []; current = null; save(); toast('All scans deleted'); render(); }, 'Delete all scans');
       case 'gLogin': return cloudGoogle();
+      case 'derma': derma.open = !derma.open; if (derma.open) return dermaOpen(); try { speechSynthesis.cancel(); } catch {} return dermaRender();
+      case 'askDerma': return dermaOpen(d.q);
+      case 'dSettings': derma.view = 'settings'; return dermaOpen();
+      case 'dAsk': {
+        if (d.q !== '__scanimg__') return dermaSend(d.q);
+        const sc = [...db.scans].reverse().find((x) => x.img); if (!sc) return;
+        derma.img = sc.img; return dermaSend(`Here is my latest ${sc.kind === 'hair' ? 'scalp' : 'face'} scan photo from ${fmtDay(sc.date)}. What do you notice, and what should I focus on first?`);
+      }
+      case 'dView': derma.view = d.v; derma.err = ''; return dermaRender();
+      case 'dClear': return askConfirm('Clear the whole conversation with Derma?', () => { db.chat = []; save(); dermaRender(); }, 'Clear chat');
+      case 'dForget': store.set('gkey', ''); store.set('gmodels', []); Object.assign(derma, { key: '', models: [], view: 'key' }); toast('Key removed from this device'); return dermaRender();
+      case 'dSpeak': derma.speak = !derma.speak; store.set('dspeak', derma.speak); if (!derma.speak) try { speechSynthesis.cancel(); } catch {} return dermaRender();
+      case 'dCopy': return copyText(db.chat[+d.i]?.t || '');
+      case 'dSay': return speakOut(db.chat[+d.i]?.t || '');
+      case 'dMic': return dermaListen();
+      case 'dStop': derma.ctrl?.abort(); return;
+      case 'dImgX': derma.img = null; return dermaRender();
+      case 'pinKey': return pinKey(d.v);
+      case 'pinLen': lock.len = +d.v; lock.entry = ''; return gateRender();
+      case 'pinSetup': Object.assign(lock, { setup: true, first: '', entry: '', len: lock.cfg?.len || 6 }); return gateCheck(true);
+      case 'pinCancel': Object.assign(lock, { setup: false, first: '', entry: '' }); return gateCheck(true);
+      case 'gateSkip': store.set('gateSeen', true); return gateCheck();
+      case 'gReset': return cloudReset();
+      case 'lockNow': return lockNow();
+      case 'bioUnlock': return bioUnlock();
+      case 'bioOn': return bioRegister().then(() => render());
+      case 'bioOff': lock.cfg.bio = null; store.set('lock', lock.cfg); toast('Face ID / fingerprint unlock is off'); return render();
+      case 'pinOff': return askConfirm('Remove the PIN lock from this device?', () => { lock.cfg = null; store.set('lock', null); lock.locked = false; renderAcct(); render(); toast('Lock removed'); }, 'Remove lock');
+      case 'pinForgot': return askConfirm(fbConfig() ? 'Reset the lock? For your privacy this also removes your data from this device and signs you out. Sign in again and it all comes back from your account.' : 'Reset the lock? For your privacy this erases all AURA data stored on this device. This cannot be undone.', async () => {
+        lock.cfg = null; store.set('lock', null); lock.locked = false; lock.fails = 0; lock.until = 0;
+        db = fresh(); current = null; save(true); store.set('gkey', ''); Object.assign(derma, { key: '', models: [] });
+        if (cloud.user) await cloud.auth.signOut();
+        gateCheck(true); render();
+      }, 'Reset');
       case 'logout': return askConfirm('Sign out? Your data stays safe in your account. This device keeps a copy unless you remove it.', () => cloudSignOut(false), 'Sign out');
       case 'logoutWipe': return askConfirm('Sign out and remove your data from this device? It stays in your account.', () => cloudSignOut(true), 'Sign out & remove');
       case 'resetPw': return cloudReset();
@@ -2287,9 +2772,11 @@ const App = (() => {
   function onForm(form, e) {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(form));
+    if (form.dataset.form === 'derma') return dermaSend(fd.q);
+    if (form.dataset.form === 'gkey') return dermaConnect(fd.key, !!fd.remember);
     if (form.dataset.form === 'addStep') { db.routine[fd.when].push({ id: uid(), name: fd.name.trim(), kind: fd.kind }); toast('Step added'); }
     if (form.dataset.form === 'profile') { if (fd.skinType !== db.profile.skinType) db.profile.skinTypeManual = true; Object.assign(db.profile, fd); toast('Profile saved'); }
-    if (form.dataset.form === 'body') { Object.assign(db.profile, { sex: fd.sex, age: +fd.age, weight: +fd.weight, height: +fd.height, activity: fd.activity, goal: fd.goal }); toast('Targets updated'); }
+    if (form.dataset.form === 'body') { Object.assign(db.profile, { sex: fd.sex, age: +fd.age, weight: +fd.weight, height: +fd.height, activity: fd.activity, goal: fd.goal, diet: fd.diet, lunch: fd.lunch }); lunchTab = null; toast('Targets updated'); }
     if (form.dataset.form === 'alarm') { db.sleep.alarm = fd.alarm; db.sleep.need = +fd.need; if (db.sleep.active && !ringing) db.sleep.active.alarmAt = nextAlarm(new Date(db.sleep.active.start))?.getTime() ?? null; toast('Alarm saved for ' + fd.alarm); }
     if (form.dataset.form === 'night') {
       const end = new Date(fd.date + 'T' + fd.wake), start = new Date(fd.date + 'T' + fd.bed);
@@ -2367,9 +2854,9 @@ const App = (() => {
         const neb = (col, p, s, o) => {
           const tex = canvasTex(T, 256, 256, (x) => { const g = x.createRadialGradient(128, 128, 0, 128, 128, 128); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 256, 256); });
           const sp = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, opacity: o, depthWrite: false, blending: T.AdditiveBlending, fog: false }));
-          sp.position.set(...p); sp.scale.set(s, s * 0.7, 1); scene.add(sp);
+          sp.position.set(...p); sp.scale.set(s, s * 0.7, 1); scene.add(sp); return sp;
         };
-        neb('rgba(255,150,100,0.55)', [40, 18, -140], 160, 0.35); neb('rgba(110,200,190,0.45)', [-60, -20, -160], 190, 0.3); neb('rgba(160,140,255,0.4)', [10, -40, -180], 150, 0.22);
+        const nebs = [neb('rgba(255,150,100,0.55)', [40, 18, -140], 160, 0.35), neb('rgba(110,200,190,0.45)', [-60, -20, -160], 190, 0.3), neb('rgba(160,140,255,0.4)', [10, -40, -180], 150, 0.22), neb('rgba(242,160,207,0.4)', [-20, 30, -170], 170, 0)];
         // a ringed planet low on the right
         const planetTex = canvasTex(T, 512, 256, (x, w, h) => {
           for (let y = 0; y < h; y++) { const t = y / h, n = Math.sin(t * 38) * 0.5 + Math.sin(t * 91 + 1.3) * 0.3 + Math.sin(t * 7) * 0.6; const v = 0.55 + n * 0.12; x.fillStyle = `rgb(${Math.round(210 * v)},${Math.round(150 * v)},${Math.round(108 * v)})`; x.fillRect(0, y, w, 1); }
@@ -2385,7 +2872,7 @@ const App = (() => {
         planet.position.set(26, -13, -58); planet.rotation.z = 0.35; scene.add(planet);
         const moon = new T.Mesh(new T.SphereGeometry(1.4, 32, 24), new T.MeshStandardMaterial({ color: 0xb9b2a8, roughness: 1 })); moon.position.set(-30, 16, -70); scene.add(moon);
         const objs = [];
-        const add = (mesh, p, spin, amp) => { mesh.position.set(...p); scene.add(mesh); objs.push({ mesh, base: p.slice(), spin, amp, ph: R() * 6.28 }); };
+        const add = (mesh, p, spin, amp) => { mesh.position.set(...p); scene.add(mesh); objs.push({ mesh, base: p.slice(), spin, amp, ph: R() * 6.28, off: new T.Vector3(), vel: new T.Vector3(), sv: 0, sc: 1 }); };
         // glass orbs that catch the light
         const glassM = () => physical(T, { color: new T.Color(0xffffff), metalness: 0, roughness: 0.06, transmission: 0.92, transparent: true, opacity: 0.55, envMapIntensity: 1.8, clearcoat: 1, clearcoatRoughness: 0.05, ior: 1.45, thickness: 1.2 });
         [[-15, 6, -14, 0.9], [16, 8, -20, 0.7], [-13, -7, -10, 0.5], [17, -6, -16, 1.1], [-22, 1, -26, 0.8]].forEach(([x, y, z, s]) => add(new T.Mesh(new T.SphereGeometry(s, 48, 32), glassM()), [x, y, z], [0.001, 0.002, 0], 0.35));
@@ -2411,14 +2898,101 @@ const App = (() => {
         [[13, -8, -14], [-16, 8, -18], [20, 4, -24]].forEach((p) => add(molecule(), p, [0.003, 0.006, 0.002], 0.6));
         const resize = () => { r.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); };
         addEventListener('resize', resize);
-        let t = 0;
+
+        /* --- interaction: stardust trail, click bursts, hover, drag-to-spin, shooting stars, per-page camera flights --- */
+        const glowTex = canvasTex(T, 64, 64, (x) => { const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,0.6)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); });
+        const NP = 420, pp = new Float32Array(NP * 3), pc = new Float32Array(NP * 3), pv = new Float32Array(NP * 3), pl = new Float32Array(NP), base = new Float32Array(NP * 3);
+        const pg = new T.BufferGeometry(); pg.setAttribute('position', new T.BufferAttribute(pp, 3)); pg.setAttribute('color', new T.BufferAttribute(pc, 3));
+        const dust = new T.Points(pg, new T.PointsMaterial({ size: 0.16, map: glowTex, vertexColors: true, transparent: true, depthWrite: false, blending: T.AdditiveBlending, fog: false }));
+        dust.frustumCulled = false; scene.add(dust);
+        let pi = 0;
+        const PAL = [[0.56, 0.87, 0.82], [1, 0.7, 0.48], [0.72, 0.65, 1], [0.95, 0.63, 0.81], [1, 0.95, 0.9]];
+        const emit = (pt, v, life, col) => { const i = pi++ % NP; pp.set([pt.x, pt.y, pt.z], i * 3); pv.set([v.x, v.y, v.z], i * 3); pl[i] = life; base.set(col, i * 3); };
+        const ray = new T.Raycaster(), ndc = new T.Vector2(), tmp = new T.Vector3(), plane = new T.Plane(new T.Vector3(0, 0, 1), 6);
+        const onPlane = (x, y, z = -6) => { ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, cam); plane.constant = -z; const out = new T.Vector3(); return ray.ray.intersectPlane(plane, out) ? out : null; };
+        const meshes = objs.map((o) => o.mesh);
+        const hitObj = (x, y) => { ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, cam); const h = ray.intersectObjects(meshes, true)[0]; if (!h) return null; let m = h.object; while (m && !meshes.includes(m)) m = m.parent; return objs.find((o) => o.mesh === m) || null; };
+        // shock rings
+        const rings = [];
+        const ringMat = () => new T.MeshBasicMaterial({ map: canvasTex(T, 128, 128, (x) => { x.strokeStyle = 'rgba(255,255,255,0.9)'; x.lineWidth = 3; x.beginPath(); x.arc(64, 64, 58, 0, 7); x.stroke(); }), transparent: true, depthWrite: false, blending: T.AdditiveBlending, color: 0xffd2b0 });
+        const burst = (x, y) => {
+          const c = onPlane(x, y); if (!c) return;
+          const hit = hitObj(x, y);
+          for (let k = 0; k < 70; k++) { const a = Math.random() * 6.283, e = Math.random() * 2 - 1, sp = 0.05 + Math.random() * 0.13, cr = Math.sqrt(1 - e * e); emit(c, tmp.set(Math.cos(a) * cr * sp, Math.sin(a) * cr * sp, e * sp * 0.6), 1, PAL[k % PAL.length]); }
+          const rm = new T.Mesh(new T.PlaneGeometry(1, 1), ringMat()); rm.position.copy(c); scene.add(rm); rings.push({ m: rm, t: 0 });
+          objs.forEach((o) => { const d = tmp.copy(o.mesh.position).sub(c), L = Math.max(1.5, d.length()); o.vel.add(d.normalize().multiplyScalar(Math.min(0.5, 6 / (L * L)))); o.sv += 2 / L; });
+          if (hit) { hit.vel.add(tmp.copy(hit.mesh.position).sub(cam.position).normalize().multiplyScalar(0.6)); hit.sv += 1.5; }
+        };
+        // shooting stars
+        const shoots = [];
+        let nextShoot = performance.now() + 3000;
+        const shoot = () => {
+          const g = new T.BufferGeometry(), sx = (Math.random() - 0.5) * 140, sy = 25 + Math.random() * 30, z = -70 - Math.random() * 30, dx = (Math.random() < 0.5 ? -1 : 1) * (1.2 + Math.random()), dy = -0.6 - Math.random() * 0.4;
+          g.setAttribute('position', new T.BufferAttribute(new Float32Array([sx, sy, z, sx - dx * 8, sy - dy * 8, z]), 3));
+          g.setAttribute('color', new T.BufferAttribute(new Float32Array([1, 0.95, 0.88, 0, 0, 0]), 3));
+          const l = new T.Line(g, new T.LineBasicMaterial({ vertexColors: true, transparent: true, blending: T.AdditiveBlending, depthWrite: false, fog: false })); scene.add(l);
+          shoots.push({ l, dx, dy, t: 0 });
+        };
+        // pointer: trail + hover; background drag spins the star field
+        const isBg = (el) => !el?.closest?.('a,button,input,select,textarea,label,[data-act],[role="button"],.card,.holo,.tile,.banner,.dock,.topbar,.derma,.derma-fab,.gate,.modal,.night,.toast,canvas:not(#space),p,h1,h2,h3,li,td,th,img,svg');
+        let hov = null, lastMove = 0, drag = null, spinV = 0, spin = 0, mpos = null;
+        addEventListener('pointermove', (e) => {
+          mpos = [e.clientX, e.clientY];
+          if (drag) { spinV = (e.clientX - drag) * 0.0009; drag = e.clientX; }
+          if (e.pointerType !== 'mouse' || document.body.classList.contains('locked') && !e.target.closest?.('.gate')) return;
+          const now = performance.now(); if (now - lastMove < 16) return; lastMove = now;
+          const pt = onPlane(e.clientX, e.clientY, -5); if (pt) for (let k = 0; k < 2; k++) emit(pt, tmp.set((Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02 + 0.006, (Math.random() - 0.5) * 0.02), 0.85, PAL[(Math.random() * PAL.length) | 0]);
+        }, { passive: true });
+        addEventListener('pointerdown', (e) => { if (!isBg(e.target)) return; burst(e.clientX, e.clientY); if (e.pointerType === 'mouse') drag = e.clientX; }, { passive: true });
+        addEventListener('pointerup', () => { drag = null; }, { passive: true });
+        // per-page "stations": the camera flies to a new viewpoint on each page
+        const ST = {
+          '/': { c: [0, 0, 12], l: [0, 0, -20], n: [0.35, 0.3, 0.22, 0], m: [-30, 16, -70, 1], e: 1.1 },
+          '/log': { c: [-3, 2, 11], l: [-5, 1, -20], n: [0.3, 0.38, 0.2, 0.1], m: [-30, 16, -70, 1], e: 1.1 },
+          '/scan': { c: [3.5, -1.5, 10.5], l: [7, -4, -20], n: [0.25, 0.48, 0.18, 0.12], m: [-30, 16, -70, 1], e: 1.15 },
+          '/trends': { c: [0, 4, 13], l: [0, 3, -20], n: [0.3, 0.3, 0.34, 0], m: [-30, 16, -70, 1], e: 1.05 },
+          '/fuel': { c: [-4, -2.5, 11], l: [-7, -5, -20], n: [0.22, 0.5, 0.2, 0], m: [-30, 16, -70, 1], e: 1.15 },
+          '/sleep': { c: [0.5, 2, 12], l: [1.5, 3.5, -20], n: [0.08, 0.15, 0.45, 0.2], m: [10, 8.5, -34, 2.4], e: 0.85 },
+          '/routine': { c: [2.5, 2, 12], l: [4, 2, -20], n: [0.4, 0.25, 0.25, 0.12], m: [-30, 16, -70, 1], e: 1.1 },
+          '/me': { c: [0, -3, 12.5], l: [0, -3, -20], n: [0.3, 0.3, 0.3, 0.25], m: [-30, 16, -70, 1], e: 1.05 },
+        };
+        const st = { c: new T.Vector3(0, 0, 12), l: new T.Vector3(0, 0, -20), n: [0.35, 0.3, 0.22, 0], m: new T.Vector3(-30, 16, -70), ms: 1, e: 1.1 };
+        let goal = ST['/'];
+        this.setRoute = (rt) => { goal = ST['/' + (rt || '').split('/')[1]] || ST['/']; };
+        this.burst = burst;
+        const lerp = (a, b, k) => a + (b - a) * k;
+        let t = 0, fr = 0;
         this.frame = () => {
-          t += 0.0035;
-          objs.forEach((o) => { o.mesh.rotation.x += o.spin[0]; o.mesh.rotation.y += o.spin[1]; o.mesh.rotation.z += o.spin[2]; o.mesh.position.y = o.base[1] + Math.sin(t * 2 + o.ph) * o.amp; o.mesh.position.x = o.base[0] + Math.cos(t * 1.3 + o.ph) * o.amp * 0.6; });
-          planet.rotation.y += 0.0006; ball.rotation.y += 0.0008; starsNear.rotation.y = t * 0.02; starsFar.rotation.y = t * 0.008;
+          t += 0.0035; fr++;
+          // fly toward the page's station
+          st.c.lerp(tmp.set(...goal.c), 0.025); st.l.lerp(tmp.set(...goal.l), 0.025); st.m.lerp(tmp.set(...goal.m.slice(0, 3)), 0.02); st.ms = lerp(st.ms, goal.m[3], 0.02); st.e = lerp(st.e, goal.e, 0.03);
+          nebs.forEach((nb, i) => { nb.material.opacity = st.n[i] = lerp(st.n[i], goal.n[i], 0.03); });
+          moon.position.copy(st.m); moon.scale.setScalar(st.ms); r.toneMappingExposure = st.e;
+          // hover: whatever the pointer is over swells and spins (checked every 4th frame)
+          if (mpos && fr % 4 === 0 && fx.hover) { const h = hitObj(mpos[0], mpos[1]); if (h !== hov) { hov = h; if (h) h.sv += 0.6; } }
+          objs.forEach((o) => {
+            o.off.add(o.vel); o.vel.multiplyScalar(0.94); o.off.multiplyScalar(0.985); o.sv *= 0.96;
+            const k = 1 + o.sv * 4; o.mesh.rotation.x += o.spin[0] * k; o.mesh.rotation.y += o.spin[1] * k + o.sv * 0.02; o.mesh.rotation.z += o.spin[2] * k;
+            o.sc = lerp(o.sc, o === hov ? 1.35 : 1, 0.12); o.mesh.scale.setScalar(o.sc);
+            o.mesh.position.set(o.base[0] + Math.cos(t * 1.3 + o.ph) * o.amp * 0.6 + o.off.x, o.base[1] + Math.sin(t * 2 + o.ph) * o.amp + o.off.y, o.base[2] + o.off.z);
+          });
+          // particles
+          for (let i = 0; i < NP; i++) {
+            if (pl[i] <= 0) { if (pc[i * 3] || pc[i * 3 + 1] || pc[i * 3 + 2]) pc.fill(0, i * 3, i * 3 + 3); continue; }
+            pl[i] -= 0.016; pv[i * 3] *= 0.97; pv[i * 3 + 1] *= 0.97; pv[i * 3 + 2] *= 0.97;
+            pp[i * 3] += pv[i * 3]; pp[i * 3 + 1] += pv[i * 3 + 1]; pp[i * 3 + 2] += pv[i * 3 + 2];
+            const a = Math.max(0, pl[i]) ** 1.5; pc[i * 3] = base[i * 3] * a; pc[i * 3 + 1] = base[i * 3 + 1] * a; pc[i * 3 + 2] = base[i * 3 + 2] * a;
+          }
+          pg.attributes.position.needsUpdate = true; pg.attributes.color.needsUpdate = true;
+          for (let i = rings.length - 1; i >= 0; i--) { const g = rings[i]; g.t += 0.025; g.m.scale.setScalar(0.5 + g.t * 9); g.m.material.opacity = Math.max(0, 1 - g.t) * 0.8; g.m.lookAt(cam.position); if (g.t >= 1) { scene.remove(g.m); g.m.geometry.dispose(); g.m.material.map.dispose(); g.m.material.dispose(); rings.splice(i, 1); } }
+          if (performance.now() > nextShoot) { shoot(); nextShoot = performance.now() + 5000 + Math.random() * 7000; }
+          for (let i = shoots.length - 1; i >= 0; i--) { const sh = shoots[i]; sh.t += 1; sh.l.position.x += sh.dx * 1.4; sh.l.position.y += sh.dy * 1.4; sh.l.material.opacity = Math.max(0, 1 - sh.t / 55); if (sh.t > 55) { scene.remove(sh.l); sh.l.geometry.dispose(); sh.l.material.dispose(); shoots.splice(i, 1); } }
+          // drag to spin the star field (with inertia)
+          spin += spinV; spinV *= 0.95;
+          planet.rotation.y += 0.0006; ball.rotation.y += 0.0008; starsNear.rotation.y = t * 0.02 + spin; starsFar.rotation.y = t * 0.008 + spin * 0.5;
           const sy = Math.min(scrollY, 4000) * 0.0016;
-          cam.position.x += (fx.cx * 1.6 - cam.position.x) * 0.05; cam.position.y += (-fx.cy * 1.0 - sy - cam.position.y) * 0.05;
-          cam.lookAt(fx.cx * 0.4, -sy * 0.8, -20);
+          cam.position.x += (st.c.x + fx.cx * 1.6 - cam.position.x) * 0.05; cam.position.y += (st.c.y - fx.cy * 1.0 - sy - cam.position.y) * 0.05; cam.position.z += (st.c.z - cam.position.z) * 0.05;
+          cam.lookAt(st.l.x + fx.cx * 0.4, st.l.y - sy * 0.8, st.l.z);
           r.render(scene, cam);
         };
         this.on = true; return true;
@@ -2595,7 +3169,7 @@ const App = (() => {
       document.documentElement.addEventListener('pointerleave', () => { this.mx = this.my = -9999; this.tx = this.ty = 0; });
       if (this.reduced) return;
       // the 3D space scene replaces the flat particle field when WebGL is available
-      if (Space.init()) this.cv.style.display = 'none';
+      if (Space.init()) { this.cv.style.display = 'none'; Space.setRoute(route); if (!store.get('spaceTip', false)) setTimeout(() => { if (!document.body.classList.contains('locked')) { toast('Tip: click empty space to send a ripple · drag it to spin the stars'); store.set('spaceTip', true); } }, 5000); }
       const loop = () => { if (!document.hidden) { this.step(); Space.on ? Space.frame() : this.draw(); } requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
     },
@@ -2669,7 +3243,8 @@ const App = (() => {
     const y = scrollY, app = $('#app');
     app.innerHTML = html;
     if (route !== lastPath) { scrollTo(0, 0); app.classList.remove('fade-in'); void app.offsetWidth; app.classList.add('fade-in'); } else scrollTo(0, y);
-    lastPath = route; tilted = null;
+    lastPath = route; tilted = null; Space.setRoute?.(route);
+    if (lock.mode === 'auth') gateRender();
     $$('#dock a').forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + nav));
     mount();
   }
@@ -2692,6 +3267,7 @@ const App = (() => {
     if (pendingFile && route === '/scan') { const f = pendingFile; pendingFile = null; runScan(f); }
     $('#logDate')?.addEventListener('change', (e) => e.target.value && go('#/log/' + e.target.value));
     $('#baRange')?.addEventListener('input', (e) => e.target.parentElement.style.setProperty('--pos', e.target.value + '%'));
+    $('[data-lockafter]')?.addEventListener('change', (e) => { lock.cfg.after = +e.target.value; store.set('lock', lock.cfg); toast('Saved'); });
     $$('[data-rem-time]').forEach((el) => el.addEventListener('change', () => { db.reminders.find((r) => r.id === el.dataset.remTime).time = el.value; save(); render(); }));
   }
 
@@ -2705,7 +3281,7 @@ const App = (() => {
       const b = e.target.closest('[data-act]'); if (b && !b.disabled) { e.preventDefault(); act(b); }
     });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') $('#modal').classList.add('hidden');
+      if (e.key === 'Escape') { if (!$('#modal').classList.contains('hidden')) $('#modal').classList.add('hidden'); else if (derma.open) { derma.open = false; dermaRender(); } }
       if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.zone[data-act]')) { e.preventDefault(); act(e.target); }
     });
     document.addEventListener('submit', (e) => { const f = e.target.closest('[data-form]'); if (f) onForm(f, e); });
@@ -2729,6 +3305,7 @@ const App = (() => {
     addEventListener('popstate', () => go(readHash(), false));
     addEventListener('hashchange', () => { const h = readHash(); if (h !== route) go(h, false); });
     render();
+    gateCheck(); dermaRender();
     fx.init();
     setInterval(remTick, 20000); remTick();
     setInterval(sleepTick, 1000);

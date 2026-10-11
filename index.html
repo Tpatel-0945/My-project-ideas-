@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>AURA Monitor</title>
-  <meta name="description" content="Personal skin and hair monitor: daily check-ins, photo scans, trends, insights and routine tracking. All data stays on your device.">
+  <meta name="description" content="Personal skin and hair monitor: photo scans, check-ins, nutrition, sleep and Derma, an AI coach.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;700&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -30,7 +30,7 @@
         <a href="#/routine" title="Routine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="m3.5 6.5 1.3 1.3L7 5.5M3.5 12l1.3 1.3L7 11M3.5 17.5l1.3 1.3L7 16.5"/></svg><span>Routine</span></a>
         <a href="#/me" title="Account, profile & reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.3-3.6 4-5.4 7.5-5.4s6.2 1.8 7.5 5.4"/></svg><span>Me</span></a>
       </nav>
-      <a href="#/me" class="acct" id="acct">Sign in</a>
+      <div class="top-right"><button class="lock-btn" id="lockBtn" data-act="lockNow" title="Lock now" aria-label="Lock AURA now" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg></button><a href="#/me" class="acct" id="acct">Sign in</a></div>
     </div>
   </header>
 
@@ -39,7 +39,7 @@
   <footer>
     <div class="wrap">
       <b>Not medical advice.</b> AURA Monitor helps you notice patterns; it cannot diagnose. See a dermatologist for a changing or bleeding mole,
-      sudden or patchy hair loss, painful cystic acne, or any rash that spreads, blisters or swells. Everything you log stays in this browser.
+      sudden or patchy hair loss, painful cystic acne, or any rash that spreads, blisters or swells. Your logs stay in this browser (and your account, if you sign in); Derma chats are sent to Google Gemini.
     </div>
   </footer>
 
@@ -57,6 +57,13 @@
       </div>
       <p class="nnote">Keep this tab open and your phone charging. Keep your phone's own alarm as a backup.</p>
     </div>
+  </div>
+  <button class="derma-fab" id="dermaFab" data-act="derma" aria-label="Chat with Derma, your AI skin coach"><span class="d-orb" aria-hidden="true"><i></i></span><span class="lbl">Ask Derma</span></button>
+  <aside class="derma hidden" id="derma" role="dialog" aria-label="Derma, AI skin and hair coach"></aside>
+
+  <div class="gate hidden" id="gate" role="dialog" aria-modal="true" aria-label="Unlock AURA Monitor">
+    <div class="gate-orb" id="gateOrb" aria-hidden="true"></div>
+    <div class="gate-box" id="gateBox"></div>
   </div>
   <div class="toast" id="toast" role="status"></div>
   <div class="modal hidden" id="modal" role="dialog" aria-modal="true"><div class="modal-card"><div class="modal-body"></div><div class="row modal-foot" style="justify-content:flex-end;margin-top:16px"></div></div></div>
