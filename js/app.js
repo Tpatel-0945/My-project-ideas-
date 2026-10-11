@@ -884,6 +884,13 @@ const App = (() => {
   /* ---------- face landmark model (MediaPipe Face Landmarker, loaded on first scan) ---------- */
   const MP_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
   let FL = null, landmarker = null, lmLoading = null, lmFailed = false;
+  // the model ships as a binary .task file; hosts that cannot serve that type get a base64 text copy instead
+  async function modelBytes(base) {
+    try { const r = await fetch(base + 'face_landmarker.task'); if (r.ok) return new Uint8Array(await r.arrayBuffer()); } catch {}
+    const bin = atob((await (await fetch(base + 'face_landmarker.task.b64.txt')).text()).trim()), u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return u;
+  }
   function loadLandmarker() {
     if (landmarker || lmFailed) return Promise.resolve(landmarker);
     return (lmLoading ||= (async () => {
@@ -893,7 +900,7 @@ const App = (() => {
         const base = new URL('vendor/mediapipe/', document.baseURI).href;
         landmarker = await FL.createFromOptions(
           { wasmLoaderPath: MP_CDN + '/wasm/vision_wasm_internal.js', wasmBinaryPath: base + 'vision_wasm_internal.wasm' },
-          { baseOptions: { modelAssetPath: base + 'face_landmarker.task', delegate: 'CPU' }, runningMode: 'IMAGE', numFaces: 1 });
+          { baseOptions: { modelAssetBuffer: await modelBytes(base), delegate: 'CPU' }, runningMode: 'IMAGE', numFaces: 1 });
       } catch (e) { console.warn('Face landmark model unavailable; using colour analysis only.', e); lmFailed = true; landmarker = null; }
       return landmarker;
     })());
