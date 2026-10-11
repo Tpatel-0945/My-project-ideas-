@@ -2,118 +2,46 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AURA Lab — Skin & Hair Intelligence</title>
-  <meta name="description" content="Personal skin and hair lab: quizzes, routine builder, ingredient checker, climate tips for Indian weather, shop and clinic booking.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>AURA Monitor</title>
+  <meta name="description" content="Personal skin and hair monitor: daily check-ins, photo scans, trends, insights and routine tracking. All data stays on your device.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%233cf0ff'/><circle cx='50' cy='50' r='22' fill='%23ff4fd8'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='none' stroke='%233cf0ff' stroke-width='10'/><circle cx='50' cy='50' r='22' fill='none' stroke='%23a77bff' stroke-width='10'/></svg>">
 </head>
 <body>
-  <div class="bg-orbs"><span></span><span></span><span></span></div>
-  <div class="bg-grid"></div>
+  <div class="aurora"></div>
+  <canvas id="fx"></canvas>
+  <div id="glow"></div>
 
-  <div class="strip" id="strip">
-    ⚠ Educational content only — not medical advice. <a href="#/disclaimer">Read the disclaimer</a>
-    <button aria-label="Dismiss" onclick="App.dismissStrip()">✕</button>
-  </div>
-
-  <nav class="nav">
-    <div class="container nav-inner">
-      <a href="#/" class="logo">AURA<b>//</b>LAB</a>
-      <div class="nav-links" id="navLinks">
-        <a href="#/">Home</a>
-        <div class="dd">
-          <button>Skin ▾</button>
-          <div class="dd-menu" id="ddSkin"></div>
-        </div>
-        <div class="dd">
-          <button>Hair ▾</button>
-          <div class="dd-menu" id="ddHair"></div>
-        </div>
-        <div class="dd">
-          <button>Tools ▾</button>
-          <div class="dd-menu">
-            <a href="#/quiz">Type Quiz<small>Skin & hair type in 2 min</small></a>
-            <a href="#/routine">Routine Builder<small>AM / PM steps you can save</small></a>
-            <a href="#/ingredients">Ingredient Checker<small>What it does & what not to mix</small></a>
-            <a href="#/compat">Compatibility Checker<small>Retinol + AHA? Check it</small></a>
-            <a href="#/climate">Climate Tips<small>Live UV & humidity advice</small></a>
-          </div>
-        </div>
-        <div class="dd">
-          <button>AI Lab ▾</button>
-          <div class="dd-menu">
-            <a href="#/analyze">Skin Analysis<small>On-device photo scan</small></a>
-            <a href="#/progress">Progress Tracker<small>Weekly photos & trends</small></a>
-            <a href="#/reminders">Reminders<small>Routine & SPF reapply alerts</small></a>
-            <a href="#" onclick="App.chat.open();return false;">AI Chat<small>Ask routine questions</small></a>
-          </div>
-        </div>
-        <div class="dd">
-          <button>Learn ▾</button>
-          <div class="dd-menu">
-            <a href="#/blog">Articles<small>Myths, routines, budget picks</small></a>
-            <a href="#/remedies">DIY Remedies<small>Evidence-rated</small></a>
-            <a href="#/videos">Tutorials<small>Step-by-step guides</small></a>
-            <a href="#/glossary">Glossary<small>pH, comedogenic, PA++++</small></a>
-          </div>
-        </div>
-        <a href="#/shop">Shop</a>
-        <a href="#/clinic">Clinic</a>
-      </div>
-      <div class="nav-icons">
-        <a href="#/wishlist" class="icon-btn" title="Wishlist" aria-label="Wishlist">♡<span class="badge-count hidden" id="wishCount"></span></a>
-        <a href="#/cart" class="icon-btn" title="Cart" aria-label="Cart"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h9.8a1 1 0 0 0 1-.8L21 7H6"/></svg><span class="badge-count hidden" id="cartCount"></span></a>
-        <a href="#/account" class="icon-btn" title="Account" aria-label="Account">◎</a>
-        <button class="icon-btn burger" aria-label="Menu" onclick="document.getElementById('navLinks').classList.toggle('open')">☰</button>
-      </div>
+  <header class="topbar">
+    <div class="wrap">
+      <a href="#/" class="logo">AURA<b>//</b>MONITOR</a>
+      <nav class="dock" id="dock" aria-label="Main">
+        <a href="#/"><i>◈</i><span>Dashboard</span></a>
+        <a href="#/log"><i>✚</i><span>Check-in</span></a>
+        <a href="#/scan"><i>◉</i><span>Scan</span></a>
+        <a href="#/trends"><i>∿</i><span>Trends</span></a>
+        <a href="#/routine"><i>☰</i><span>Routine</span></a>
+        <a href="#/me"><i>◎</i><span>Me</span></a>
+      </nav>
     </div>
-  </nav>
+  </header>
 
-  <main class="container" id="app"></main>
+  <main class="wrap" id="app"></main>
 
   <footer>
-    <div class="container">
-      <div class="cols">
-        <div>
-          <a href="#/" class="logo">AURA<b>//</b>LAB</a>
-          <p class="muted small mt">Skin & hair intelligence, tuned for Indian weather. Built for personal use.</p>
-        </div>
-        <div><h4>EXPLORE</h4><a href="#/skin">Skin</a><a href="#/hair">Hair</a><a href="#/shop">Shop</a><a href="#/clinic">Clinic</a></div>
-        <div><h4>TOOLS</h4><a href="#/quiz">Quiz</a><a href="#/routine">Routine</a><a href="#/ingredients">Ingredients</a><a href="#/climate">Climate</a></div>
-        <div><h4>LEARN</h4><a href="#/blog">Articles</a><a href="#/remedies">Remedies</a><a href="#/videos">Tutorials</a><a href="#/glossary">Glossary</a></div>
-        <div><h4>INFO</h4><a href="#/about">About</a><a href="#/contact">Contact</a><a href="#/faq">FAQ</a><a href="#/privacy">Privacy</a><a href="#/disclaimer">Disclaimer</a></div>
-      </div>
-      <div class="legal">
-        <b>Not medical advice.</b> Content on this site is for general education and does not replace a consultation with a qualified dermatologist or doctor.
-        If you have a changing mole, sudden hair loss, severe or painful acne, or any skin reaction that spreads, blisters or swells — see a doctor promptly.
-        <br><br>© <span id="yr"></span> AURA Lab · Personal project · All data stays in your browser.
-      </div>
+    <div class="wrap">
+      <b>Not medical advice.</b> AURA Monitor helps you notice patterns; it cannot diagnose. See a dermatologist for a changing or bleeding mole,
+      sudden or patchy hair loss, painful cystic acne, or any rash that spreads, blisters or swells. Everything you log stays in this browser.
     </div>
   </footer>
 
-  <button class="chat-fab" aria-label="Open chat" onclick="App.chat.toggle()">✦</button>
-  <div class="chat hidden" id="chat">
-    <header>
-      <span class="dotlive"></span>
-      <div style="flex:1"><b>AURA Assistant</b><div class="small muted">Routine & ingredient Q&A · not a doctor</div></div>
-      <button class="icon-btn" style="width:32px;height:32px" onclick="App.chat.toggle()" aria-label="Close">✕</button>
-    </header>
-    <div class="msgs" id="chatMsgs"></div>
-    <div class="suggest" id="chatSuggest"></div>
-    <form id="chatForm">
-      <input type="text" id="chatInput" placeholder="Ask: can I mix retinol and AHA?" autocomplete="off">
-      <button class="btn primary sm" type="submit">Send</button>
-    </form>
-  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <div class="modal hidden" id="modal" role="dialog" aria-modal="true"><div class="modal-card"><div class="modal-body"></div><div class="row modal-foot" style="justify-content:flex-end;margin-top:16px"></div></div></div>
 
-  <div class="toast" id="toast"></div>
-  <div class="modal hidden" id="modal" role="dialog" aria-modal="true"><div class="card modal-card"><div class="modal-body"></div><div class="row modal-foot" style="justify-content:flex-end;margin-top:16px"></div></div></div>
-
-  <script src="js/data.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
