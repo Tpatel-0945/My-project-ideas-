@@ -28,7 +28,27 @@ const App = (() => {
   const ALL_CONCERNS = [...CONCERNS.skin.map((c) => ({ ...c, area: 'skin' })), ...CONCERNS.hair.map((c) => ({ ...c, area: 'hair' }))];
   const concernById = (id) => ALL_CONCERNS.find((c) => c.id === id);
 
-  const go = (h) => { if (location.hash === h) render(); else location.hash = h; };
+  let route = '/';
+  const readHash = () => { try { return (location.hash.slice(1) || '/').split('?')[0]; } catch { return '/'; } };
+  function go(h, push = true) {
+    route = (h.replace(/^#/, '') || '/').split('?')[0];
+    if (push) { try { history.pushState(null, '', '#' + route); } catch {} }
+    render();
+  }
+
+  /* In-page dialog (replaces confirm/alert, which embedded viewers block) */
+  function dialog(html, buttons = [{ label: 'Close' }]) {
+    const m = $('#modal');
+    m.querySelector('.modal-body').innerHTML = html;
+    const foot = m.querySelector('.modal-foot'); foot.innerHTML = '';
+    buttons.forEach((b) => {
+      const el = document.createElement('button'); el.className = 'btn sm ' + (b.cls || ''); el.textContent = b.label;
+      el.onclick = () => { if (b.fn?.() === false) return; m.classList.add('hidden'); };
+      foot.appendChild(el);
+    });
+    m.classList.remove('hidden'); foot.lastChild?.focus();
+  }
+  const askConfirm = (msg, yes, label = 'Delete') => dialog(`<p style="margin:0">${esc(msg)}</p>`, [{ label: 'Cancel', cls: 'ghost' }, { label, cls: 'danger', fn: yes }]);
 
   let toastTimer;
   function toast(msg) {
@@ -337,7 +357,7 @@ const App = (() => {
       const mk = (arr) => arr.map((s) => ({ id: uid(), step: s, product: '' }));
       const cur = store.get('routine', { am: [], pm: [], name: 'My routine' });
       if (track === 'skin') { cur.am = mk(r.am); cur.pm = mk(r.pm); } else { cur.hair = { am: mk(r.am), pm: mk(r.pm) }; }
-      store.set('routine', cur); quizState = null; location.hash = '#/routine'; toast('Routine saved');
+      store.set('routine', cur); quizState = null; go('#/routine'); toast('Routine saved');
     },
   };
 
@@ -367,6 +387,7 @@ const App = (() => {
         </div>`).join('') : '<p class="muted center" style="padding:30px 0">No steps yet. Add one below or <a href="#/quiz">take the quiz</a> to auto-fill.</p>'}
         <div class="row mt">
           <select id="stepSel" style="flex:1;min-width:160px">${STEP_PRESETS.map((s) => `<option>${s}</option>`).join('')}<option value="__custom">Custom step…</option></select>
+          <input type="text" id="stepCustom" placeholder="Custom step name" style="flex:1;min-width:140px">
           <select id="stepProd" style="flex:1;min-width:160px"><option value="">— or pick a shop product —</option>${PRODUCTS.filter((p) => p.cat === 'skin').map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
           <button class="btn primary" onclick="App.routine.add()">Add step</button>
         </div>
@@ -384,8 +405,8 @@ const App = (() => {
           ${hasRetinoid && noSpf ? '<div class="alert avoid"><b>Retinoid without sunscreen</b>Retinoids increase sun sensitivity — add SPF to your morning.</div>' : ''}
           <p class="small muted">Order rule of thumb: thinnest → thickest. Water-based serums before creams; sunscreen last in the morning.</p>
         </div>
-        <div class="card mt"><h3>Export</h3><p class="small muted">Print it, or set reminders so you never skip a step.</p>
-          <div class="row"><button class="btn sm" onclick="window.print()">Print</button><a class="btn sm" href="#/reminders">Set reminders</a><button class="btn sm" onclick="App.routine.copy()">Copy as text</button></div></div>
+        <div class="card mt"><h3>Export</h3><p class="small muted">Copy it to your notes, or set reminders so you never skip a step.</p>
+          <div class="row"><a class="btn sm" href="#/reminders">Set reminders</a><button class="btn sm" onclick="App.routine.copy()">Copy as text</button></div></div>
         ${r.hair ? `<div class="card mt"><h3>Hair routine</h3><div class="small"><b>AM:</b> ${r.hair.am.map((s) => esc(s.step)).join(' → ')}</div><div class="small mt"><b>PM:</b> ${r.hair.pm.map((s) => esc(s.step)).join(' → ')}</div></div>` : ''}
       </div>
     </div>
@@ -403,26 +424,30 @@ const App = (() => {
       const r = getRoutine(); const sel = $('#stepSel').value, pid = $('#stepProd').value;
       let step = sel;
       if (pid) step = PROD[pid].type;
-      else if (sel === '__custom') { step = prompt('Name your step'); if (!step) return; }
+      else if (sel === '__custom') { step = $('#stepCustom').value.trim(); if (!step) { $('#stepCustom').focus(); return toast('Type a name for your custom step'); } }
       (r[routineTab] ||= []).push({ id: uid(), step, product: pid ? PROD[pid].name : '', pid: pid || undefined });
       routine.save(r);
     },
     edit(id, v) { const r = getRoutine(); const s = r[routineTab].find((x) => x.id === id); if (s) { s.product = v; s.pid = undefined; } routine.save(r); },
     move(id, d) { const r = getRoutine(), l = r[routineTab], i = l.findIndex((x) => x.id === id), j = i + d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; routine.save(r); },
     remove(id) { const r = getRoutine(); r[routineTab] = r[routineTab].filter((x) => x.id !== id); routine.save(r); },
-    clear() { if (!confirm('Clear all ' + routineTab.toUpperCase() + ' steps?')) return; const r = getRoutine(); r[routineTab] = []; routine.save(r); },
+    clear() { askConfirm('Clear all ' + routineTab.toUpperCase() + ' steps?', () => { const r = getRoutine(); r[routineTab] = []; routine.save(r); }, 'Clear'); },
     template(k) { const r = getRoutine(), t = ROUTINE_TEMPLATES[k]; r.am = t.am.map((s) => ({ id: uid(), step: s, product: '' })); r.pm = t.pm.map((s) => ({ id: uid(), step: s, product: '' })); routine.save(r); toast('Template loaded'); },
     copy() {
       const r = getRoutine(), f = (l) => (l || []).map((s, i) => `${i + 1}. ${s.step}${s.product ? ' — ' + s.product : ''}`).join('\n');
       const txt = `MORNING\n${f(r.am)}\n\nNIGHT\n${f(r.pm)}`;
-      navigator.clipboard?.writeText(txt).then(() => toast('Copied!'), () => toast('Copy failed'));
+      copyText(txt);
     },
   };
+  function copyText(txt) {
+    const fallback = () => dialog(`<p class="small muted">Select the text below and copy it.</p><textarea id="copyBox" rows="10" readonly>${esc(txt)}</textarea>`);
+    try { navigator.clipboard.writeText(txt).then(() => toast('Copied!'), fallback); } catch { fallback(); }
+  }
   function loadRoutine(area, id) {
     const c = CONCERNS[area].find((x) => x.id === id); const r = getRoutine();
     const mk = (arr) => arr.filter((s) => s !== '—').map((s) => ({ id: uid(), step: s, product: '' }));
     if (area === 'skin') { r.am = mk(c.routine.am); r.pm = mk(c.routine.pm); } else r.hair = { am: mk(c.routine.am), pm: mk(c.routine.pm) };
-    store.set('routine', r); location.hash = '#/routine'; toast(c.name + ' routine loaded');
+    store.set('routine', r); go('#/routine'); toast(c.name + ' routine loaded');
   }
 
   /* ---------- ingredient checker ---------- */
@@ -453,7 +478,7 @@ const App = (() => {
     filter(q) {
       q = q.toLowerCase().trim();
       const exact = INGREDIENTS.find((x) => x.name.toLowerCase() === q);
-      if (exact) { location.hash = '#/ingredients/' + exact.id; return; }
+      if (exact) { go('#/ingredients/' + exact.id); return; }
       $$('#ingGrid > a').forEach((a) => a.classList.toggle('hidden', q && !a.dataset.q.includes(q)));
     },
   };
@@ -737,7 +762,7 @@ const App = (() => {
   };
 
   pages.checkout = () => {
-    const lines = cart.lines(); if (!lines.length) { setTimeout(() => (location.hash = '#/cart')); return ''; }
+    const lines = cart.lines(); if (!lines.length) { setTimeout(() => go('#/cart')); return ''; }
     const sub = cart.total(), ship = sub >= 799 ? 0 : 49;
     const prof = store.get('profile', {});
     return head('Store', '<span class="grad-text">Checkout</span>', 'Demo checkout — no money is charged.') +
@@ -853,7 +878,7 @@ const App = (() => {
       const a = store.get('appts', []); a.push({ id: uid(), ...booking, name: fd.name, phone: fd.phone }); store.set('appts', a);
       toast(`Booked: ${booking.slot} on ${new Date(booking.date).toDateString()}`); booking.slot = null; render();
     },
-    cancel(id) { if (!confirm('Cancel this appointment?')) return; store.set('appts', store.get('appts', []).filter((a) => a.id !== id)); render(); },
+    cancel(id) { askConfirm('Cancel this appointment?', () => { store.set('appts', store.get('appts', []).filter((a) => a.id !== id)); render(); }, 'Cancel appointment'); },
     consult(e) {
       e.preventDefault(); const fd = new FormData(e.target); const data = Object.fromEntries(fd); delete data.photos;
       const c = store.get('consults', []); c.unshift({ id: uid(), date: today(), ...data }); store.set('consults', c);
@@ -959,7 +984,7 @@ const App = (() => {
     toProgress() {
       if (!lastScan) return; const cv = $('#scanCanvas'), ctx = cv.getContext('2d'); ctx.putImageData(lastScan.base, 0, 0);
       addProgressEntry(downscale(cv), { ...lastScan.scores }, 'From skin scan', null);
-      location.hash = '#/progress';
+      go('#/progress');
     },
   };
   function downscale(src, max = 260) {
@@ -1032,7 +1057,7 @@ const App = (() => {
     },
     pick(id) { cmp = cmp.includes(id) ? cmp.filter((x) => x !== id) : [...cmp, id].slice(-2); const l = store.get('progress', []); cmp.sort((a, b) => l.findIndex((x) => x.id === a) - l.findIndex((x) => x.id === b)); render(); },
     cmpClear() { cmp = []; render(); },
-    del(id) { if (!confirm('Delete this check-in?')) return; store.set('progress', store.get('progress', []).filter((x) => x.id !== id)); cmp = cmp.filter((x) => x !== id); render(); },
+    del(id) { askConfirm('Delete this check-in?', () => { store.set('progress', store.get('progress', []).filter((x) => x.id !== id)); cmp = cmp.filter((x) => x !== id); render(); }); },
   };
 
   /* ---------- reminders ---------- */
@@ -1052,7 +1077,7 @@ const App = (() => {
         ${rem.map((r) => `<div class="step"><label class="check" style="margin:0"><input type="checkbox" ${r.on ? 'checked' : ''} onchange="App.rem.upd('${r.id}','on',this.checked)"></label>
           <div class="body"><b>${esc(r.label)}</b><div class="row" style="gap:4px;margin-top:6px">${DAYS.map((d, i) => `<button class="chip ${r.days.includes(i) ? 'on' : ''}" style="padding:2px 8px" onclick="App.rem.day('${r.id}',${i})">${d[0]}</button>`).join('')}</div></div>
           <input type="time" value="${r.time}" style="width:auto" onchange="App.rem.upd('${r.id}','time',this.value)">
-          <div class="ctrl"><button title="Add to calendar" onclick="App.rem.ics('${r.id}')">📅</button><button title="Delete" onclick="App.rem.del('${r.id}')">✕</button></div></div>`).join('')}
+          <div class="ctrl"><button title="Add to Google Calendar" onclick="App.rem.ics('${r.id}')">📅</button><button title="Delete" onclick="App.rem.del('${r.id}')">✕</button></div></div>`).join('')}
         <form class="row mt" onsubmit="App.rem.add(event)"><input name="label" type="text" placeholder="e.g. Retinol night" required style="flex:1;min-width:140px"><input name="time" type="time" value="21:30" style="width:auto"><button class="btn sm primary">Add</button></form>
       </div>
       <div class="card glow-border"><h3>☀ Sunscreen reapply</h3><p class="small muted">Reminds you every few hours during daylight — essential when UV is high.</p>
@@ -1076,17 +1101,20 @@ const App = (() => {
     }
     if (!due.length) return;
     store.set('remFired', key);
-    due.forEach((d) => { toast('⏰ ' + d); if ('Notification' in window && Notification.permission === 'granted') new Notification('AURA Lab', { body: d }); });
+    due.forEach((d) => { toast('⏰ ' + d); try { if ('Notification' in window && Notification.permission === 'granted') new Notification('AURA Lab', { body: d }); } catch {} });
   }
-  function icsFile(events) {
-    const dt = (d) => d.toISOString().replace(/[-:]/g, '').slice(0, 15);
-    const body = events.map((e) => ['BEGIN:VEVENT', 'UID:' + uid() + '@aura-lab', 'DTSTAMP:' + dt(new Date()) + 'Z', 'DTSTART:' + dt(e.start), 'DURATION:PT10M', 'SUMMARY:' + e.title, 'RRULE:' + e.rrule, 'BEGIN:VALARM', 'TRIGGER:PT0M', 'ACTION:DISPLAY', 'DESCRIPTION:' + e.title, 'END:VALARM', 'END:VEVENT'].join('\r\n')).join('\r\n');
-    const blob = new Blob([`BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//AURA Lab//EN\r\n${body}\r\nEND:VCALENDAR`], { type: 'text/calendar' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'aura-reminder.ics'; a.click();
+  function calLink(e) {
+    const dt = (d) => d.toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+    const end = new Date(e.start.getTime() + 10 * 60e3);
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(e.title) + '&dates=' + dt(e.start) + '/' + dt(end) + '&recur=' + encodeURIComponent('RRULE:' + e.rrule) + '&details=' + encodeURIComponent('Reminder from AURA Lab');
+  }
+  function calDialog(events) {
+    dialog(`<h3>Add to Google Calendar</h3><p class="small muted">Opens Google Calendar in a new tab with a repeating event. Your phone will then remind you even when this site is closed.</p>
+      <div class="stack">${events.map((e) => `<a class="btn sm" target="_blank" rel="noopener" href="${calLink(e)}">📅 ${esc(e.title)} · ${e.start.toTimeString().slice(0, 5)}</a>`).join('')}</div>`);
   }
   const rem = {
-    perm() { Notification.requestPermission().then(render); },
-    test() { toast('⏰ Test reminder'); if (Notification.permission === 'granted') new Notification('AURA Lab', { body: 'Reminders are working ✓' }); },
+    perm() { try { Notification.requestPermission().then(render, () => toast('Notifications are blocked here — use Add to calendar instead')); } catch { toast('Notifications are blocked here — use Add to calendar instead'); } },
+    test() { toast('⏰ Test reminder'); try { if (Notification.permission === 'granted') new Notification('AURA Lab', { body: 'Reminders are working ✓' }); } catch {} },
     list: () => store.get('reminders', DEFAULT_REM),
     upd(id, k, v) { const l = rem.list(); const r = l.find((x) => x.id === id); r[k] = v; store.set('reminders', l); },
     day(id, d) { const l = rem.list(); const r = l.find((x) => x.id === id); r.days = r.days.includes(d) ? r.days.filter((x) => x !== d) : [...r.days, d].sort(); store.set('reminders', l); render(); },
@@ -1099,10 +1127,10 @@ const App = (() => {
         const s = store.get('spf', { every: 120, from: '09:00', to: '18:00' }); const ev = [];
         const [fh, fm] = s.from.split(':').map(Number), [th, tm] = s.to.split(':').map(Number);
         for (let t = fh * 60 + fm + s.every; t <= th * 60 + tm; t += s.every) ev.push({ start: mk(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`), title: 'Reapply sunscreen ☀', rrule: 'FREQ=DAILY' });
-        return icsFile(ev);
+        return calDialog(ev);
       }
       const r = rem.list().find((x) => x.id === id);
-      icsFile([{ start: mk(r.time), title: r.label, rrule: 'FREQ=WEEKLY;BYDAY=' + r.days.map((d) => ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][d]).join(',') }]);
+      calDialog([{ start: mk(r.time), title: r.label, rrule: 'FREQ=WEEKLY;BYDAY=' + r.days.map((d) => ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][d]).join(',') }]);
     },
   };
 
@@ -1130,20 +1158,32 @@ const App = (() => {
       <div class="card"><h3>Appointments & consults</h3>${appts.map((a) => `<div class="small"><b>${esc(a.service)}</b> · ${a.date} ${a.slot}</div>`).join('') || '<p class="muted small">No appointments.</p>'}${consults.map((c) => `<div class="small mt"><span class="pill">Consult</span> ${esc(c.concern)} · ${c.date}</div>`).join('')}</div>
     </div>
     <div class="card mt"><h3>Your data</h3><p class="small muted">Everything is stored only in this browser. Export a backup, move it to another device, or wipe it.</p>
-      <div class="row"><button class="btn sm" onclick="App.data.export()">Export JSON</button><label class="btn sm" style="margin:0">Import<input type="file" accept="application/json" hidden onchange="App.data.import(this.files[0])"></label><button class="btn sm danger" onclick="App.data.wipe()">Delete all my data</button></div></div>`;
+      <div class="row"><button class="btn sm" onclick="App.data.export()">Export backup</button><button class="btn sm" onclick="App.data.import()">Import</button><button class="btn sm danger" onclick="App.data.wipe()">Delete all my data</button></div></div>`;
   };
+  const auraKeys = () => { try { return Object.keys(localStorage).filter((k) => k.startsWith('aura.')); } catch { return []; } };
   const data = {
     export() {
-      const out = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('aura.')) out[k] = localStorage.getItem(k); }
-      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' })); a.download = 'aura-lab-backup.json'; a.click();
+      const out = {}; auraKeys().forEach((k) => (out[k] = localStorage.getItem(k)));
+      const txt = JSON.stringify(out);
+      dialog(`<h3>Your backup</h3><p class="small muted">Copy this text and keep it somewhere safe (notes app, email to yourself). Paste it into Import on another device.</p><textarea id="exportBox" rows="8" readonly>${esc(txt)}</textarea>`,
+        [{ label: 'Close', cls: 'ghost' }, { label: 'Copy backup', cls: 'primary', fn: () => { copyText(txt); return false; } }]);
     },
-    async import(f) {
-      try { const j = JSON.parse(await f.text()); Object.entries(j).forEach(([k, v]) => k.startsWith('aura.') && localStorage.setItem(k, v)); toast('Data imported'); location.reload(); }
-      catch { toast('Invalid backup file'); }
+    import() {
+      dialog(`<h3>Import backup</h3><p class="small muted">Paste your backup text, or choose a backup .json file.</p><textarea id="importBox" rows="8" placeholder='{"aura.profile": …}'></textarea><input type="file" id="importFile" accept="application/json" class="mt">`,
+        [{ label: 'Cancel', cls: 'ghost' }, { label: 'Import', cls: 'primary', fn: () => { data.apply(); return false; } }]);
+    },
+    async apply() {
+      try {
+        const f = $('#importFile').files[0];
+        const j = JSON.parse(f ? await f.text() : $('#importBox').value);
+        Object.entries(j).forEach(([k, v]) => k.startsWith('aura.') && localStorage.setItem(k, v));
+        $('#modal').classList.add('hidden'); toast('Data imported'); location.reload();
+      } catch { toast('That backup could not be read. Paste the full text you copied.'); }
     },
     wipe() {
-      if (!confirm('Delete ALL your AURA Lab data on this device, including photos? This cannot be undone.')) return;
-      Object.keys(localStorage).filter((k) => k.startsWith('aura.')).forEach((k) => localStorage.removeItem(k)); toast('All data deleted'); location.hash = '#/'; location.reload();
+      askConfirm('Delete ALL your AURA Lab data on this device, including photos? This cannot be undone.', () => {
+        auraKeys().forEach((k) => localStorage.removeItem(k)); toast('All data deleted'); location.reload();
+      }, 'Delete everything');
     },
   };
   function saveProfile(e) {
@@ -1268,7 +1308,7 @@ const App = (() => {
   ];
   let lastPath = null;
   function render() {
-    const path = (location.hash.slice(1) || '/').split('?')[0];
+    const path = route;
     let html = null;
     for (const [re, fn] of routes) { const m = path.match(re); if (m) { html = fn(m); break; } }
     const y = window.scrollY;
@@ -1300,7 +1340,16 @@ const App = (() => {
     $('#ddHair').innerHTML = `<a href="#/hair">All hair concerns</a>` + CONCERNS.hair.map((c) => `<a href="#/hair/${c.id}">${c.icon} ${c.name}<small>${c.tag}</small></a>`).join('');
     $('#yr').textContent = new Date().getFullYear();
     if (store.get('stripHidden', false)) $('#strip').classList.add('hidden');
-    window.addEventListener('hashchange', render);
+    route = readHash();
+    window.addEventListener('hashchange', () => { const h = readHash(); if (h !== route) go(h, false); });
+    window.addEventListener('popstate', () => go(readHash(), false));
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href^="#"]'); if (!a) return;
+      const h = a.getAttribute('href'); if (h === '#') return;
+      e.preventDefault(); go(h);
+    });
+    $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') e.target.classList.add('hidden'); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#modal').classList.add('hidden'); });
     badges(); render();
     setInterval(remTick, 20000); remTick();
   }
@@ -1308,7 +1357,7 @@ const App = (() => {
   document.addEventListener('DOMContentLoaded', init);
 
   return {
-    render, cart, wish, quiz, routine, loadRoutine, ing, compat, climate: climateApi, shop, clinic: clinicApi, scan, progress, rem, data, chat,
+    render, go, cart, wish, quiz, routine, loadRoutine, ing, compat, climate: climateApi, shop, clinic: clinicApi, scan, progress, rem, data, chat,
     placeOrder, saveProfile,
     dismissStrip() { $('#strip').classList.add('hidden'); store.set('stripHidden', true); },
     blogCat(c) { blogCat = c; render(); },
