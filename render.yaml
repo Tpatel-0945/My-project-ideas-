@@ -1,5 +1,7 @@
 # One-click deploy on Render: New → Blueprint → pick this repo.
-# Render's free plan blocks Gmail's ports, so this uses Brevo's HTTPS email API.
+# Works with no setup: until email is configured, sign-in codes are shown on screen (DEMO_SHOW_CODE).
+# To email real codes, add BREVO_API_KEY and MAIL_FROM_EMAIL under Environment in Render.
+# (Render's free plan blocks Gmail's ports, so online sending uses Brevo's HTTPS API.)
 services:
   - type: web
     name: collegeos
@@ -10,15 +12,11 @@ services:
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
-      - key: MAIL_PROVIDER
-        value: brevo
-      - key: BREVO_API_KEY
-        sync: false
-      - key: MAIL_FROM_EMAIL
-        sync: false
-      - key: MAIL_FROM_NAME
-        value: CollegeOS
       - key: OTP_SECRET
         generateValue: true
+      - key: DEMO_SHOW_CODE
+        value: "1"
+      - key: MAIL_FROM_NAME
+        value: CollegeOS
       - key: TRUST_PROXY
         value: "1"

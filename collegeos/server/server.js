@@ -65,7 +65,8 @@ app.post("/api/otp/request", ipLimit(20, 60 * 60 * 1000), async (req, res) => {
   }
   const out = { ok: true, role, expiresIn: OTP_TTL_MS / 1000, resendIn: RESEND_MS / 1000, delivery: mailer.provider };
   // Email isn't set up yet: hand the code to a browser on this same computer so local testing still works.
-  if (mailer.provider === "dev" && isLocal(req)) out.devCode = code;
+  // DEMO_SHOW_CODE=1 does the same for everyone, until email is set up (handy for a first deploy).
+  if (mailer.provider === "dev" && (isLocal(req) || process.env.DEMO_SHOW_CODE === "1")) out.devCode = code;
   res.json(out);
 });
 
@@ -106,7 +107,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (!hadEnv) console.log("No server/.env file found. Copy .env.example to .env to set up email.");
     if (!process.env.OTP_SECRET) console.log("OTP_SECRET not set: using a random one (sign-ins reset on restart).");
     if (mailer.provider === "dev") {
-      console.log("⚠ Email is NOT set up: codes are printed here and shown on this computer's sign-in page only.");
+      console.log(process.env.DEMO_SHOW_CODE === "1"
+        ? "⚠ Email is NOT set up: DEMO_SHOW_CODE=1, so codes are shown on the sign-in page. Add BREVO_API_KEY to send real emails."
+        : "⚠ Email is NOT set up: codes are printed here and shown on this computer's sign-in page only.");
       return;
     }
     const s = await mailer.verify();
