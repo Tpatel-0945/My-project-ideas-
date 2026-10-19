@@ -18,7 +18,7 @@ export function explainMailError(e, provider) {
   const msg = String(e?.message || e);
   if (provider === "gmail") {
     if (e?.code === "EAUTH" || /535|Username and Password not accepted|BadCredentials/i.test(msg))
-      return "Gmail rejected the login. GMAIL_APP_PASSWORD must be a 16-character App Password (not your normal password) for the account in GMAIL_USER, with 2-Step Verification on.";
+      return "Gmail rejected the login. GMAIL_APP_PASSWORD must be a 16-character App Password (not your normal password) for the account in GMAIL_USER, with 2-Step Verification on. College accounts usually can't make App Passwords: use a personal Gmail, or MAIL_PROVIDER=brevo.";
     if (["ETIMEDOUT", "ECONNECTION", "ESOCKET", "ECONNREFUSED", "ENETUNREACH", "ENOTFOUND", "EAI_AGAIN"].includes(e?.code) || /timeout|ENETUNREACH|ECONNREFUSED|ENOTFOUND|EAI_AGAIN/i.test(msg))
       return "Couldn't reach Gmail's mail server. This network or host blocks email ports (Render and Railway free plans do). Set MAIL_PROVIDER=brevo instead.";
   }

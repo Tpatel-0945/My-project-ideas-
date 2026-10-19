@@ -35,6 +35,22 @@ always shows the code on screen. To receive real codes in Gmail, run the College
 When the server starts it prints `✓ Email ready` or exactly why email isn't working
 (wrong App Password, blocked network, and so on). The sign-in page shows the same status.
 
+### If the App Password page says "not available"
+Only you can create an App Password; nobody else can make one for your account. The page at
+https://myaccount.google.com/apppasswords shows "The setting you are looking for is not available"
+when one of these is true:
+- **You're signed in with your college account** (`@sot.pdpu.ac.in`). College accounts are managed
+  by PDEU's IT team, who usually turn App Passwords off. Use a **personal** `@gmail.com` account to send from.
+  Students still receive the code at their college address.
+- **2-Step Verification is off.** Turn it on first at https://myaccount.google.com/signinoptions/twosv
+  with your phone number or the Google Authenticator app (not only a security key), then open the
+  App Passwords link again. Or go to myaccount.google.com, then **Security**, and type "App passwords" in the search bar.
+- **Advanced Protection is on** for that account. Use a different Gmail account.
+
+**No App Password at all?** Use option B's Brevo setup on your laptop too. It needs only a free
+Brevo account and an API key. In `server/.env` set `MAIL_PROVIDER=brevo`, `BREVO_API_KEY=…` and
+`MAIL_FROM_EMAIL=` the address you verified in Brevo, then run `npm run check-mail -- your@sot.pdpu.ac.in`.
+
 ### B. Online for everyone (Render, free)
 Render's free plan blocks Gmail's mail ports, so online hosting uses **Brevo** (free, 300 emails a day, sent over HTTPS).
 1. Sign up at https://www.brevo.com. Under **Senders**, add and verify the address you'll send from.
