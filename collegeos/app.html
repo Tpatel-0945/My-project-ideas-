@@ -430,45 +430,132 @@ textarea:focus{border-color:var(--fg);outline:none}
   .qr{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* ---- spacious layout over a floating layer ---- */
+:root{--glass:rgba(12,12,16,.56);--glass-hi:rgba(22,22,28,.62);--glass-line:rgba(255,255,255,.075)}
+#bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+#bg canvas{position:absolute;inset:0;width:100%;height:100%}
+.orb{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform}
+.orb.o1{width:44vmax;height:44vmax;left:-14vmax;top:-16vmax;background:var(--b2);opacity:.20;animation:fl1 38s ease-in-out infinite alternate}
+.orb.o2{width:38vmax;height:38vmax;right:-16vmax;top:22vh;background:var(--b6);opacity:.15;animation:fl2 46s ease-in-out infinite alternate}
+.orb.o3{width:32vmax;height:32vmax;left:28vw;bottom:-20vmax;background:var(--b3);opacity:.11;animation:fl3 54s ease-in-out infinite alternate}
+@keyframes fl1{to{transform:translate(16vw,12vh) scale(1.12)}}
+@keyframes fl2{to{transform:translate(-14vw,-10vh) scale(.9)}}
+@keyframes fl3{to{transform:translate(-12vw,-14vh) scale(1.1)}}
+.shell,.gate{position:relative;z-index:1}
+.gate{background:transparent}
+.rail{background:rgba(0,0,0,.42);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-right-color:var(--glass-line);gap:28px}
+.top{background:rgba(0,0,0,.42);border-bottom-color:var(--glass-line)}
+.card,.tile,.opp,.lib-card,.subj,.sitem,.privacy,.banner,.paper,.vhero,.fix,.gate-card .glass{backdrop-filter:blur(20px) saturate(1.15);-webkit-backdrop-filter:blur(20px) saturate(1.15)}
+.card,.tile,.opp,.lib-card,.paper{background:var(--glass);border-color:var(--glass-line);border-radius:20px}
+.card{padding:30px;gap:22px}
+.tile{padding:26px 28px;gap:10px}
+.tile .v{font-size:2.3rem}
+.view{gap:56px;padding-block:64px 180px;max-width:1120px}
+.grid{gap:28px}
+h1{font-size:clamp(2.1rem,4.6vw,3.4rem);line-height:1.04}
+.head{gap:24px}
+.head p{font-size:1.02rem;line-height:1.6}
+.fix{border-radius:22px;padding:34px;gap:16px;border-color:var(--glass-line);background:radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--b5) 16%,transparent),transparent 55%),var(--glass)}
+.vhero{background:radial-gradient(90% 140% at 100% 0%,color-mix(in srgb,currentColor 14%,transparent),transparent 60%),var(--glass);border-radius:22px;padding:30px}
+.alert{padding:18px 0;gap:18px}
+.slot{padding:15px 0}
+.banner{border-radius:20px;padding:20px 24px;background:color-mix(in srgb,var(--b2) 7%,var(--glass))}
+.sitem{background:var(--glass);border-color:var(--glass-line);border-radius:14px;padding:16px 18px}
+.privacy{background:var(--glass)}
+.reader{background:rgba(0,0,0,.82);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
+.nav{gap:4px}
+.nav button{padding:10px 12px;border-radius:10px}
+.rail-foot{border-color:var(--glass-line);background:var(--glass);border-radius:14px;padding:16px}
+/* sign-in */
+.gate-card{max-width:460px;gap:28px}
+.gate-card .glass{background:var(--glass);border:1px solid var(--glass-line);border-radius:24px;padding:clamp(22px,5vw,36px);display:flex;flex-direction:column;gap:22px}
+.gmode{display:flex;gap:9px;align-items:flex-start;font-size:.8rem;color:var(--muted);line-height:1.5}
+.gmode .dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-top:5px}
+.gmode .dot.ok{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.gmode .dot.warn{background:var(--warn)}
+.ghint{font-size:.78rem;color:var(--dim)}
+.otp-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
+.roll{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--glass-line);border-radius:12px;background:var(--glass-hi)}
+.roll b{font-family:var(--mono);font-size:1rem;letter-spacing:.06em}
+.fnote{font-size:.76rem;color:var(--dim);min-height:1em}
+/* library */
+.search{width:100%;background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--glass-line);border-radius:16px;padding:16px 20px;font-size:1rem}
+.search:focus{border-color:var(--fg);outline:none}
+.subjlist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.subj{all:unset;cursor:pointer;position:relative;display:flex;flex-direction:column;gap:10px;padding:28px 60px 28px 28px;border:1px solid var(--glass-line);border-radius:20px;background:var(--glass);transition:border-color .2s,transform .2s,background .2s}
+.subj:hover{border-color:var(--line-2);transform:translateY(-3px);background:var(--glass-hi)}
+.subj:focus-visible{outline:2px solid var(--b2)}
+.subj h3{font-size:1.25rem}
+.subj .meta{font-size:.86rem;color:var(--muted);line-height:1.5}
+.subj .go{position:absolute;right:26px;top:50%;transform:translateY(-50%);font-size:1.3rem;color:var(--muted);transition:transform .2s,color .2s}
+.subj:hover .go{transform:translate(4px,-50%);color:var(--fg)}
+.subj-page{display:flex;flex-direction:column;gap:36px}
+.subj-head{display:flex;flex-direction:column;gap:10px}
+.subj-head h2{font-size:clamp(1.6rem,3.4vw,2.3rem);font-weight:800;letter-spacing:-.03em}
+.res{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.units{display:flex;flex-direction:column;gap:4px}
+.units .label{margin-bottom:10px}
+.unit{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:18px;padding:20px 0;border-top:1px solid var(--glass-line);align-items:baseline}
+.unit .no{font-family:var(--mono);font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.unit b{font-family:var(--display);font-weight:600;font-size:1.05rem}
+.unit p{color:var(--muted);font-size:.9rem;margin-top:6px;line-height:1.6}
+.unit .hrs{font-family:var(--mono);font-size:.75rem;color:var(--dim)}
+.empty{color:var(--muted);padding:20px 0}
+@media (max-width:860px){
+  .view{gap:40px;padding-block:40px 150px}
+  .card{padding:22px}
+  .subjlist,.res{grid-template-columns:1fr}
+  .unit{grid-template-columns:1fr auto}
+  .unit .no{grid-column:1/-1}
+}
+.gate .brand{display:flex!important}
+@media (prefers-reduced-motion:reduce){.orb{animation:none}}
 </style>
+
+<div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><canvas id="bgc"></canvas></div>
 
 <div class="gate" id="gate" hidden>
   <div class="gate-card">
     <div class="brand"><span class="mark"><i></i></span><b>CollegeOS</b></div>
+    <div class="glass">
     <div class="steps" id="gSteps" aria-hidden="true"><i></i><i></i><i></i></div>
     <form id="gEmail" class="gstep" novalidate>
       <span class="label">Step 1 of 3</span>
       <h1 class="gh">Sign in with your college email</h1>
-      <p class="gp">We'll send a one-time code to your college inbox. No password needed.</p>
+      <p class="gp">We'll email you a one-time code. No password needed.</p>
       <div class="seg" id="gRoleSeg" role="group" aria-label="I am a"><button type="button" data-r="student" aria-pressed="true">I'm a student</button><button type="button" data-r="faculty" aria-pressed="false">I'm faculty</button></div>
-      <div class="field"><label for="gMail">College email</label><input id="gMail" type="email" autocomplete="email" placeholder="tanish.pce24@sot.pdpu.ac.in" style="font-family:var(--body)"></div>
+      <div class="field"><label for="gMail">College email</label><input id="gMail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="26bcp160@sot.pdpu.ac.in" style="font-family:var(--mono)"><span class="ghint" id="gHint">Your roll number, then @sot.pdpu.ac.in</span></div>
       <p class="gerr" id="gMailErr" role="alert"></p>
       <button class="btn primary wide" type="submit">Send code</button>
-      <p class="gfine">Only addresses ending in pdpu.ac.in or pdeu.ac.in can sign in.</p>
+      <p class="gmode" id="gMode"></p>
     </form>
     <form id="gOtp" class="gstep" novalidate hidden>
       <span class="label">Step 2 of 3</span>
-      <h1 class="gh">Check your inbox</h1>
-      <p class="gp">Enter the 6-digit code we sent to <b id="gMailShow"></b>.</p>
+      <h1 class="gh">Check your Gmail</h1>
+      <p class="gp" id="gOtpLead"></p>
       <div class="field"><label for="gCode">6-digit code</label><input id="gCode" class="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
-      <p class="gdemo">Demo build, so no email is sent. Your code is <b class="mono" id="gDemo" style="color:var(--fg)"></b></p>
+      <div class="otp-row"><span id="gExp"></span><button class="linkbtn" type="button" id="gResend" disabled>Resend code</button></div>
+      <p class="gdemo" id="gDemoBox" hidden>Preview mode, so no email was sent. Your code is <b class="mono" id="gDemo" style="color:var(--fg)"></b></p>
       <p class="gerr" id="gCodeErr" role="alert"></p>
       <button class="btn primary wide" type="submit">Verify</button>
       <button class="linkbtn" type="button" id="gBack" style="align-self:center">Use a different email</button>
+      <span id="gMailShow" hidden></span>
     </form>
     <form id="gProf" class="gstep" novalidate hidden>
       <span class="label">Step 3 of 3</span>
       <h1 class="gh">Tell us about you</h1>
       <p class="gp" id="gProfLead">This sets up your subjects, timetable and library.</p>
+      <div class="roll" id="gRollBox" hidden><span class="label">Roll number</span><b id="gRoll"></b></div>
       <div class="field"><label for="gName">Full name</label><input id="gName" autocomplete="name" style="font-family:var(--body)"></div>
-      <div id="gStu" class="fields" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr)">
-        <div class="field"><label for="gBranch">Branch</label><select id="gBranch" style="font-family:var(--body)"></select></div>
-        <div class="field"><label for="gSem">Semester</label><select id="gSem"></select></div>
+      <div id="gStu" style="display:flex;flex-direction:column;gap:16px">
+        <div class="field"><label for="gBranch">Branch</label><select id="gBranch" style="font-family:var(--body)"></select><span class="fnote" id="gBranchNote"></span></div>
+        <div class="field"><label id="gSemL">Semester</label><div class="seg" id="gSemSeg" role="group" aria-labelledby="gSemL"><button type="button" data-s="1" aria-pressed="false">Semester I</button><button type="button" data-s="2" aria-pressed="false">Semester II</button></div><span class="fnote" id="gSemNote"></span></div>
       </div>
       <div id="gFac" hidden><div class="field"><label for="gDept">Department</label><select id="gDept" style="font-family:var(--body)"></select></div></div>
       <p class="gerr" id="gProfErr" role="alert"></p>
       <button class="btn primary wide" type="submit">Enter CollegeOS</button>
     </form>
+    </div>
   </div>
 </div>
 
@@ -501,16 +588,15 @@ textarea:focus{border-color:var(--fg);outline:none}
           <span class="label" id="today"></span>
           <h1>Three things need you this week.</h1>
         </div>
-        <div class="legend" id="bloomLegend" aria-label="Bloom levels"></div>
       </div>
       <div id="homeSurvey"></div>
-      <div class="grid g-4" id="pulse"></div>
+      <div class="grid g-3" id="pulse"></div>
       <div class="grid g-main">
         <div class="fix">
           <span class="label">Fix this first</span>
-          <div class="big">Recursion is the root cause.</div>
-          <p style="color:var(--muted);max-width:56ch">Your misses in Trees and Backtracking both trace back to one concept. One focused hour on recursion should lift three topics at once.</p>
-          <div class="chain"><span class="root">Recursion · 38%</span><em>→</em><span>Trees · 44%</span><em>→</em><span>BST · 41%</span><em>·</em><span>Backtracking · 35%</span></div>
+          <div class="big">Functions are the root cause.</div>
+          <p style="color:var(--muted);max-width:56ch">Your misses in Recursion and Call by reference both trace back to one concept: writing and calling functions. One focused hour on functions should lift three topics at once.</p>
+          <div class="chain"><span class="root">Functions · 41%</span><em>→</em><span>Recursion · 38%</span><em>·</em><span>Call by reference · 35%</span></div>
           <div class="row"><button class="btn primary" data-go="insights">Open study plan</button><button class="btn" data-go="insights" data-quiz>Take a 3-question check</button></div>
         </div>
         <div class="card">
@@ -526,7 +612,7 @@ textarea:focus{border-color:var(--fg);outline:none}
 
     <!-- ACADEMICS -->
     <section class="view" id="v-academics" hidden>
-      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">B.Tech Computer Engineering · Semester III</span><h1>Marks, and where they're heading.</h1></div></div>
+      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label" id="acadLabel">B.Tech · First year</span><h1>Marks, and where they're heading.</h1></div></div>
       <div class="grid g-3" id="acadTiles"></div>
       <div class="card">
         <div class="card-h"><h2>Subjects</h2><span class="label">Predicted end-sem from mastery + internals</span></div>
@@ -538,7 +624,7 @@ textarea:focus{border-color:var(--fg);outline:none}
       <div class="grid g-2">
         <div class="card">
           <div class="card-h"><h2>What-if SGPA</h2><span class="label">Drag your end-sem target</span></div>
-          <div class="conf"><div class="row"><span>Data Structures end-sem</span><span class="mono" id="wiVal">32 / 50</span></div><input type="range" id="wi" min="10" max="50" value="32" aria-label="Data Structures end-sem target"></div>
+          <div class="conf"><div class="row"><span id="wiLabel">End-sem</span><span class="mono" id="wiVal">32 / 50</span></div><input type="range" id="wi" min="10" max="50" value="32" aria-label="End-sem target"></div>
           <p class="verdict" id="wiOut"></p>
         </div>
         <div class="card">
@@ -578,7 +664,7 @@ textarea:focus{border-color:var(--fg);outline:none}
             <div class="qrbox" id="qrbox"><canvas id="qr" width="120" height="120" aria-hidden="true"></canvas><div class="scan"></div></div>
             <div style="display:flex;flex-direction:column;gap:10px">
               <p style="color:var(--muted);font-size:.88rem">The code on the projector changes every 20 seconds and only works on this device inside the classroom, so a friend can't scan it for you.</p>
-              <button class="btn primary" id="scanBtn">Scan for Digital Logic and Design</button>
+              <button class="btn primary" id="scanBtn">Scan for today's class</button>
             </div>
           </div>
           <div class="label" style="margin-top:6px">Smallest fix</div>
@@ -627,15 +713,10 @@ textarea:focus{border-color:var(--fg);outline:none}
 
     <!-- LIBRARY -->
     <section class="view" id="v-library" hidden>
-      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">Worksheets · mind maps · notes</span><h1>Everything for your syllabus, in one shelf.</h1></div>
-        <p>Mapped to your Semester III courses and units. Every worksheet is split by Bloom level, from recall up to design.</p></div>
-      <div class="libbar">
-        <div class="filters" id="libFilters" role="group" aria-label="Type"></div>
-        <select id="libSub" aria-label="Subject"></select>
-        <input id="libQ" type="search" placeholder="Search topics, e.g. recursion" aria-label="Search library">
-      </div>
-      <div class="note">Built from the PDEU B.Tech Computer Engineering syllabus (2024–28), Semester III. Sample set: more units are added as faculty upload material.</div>
-      <div class="libgrid" id="libGrid"></div>
+      <div class="head"><div style="display:flex;flex-direction:column;gap:10px"><span class="label">First-year library · PDEU B.Tech curriculum 2024–28</span><h1>Every first-year subject, on one calm shelf.</h1></div>
+        <div class="seg" id="libSem" role="group" aria-label="Semester" style="min-width:260px"><button type="button" data-sem="1" aria-pressed="true">Semester I</button><button type="button" data-sem="2" aria-pressed="false">Semester II</button></div></div>
+      <input id="libQ" class="search" type="search" placeholder="Search any topic: pointers, Fourier series, Hall effect…" aria-label="Search the library">
+      <div id="libMain"></div>
     </section>
 
     <!-- STUDENT SURVEYS -->
@@ -654,15 +735,15 @@ textarea:focus{border-color:var(--fg);outline:none}
         <div class="field" style="min-width:240px"><label for="fsPick">Showing results for</label><select id="fsPick" style="font-family:var(--body)"></select></div></div>
       <div id="fsAnalysis" style="display:flex;flex-direction:column;gap:16px"></div>
       <div class="grid g-2">
-        <div class="card"><div class="card-h"><h2>All surveys</h2><span class="label">24CS203T · 64 students</span></div><div class="slist" id="fsList"></div></div>
+        <div class="card"><div class="card-h"><h2>All surveys</h2><span class="label">24CP101T · 64 students</span></div><div class="slist" id="fsList"></div></div>
         <form class="card fsform" id="fsForm" novalidate>
           <div class="card-h"><h2>New topic survey</h2><span class="label">Goes to every student's Surveys tab</span></div>
           <div class="fields" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
             <div class="field"><label for="fsSub">Subject</label><select id="fsSub" style="font-family:var(--body)"></select></div>
-            <div class="field"><label for="fsTopic">Topic</label><input id="fsTopic" value="Stacks and queues" style="font-family:var(--body)"></div>
+            <div class="field"><label for="fsTopic">Topic</label><input id="fsTopic" value="Loops" style="font-family:var(--body)"></div>
           </div>
-          <div class="field"><label for="fsSubs">Subtopics, separated by commas</label><input id="fsSubs" value="Push and pop, Overflow and underflow, Circular queue, Infix to postfix" style="font-family:var(--body)"></div>
-          <div class="field"><label for="fsQ">Concept check question</label><textarea id="fsQ">A stack holds 1, 2, 3 with 3 on top. You pop, push 5, then pop again. What is on top now?</textarea></div>
+          <div class="field"><label for="fsSubs">Subtopics, separated by commas</label><input id="fsSubs" value="for loop, while vs. do-while, break and continue, Nested loops" style="font-family:var(--body)"></div>
+          <div class="field"><label for="fsQ">Concept check question</label><textarea id="fsQ">How many stars does this print?  for(i = 0; i &lt; 10; i += 3) printf("*");</textarea></div>
           <div class="field"><label>Options · tick the correct one</label>
             <div style="display:flex;flex-direction:column;gap:6px" id="fsOpts"></div></div>
           <div class="note">Every survey also asks how well students understood the topic (1–5), the pace, their exam confidence (1–5), which subtopics confused them, and an open comment.</div>
@@ -726,7 +807,7 @@ textarea:focus{border-color:var(--fg);outline:none}
 
     <!-- FACULTY -->
     <section class="view" id="v-faculty" hidden>
-      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">24CS203T Data Structures · Section A + B · 128 students</span><h1>Which concept hurt the class?</h1></div>
+      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">24CP101T Computer Programming – I · Section A + B · 128 students</span><h1>Which concept hurt the class?</h1></div>
         <button class="btn" id="naacBtn">Generate NAAC/NBA report</button></div>
       <div class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
         <span>You see class trends and attendance risk. Individual cognitive profiles stay with each student, enforced by row-level security in the database.</span></div>
@@ -813,50 +894,51 @@ $("#roleStudent").onclick=()=>setRole("student");$("#roleFaculty").onclick=()=>s
 
 /* ---------- home ---------- */
 $("#today").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
-$("#bloomLegend").innerHTML=BLOOM.map((_,i)=>bloomChip(i)).join("");
+const SEM2_NAMES={prog:["Computer Programming – II","24CP102T","cp2"],math:["Mathematics – II","24MA103T","ma2"],sci:["Engineering Chemistry","24CH101T","ch2"],comm:["Professional Communication","24HS105T","pc2"],env:["Electrical & Electronics Engg.","24EE101T","ee2"],eg:["Biological Systems for Engineers","24BT101T","bt2"]};
+const SUBJ_SEM=profile&&profile.sem===2?2:1;
 const SUBJ=[
- {id:"ds",name:"Data Structures",code:"24CS203T",cr:3,int:34,att:[31,42],weak:2},
- {id:"dm",name:"Discrete Mathematical Structures",code:"24MA202T",cr:4,int:41,att:[38,46],weak:3},
- {id:"dl",name:"Digital Logic and Design",code:"24CS201T",cr:4,int:38,att:[26,36],weak:1},
- {id:"pc",name:"Object Oriented Programming",code:"24CS204T",cr:3,int:44,att:[40,44],weak:4},
- {id:"ph",name:"Database Management Systems",code:"24CS202T",cr:3,int:36,att:[33,41],weak:2},
- {id:"ev",name:"Data Structures Laboratory",code:"24CS203P",cr:1,int:43,att:[22,28],weak:3}
+ {id:"prog",name:"Computer Programming – I",code:"24CP101T",cr:2,int:34,att:[31,42],weak:2,lib:"cp1"},
+ {id:"math",name:"Mathematics – I",code:"24MA101T",cr:4,int:41,att:[38,46],weak:3,lib:"ma1"},
+ {id:"sci",name:"Applied Physics",code:"24PH101T",cr:3,int:38,att:[26,36],weak:1,lib:"ph1"},
+ {id:"comm",name:"English Communication",code:"24HS101T",cr:2,int:44,att:[40,44],weak:4,lib:"en1"},
+ {id:"env",name:"Environmental Science",code:"24CV101T",cr:2,int:36,att:[33,41],weak:2,lib:"ev1"},
+ {id:"eg",name:"Engineering Graphics",code:"Lab",cr:2,int:43,att:[22,28],weak:3,lib:"eg1"}
 ];
+if(SUBJ_SEM===2)SUBJ.forEach(s=>{const[n,c,l]=SEM2_NAMES[s.id];s.name=n;s.code=c;s.lib=l});
+const S_=id=>SUBJ.find(s=>s.id===id);
 const pct=(a,h)=>h?a/h*100:100;
 const overall=()=>{let a=0,h=0;SUBJ.forEach(s=>{a+=s.att[0];h+=s.att[1]});return pct(a,h)};
 $("#pulse").innerHTML=[
- ["Predicted SGPA","8.12","Higher if DS end-sem ≥ 40 / 50","ok"],
+ ["Predicted SGPA","8.12","Higher if the CP end-sem reaches 40 / 50","ok"],
  ["Attendance",overall().toFixed(1)+"%","1 subject below 75%","bad"],
- ["Avg. mastery","61%","Up 6 points this week","ok"],
- ["Next deadline","2d 4h","DS Lab 6 · Linked lists","warn"]
+ ["Avg. mastery","61%","Up 6 points this week","ok"]
 ].map(([l,v,s,c])=>`<div class="tile"><span class="label">${l}</span><span class="v">${v}</span><span class="s ${c==='bad'?'bad':''}">${s}</span></div>`).join("");
 
-const TT=[["09:00","Data Structures","LH-204 · Dr. Iyer"],["10:00","Discrete Mathematics","LH-204 · Prof. Rao"],["11:15","Digital Logic","LH-110 · Dr. Sen"],["14:00","DS Lab","Lab 3 · Batch B2"],["16:00","Coding Club","Recursion workshop · optional"]];
+const TT=[["09:00",S_("math").name,"LH-101 · Prof. Rao"],["10:00",S_("prog").name,"LH-101 · Dr. Iyer"],["11:15",S_("sci").name,"LH-110 · Dr. Sen"],["14:00",S_("prog").name+" Lab","Lab 3 · Batch B2"],["16:00","Coding Club","Functions workshop · optional"]];
 (function(){const now=new Date(),m=now.getHours()*60+now.getMinutes();
  const mins=TT.map(t=>{const[h,mm]=t[0].split(":");return +h*60+ +mm});
  $("#tt").innerHTML=TT.map((t,i)=>{const start=mins[i],end=i===3?start+120:start+55;const cls=m>=end?"done":(m>=start?"now":"");return `<div class="slot ${cls}"><span class="t">${t[0]}</span><div class="what"><b>${t[1]}</b><span>${t[2]}</span></div></div>`}).join("")})();
 
 const ALERTS=[
- ["bad","Digital Logic attendance is 72.2%","Attend the next 4 classes in a row to get back to 75%.","8 min"],
- ["warn","DS Lab 6 due Wednesday, 11:59 pm","Linked list reversal. Your mastery of pointers is 52%.","1 h"],
- ["b6","HackNITR 6.0 registrations close Friday","94% match. Two students looking for a frontend dev.","3 h"],
- ["b2","Quiz 4 results: Data Structures","14 / 20. Most misses were Apply-level recursion questions.","Yesterday"]
+ ["bad",S_("sci").name+" attendance is 72.2%","Attend the next 4 classes in a row to get back to 75%.","8 min"],
+ ["warn","Programming Lab 6 due Wednesday, 11:59 pm","Pointers and arrays. Your mastery of pointers is 52%.","1 h"],
+ ["b2","Quiz 3 results: "+S_("prog").name,"14 / 20. Most misses were Apply-level questions on functions.","Yesterday"]
 ];
 $("#alerts").innerHTML=ALERTS.map(([c,t,d,w])=>`<div class="alert"><span class="sev" style="background:var(--${c.startsWith('b')?c:c==='bad'?'bad':'warn'})"></span><div><b>${t}</b><p>${d}</p></div><time>${w}</time></div>`).join("");
 
 /* ---------- academics ---------- */
 const GRADE=t=>t>=90?["O",10]:t>=80?["A+",9]:t>=70?["A",8]:t>=60?["B+",7]:t>=50?["B",6]:t>=40?["C",5]:["F",0];
-const PRED={ds:32,dm:39,dl:34,pc:42,ph:33,ev:41};
+const PRED={prog:32,math:39,sci:34,comm:42,env:33,eg:41};
 function sgpa(over){let p=0,c=0;SUBJ.forEach(s=>{const tot=s.int+(over&&over[s.id]!=null?over[s.id]:PRED[s.id]);p+=GRADE(tot)[1]*s.cr;c+=s.cr});return p/c}
 $("#marksBody").innerHTML=SUBJ.map(s=>{const t=s.int+PRED[s.id];return `<tr><td><b>${s.name}</b><br><span class="mono" style="font-size:.72rem;color:var(--muted)">${s.code}</span></td><td class="num">${s.cr}</td><td class="num">${s.int}</td><td class="num">${PRED[s.id]}</td><td class="num"><b>${GRADE(t)[0]}</b></td><td>${bloomChip(s.weak)}</td></tr>`}).join("");
 $("#acadTiles").innerHTML=[["Predicted SGPA",sgpa().toFixed(2),"Based on current trajectory"],["Credits",SUBJ.reduce((a,s)=>a+s.cr,0),"6 subjects this semester"],["Weakest level","Apply","Remembering is fine. Using it is the gap."]].map(([l,v,s])=>`<div class="tile"><span class="label">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join("");
-function wi(){const v=+$("#wi").value;$("#wiVal").textContent=v+" / 50";const g=sgpa({ds:v}),base=sgpa(),tot=SUBJ[0].int+v;
- $("#wiOut").innerHTML=`Data Structures → <b>${GRADE(tot)[0]}</b>, SGPA <span class="mono">${g.toFixed(2)}</span> <span class="${g>=base?'ok':'bad'}" style="font-size:.9rem">(${g>=base?'+':''}${(g-base).toFixed(2)})</span>`}
-$("#wi").oninput=wi;wi();
-$("#pyq").innerHTML=[["2025","DS end-sem",[30,25,25,15,5,0]],["2024","DS end-sem",[35,25,20,15,5,0]],["2025","DM mid-sem",[20,30,30,20,0,0]],["2024","OOP end-sem",[25,20,35,10,5,5]]].map(([y,n,d])=>`<div class="qitem" style="grid-template-columns:44px 1fr 120px"><span class="mono" style="color:var(--muted)">${y}</span><span>${n}</span><div class="stack" style="height:10px;gap:1px">${d.map((p,i)=>p?`<i style="flex-grow:${p};background:var(${BLOOM[i][1]})" title="${BLOOM[i][0]} ${p}%"></i>`:'').join("")}</div></div>`).join("");
+function wi(){const v=+$("#wi").value;$("#wiVal").textContent=v+" / 50";const g=sgpa({[SUBJ[0].id]:v}),base=sgpa(),tot=SUBJ[0].int+v;
+ $("#wiOut").innerHTML=`${SUBJ[0].name} → <b>${GRADE(tot)[0]}</b>, SGPA <span class="mono">${g.toFixed(2)}</span> <span class="${g>=base?'ok':'bad'}" style="font-size:.9rem">(${g>=base?'+':''}${(g-base).toFixed(2)})</span>`}
+$("#wiLabel").textContent=SUBJ[0].name+" end-sem";$("#acadLabel").textContent="B.Tech · First year · Semester "+(SUBJ_SEM===2?"II":"I");$("#wi").oninput=wi;wi();
+$("#pyq").innerHTML=[["2025",S_("prog").name+" end-sem",[30,25,25,15,5,0]],["2024",S_("prog").name+" end-sem",[35,25,20,15,5,0]],["2025",S_("math").name+" mid-sem",[20,30,30,20,0,0]],["2024",S_("sci").name+" end-sem",[25,20,35,10,5,5]]].map(([y,n,d])=>`<div class="qitem" style="grid-template-columns:44px 1fr 120px"><span class="mono" style="color:var(--muted)">${y}</span><span>${n}</span><div class="stack" style="height:10px;gap:1px">${d.map((p,i)=>p?`<i style="flex-grow:${p};background:var(${BLOOM[i][1]})" title="${BLOOM[i][0]} ${p}%"></i>`:'').join("")}</div></div>`).join("");
 
 /* ---------- attendance ---------- */
-let sel=store.get("attSel","dl"), skip=0, attn=0, mentor=store.get("mentor",null);
+let sel=store.get("attSel2","sci"), skip=0, attn=0, mentor=store.get("mentor",null);
 const safeMiss=(a,h)=>Math.floor(a/0.75)-h;            // ⌊attended ÷ 0.75⌋ − held
 const needToAttend=(a,h)=>Math.max(0,3*h-4*a);        // smallest x with (a+x)/(h+x) ≥ 0.75
 const col=p=>p>=80?css("--ok"):p>=75?css("--warn"):css("--bad");
@@ -879,7 +961,7 @@ function renderAtt(){
   $("#mentorBtn").disabled=skip===0;
   $("#mentorBtn").textContent=skip?`Ask mentor to approve ${skip} day${skip>1?'s':''} off`:"Add skips to request leave";
 }
-$("#attBody").addEventListener("click",e=>{const r=e.target.closest("tr");if(!r)return;sel=r.dataset.sub;store.set("attSel",sel);skip=0;attn=0;renderAtt()});
+$("#attBody").addEventListener("click",e=>{const r=e.target.closest("tr");if(!r)return;sel=r.dataset.sub;store.set("attSel2",sel);skip=0;attn=0;renderAtt()});
 $("#attBody").addEventListener("keydown",e=>{if(e.key==="Enter"){const r=e.target.closest("tr");if(r)r.click()}});
 $$("[data-step]").forEach(b=>b.onclick=()=>{if(b.dataset.step==="skip")skip=Math.max(0,Math.min(20,skip+ +b.dataset.d));else attn=Math.max(0,Math.min(30,attn+ +b.dataset.d));renderAtt()});
 $("#mentorBtn").onclick=()=>{mentor={sub:sel,ok:false};store.set("mentor",mentor);renderAtt();toast("Leave request sent to your mentor");setTimeout(()=>{mentor.ok=true;store.set("mentor",mentor);renderAtt();toast("Dr. Sen approved your leave")},2600)};
@@ -887,7 +969,7 @@ $("#mentorBtn").onclick=()=>{mentor={sub:sel,ok:false};store.set("mentor",mentor
 function drawQR(seed){const c=$("#qr"),x=c.getContext("2d"),n=21,s=120/n;x.fillStyle=css("--panel-2");x.fillRect(0,0,120,120);let r=seed;const rnd=()=>(r=(r*9301+49297)%233280)/233280;x.fillStyle=css("--fg");
  for(let i=0;i<n;i++)for(let j=0;j<n;j++){const f=(i<7&&j<7)||(i<7&&j>n-8)||(i>n-8&&j<7);if(f){const ii=i>n-8?i-(n-7):i,jj=j>n-8?j-(n-7):j;const ring=ii===0||ii===6||jj===0||jj===6||(ii>1&&ii<5&&jj>1&&jj<5);if(ring)x.fillRect(j*s,i*s,s,s)}else if(rnd()>.55)x.fillRect(j*s,i*s,s,s)}}
 let qs=Date.now()%9999;drawQR(qs);setInterval(()=>drawQR(++qs),20000);
-$("#scanBtn").onclick=()=>{const b=$("#qrbox");b.classList.add("scanning");$("#scanBtn").disabled=true;setTimeout(()=>{b.classList.remove("scanning");const s=SUBJ.find(x=>x.id==="dl");s.att[0]++;s.att[1]++;renderAtt();$("#scanBtn").textContent="Marked present ✓";toast("Digital Logic and Design · present. Now "+pct(...s.att).toFixed(1)+"%")},1500)};
+$("#scanBtn").onclick=()=>{const b=$("#qrbox");b.classList.add("scanning");$("#scanBtn").disabled=true;setTimeout(()=>{b.classList.remove("scanning");const s=S_("sci");s.att[0]++;s.att[1]++;renderAtt();$("#scanBtn").textContent="Marked present ✓";toast(s.name+" · present. Now "+pct(...s.att).toFixed(1)+"%")},1500)};
 renderAtt();
 
 /* ---------- opportunities ---------- */
@@ -897,14 +979,14 @@ const OPP=[
  {t:"Frontend Intern (Summer)",k:"Internship",org:"Razorpay",when:"Closes 2 Nov",m:81,sk:["React","TypeScript","CSS","Testing"]},
  {t:"Smart India Hackathon · Internal round",k:"Hackathon",org:"College",when:"24 Oct",m:77,sk:["Python","React","Pitching"]},
  {t:"Google Developer Student Club core team",k:"Club",org:"GDSC",when:"Rolling",m:72,sk:["Figma","Events","React"]},
- {t:"Research assistant: graph algorithms",k:"Research",org:"Dr. Iyer's lab",when:"Closes 30 Oct",m:48,sk:["C++","Recursion","Graphs"]}
+ {t:"Peer tutor: programming lab",k:"Campus job",org:"Dept. of Computer Engineering",when:"Closes 30 Oct",m:48,sk:["C","Functions","Teaching"]}
 ];
 let of=store.get("oppF","All");
 function ring(m){const R=26,C=2*Math.PI*R,c=m>=85?css("--b3"):m>=70?css("--b2"):css("--b4");return `<svg viewBox="0 0 62 62"><circle cx="31" cy="31" r="${R}" fill="none" stroke="${css('--line-2')}" stroke-width="5"/><circle cx="31" cy="31" r="${R}" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${C*m/100} ${C}" transform="rotate(-90 31 31)"/></svg><span>${m}%</span>`}
 function renderOpp(){
   const kinds=["All",...new Set(OPP.map(o=>o.k))];
   $("#oppFilters").innerHTML=kinds.map(k=>`<button aria-pressed="${k===of}" data-f="${k}">${k}</button>`).join("");
-  $("#oppList").innerHTML=OPP.filter(o=>of==="All"||o.k===of).map(o=>`<article class="opp"><div class="match">${ring(o.m)}</div><div style="display:flex;flex-direction:column;gap:8px;min-width:0"><div class="card-h"><h3>${o.t}</h3><span class="label">${o.k}</span></div><div class="meta"><span>${o.org}</span><span>${o.when}</span></div><div class="chips">${o.sk.map(s=>`<span class="chip ${MY.includes(s)?'have':''}">${MY.includes(s)?'✓ ':''}${s}</span>`).join("")}</div>${o.m<60?`<p style="font-size:.82rem;color:var(--b4)">Recursion mastery (38%) is the gap. Your study plan covers it.</p>`:''}</div></article>`).join("");
+  $("#oppList").innerHTML=OPP.filter(o=>of==="All"||o.k===of).map(o=>`<article class="opp"><div class="match">${ring(o.m)}</div><div style="display:flex;flex-direction:column;gap:8px;min-width:0"><div class="card-h"><h3>${o.t}</h3><span class="label">${o.k}</span></div><div class="meta"><span>${o.org}</span><span>${o.when}</span></div><div class="chips">${o.sk.map(s=>`<span class="chip ${MY.includes(s)?'have':''}">${MY.includes(s)?'✓ ':''}${s}</span>`).join("")}</div>${o.m<60?`<p style="font-size:.82rem;color:var(--b4)">Functions mastery (41%) is the gap. Your study plan covers it.</p>`:''}</div></article>`).join("");
 }
 $("#oppFilters").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(b){of=b.dataset.f;store.set("oppF",of);renderOpp()}});
 renderOpp();
@@ -920,8 +1002,8 @@ $("#ideas").addEventListener("click",e=>{const b=e.target.closest("[data-v]");if
 renderIdeas();
 
 /* ---------- insights ---------- */
-const PROF={ds:[82,71,44,52,38,30],dm:[78,66,58,41,35,22],pc:[88,80,72,55,47,40]};
-const PROFN={ds:"Data Structures",dm:"Discrete Mathematics",pc:"Object Oriented Programming"};
+const PROF={prog:[82,71,44,52,38,30],math:[78,66,58,41,35,22],sci:[88,80,72,55,47,40]};
+const PROFN={prog:S_("prog").name,math:S_("math").name,sci:S_("sci").name};
 $("#profSub").innerHTML=Object.keys(PROF).map(k=>`<option value="${k}">${PROFN[k]}</option>`).join("");
 function radar(){
   const v=PROF[$("#profSub").value],cx=170,cy=150,R=110,n=6,ang=i=>-Math.PI/2+i*2*Math.PI/n;
@@ -940,7 +1022,7 @@ $("#profSub").onchange=radar;radar();
 
 // Bayesian Knowledge Tracing
 const BKT={T:.12,S:.10,G:.20};
-const CONCEPTS=store.get("mastery",{Recursion:.38,Pointers:.52,"Linked lists":.63,Trees:.44,BST:.41,Backtracking:.35,Arrays:.86,Loops:.91});
+const CONCEPTS=store.get("mastery2",{"Call by reference":.35,Recursion:.38,Functions:.41,Structures:.47,Pointers:.52,Strings:.63,Arrays:.86,Loops:.91});
 const conceptColor=p=>p>=.7?css("--ok"):p>=.5?css("--warn"):css("--bad");
 let flash=null;
 function renderMastery(){$("#mastery").innerHTML=Object.entries(CONCEPTS).sort((a,b)=>a[1]-b[1]).map(([k,p])=>`<div class="mrow ${k===flash?'flash':''}" style="color:${conceptColor(p)}"><span style="color:var(--fg)">${k}</span><div class="bar"><i style="width:${p*100}%;background:${conceptColor(p)}"></i></div><span class="mono">${Math.round(p*100)}%</span></div>`).join("")}
@@ -949,7 +1031,7 @@ renderMastery();
 const QS=[
  {c:"Recursion",b:2,q:"What does f(3) return?",code:"int f(int n){\n  if(n == 0) return 1;\n  return n * f(n - 1);\n}",o:["3","6","9","1"],a:1},
  {c:"Recursion",b:1,q:"A recursive function never stops and crashes. What is most likely missing?",o:["A return type","A base case","A loop","A global variable"],a:1},
- {c:"Trees",b:3,q:"Naive recursive fib(n) is slow on n = 40. Why?",code:"int fib(int n){\n  if(n < 2) return n;\n  return fib(n-1) + fib(n-2);\n}",o:["O(n) stack depth","It recomputes subproblems: O(2ⁿ)","Integer overflow","Tail calls aren't optimised"],a:1}
+ {c:"Call by reference",b:2,q:"What does this print?",code:"void inc(int x){ x++; }\nint main(){\n  int a = 5;\n  inc(a);\n  printf(\"%d\", a);\n}",o:["6","5","0","Compile error"],a:1}
 ];
 let qi=0,pick=null,t0=0,answered=false;
 function renderQuiz(){
@@ -969,7 +1051,7 @@ $("#quiz").addEventListener("click",e=>{
     $$("#quiz .opt").forEach((b,i)=>{if(i===Q.a)b.classList.add("right");else if(i===pick)b.classList.add("wrong")});
     const P=CONCEPTS[Q.c],{T,S,G}=BKT;
     const post=ok?P*(1-S)/(P*(1-S)+(1-P)*G):P*S/(P*S+(1-P)*(1-G));
-    const nxt=post+(1-post)*T;CONCEPTS[Q.c]=nxt;store.set("mastery",CONCEPTS);flash=Q.c;renderMastery();setTimeout(()=>{flash=null;renderMastery()},1400);
+    const nxt=post+(1-post)*T;CONCEPTS[Q.c]=nxt;store.set("mastery2",CONCEPTS);flash=Q.c;renderMastery();setTimeout(()=>{flash=null;renderMastery()},1400);
     let kind,why;
     if(ok&&conf>=60){kind=["ok","Solid"];why="Correct and confident. Moving on to harder questions."}
     else if(ok){kind=["warn","Correct but unsure"];why="Right answer, low confidence. One more question like this to lock it in."}
@@ -988,39 +1070,39 @@ $("#quiz").addEventListener("click",e=>{
 renderQuiz();
 
 // Root-cause tree
-const NODES={Loops:[60,40],Arrays:[60,130],Pointers:[200,40],Recursion:[200,130],"Linked lists":[340,40],Trees:[340,130],BST:[400,230],Backtracking:[270,230]};
-const EDGES=[["Loops","Recursion"],["Arrays","Recursion"],["Pointers","Linked lists"],["Recursion","Trees"],["Linked lists","Trees"],["Trees","BST"],["Recursion","Backtracking"]];
+const NODES={Loops:[110,40],Arrays:[340,40],Functions:[110,135],Pointers:[340,135],Recursion:[75,230],"Call by reference":[230,230],Strings:[390,230]};
+const EDGES=[["Loops","Functions"],["Arrays","Pointers"],["Functions","Recursion"],["Functions","Call by reference"],["Pointers","Call by reference"],["Pointers","Strings"]];
 function rootCause(target){ // walk prerequisites; return the weakest ancestor below 0.5
   const parents=n=>EDGES.filter(e=>e[1]===n).map(e=>e[0]);let best=null;const seen=new Set();
   (function walk(n){parents(n).forEach(p=>{if(seen.has(p))return;seen.add(p);if(CONCEPTS[p]<.5&&(!best||CONCEPTS[p]<CONCEPTS[best]))best=p;walk(p)})})(target);
   return best||target;
 }
 function drawTree(){
-  const root=rootCause("BST"),root2=rootCause("Backtracking");const hot=new Set([root,root2]);
+  const root=rootCause("Recursion"),root2=rootCause("Call by reference");const hot=new Set([root,root2]);
   let g=`<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${css('--dim')}"/></marker></defs>`;
   EDGES.forEach(([a,b])=>{const[x1,y1]=NODES[a],[x2,y2]=NODES[b];const on=hot.has(a);g+=`<line x1="${x1}" y1="${y1+14}" x2="${x2}" y2="${y2-16}" stroke="${on?css('--b5'):css('--line-2')}" stroke-width="${on?2:1.2}" marker-end="url(#ar)" ${on?'stroke-dasharray="5 4"':''}/>`});
   Object.entries(NODES).forEach(([k,[x,y]])=>{const p=CONCEPTS[k],c=conceptColor(p),w=Math.max(78,k.length*7.6+26);const isRoot=hot.has(k);
     g+=`<g><rect x="${x-w/2}" y="${y-14}" width="${w}" height="28" rx="6" fill="${css('--panel-2')}" stroke="${isRoot?css('--b5'):css('--line-2')}" stroke-width="${isRoot?2:1}"/><text x="${x-w/2+10}" y="${y+4}" fill="${css('--fg')}" font-family="Instrument Sans, sans-serif" font-size="12">${k}</text><text x="${x+w/2-8}" y="${y+4}" text-anchor="end" fill="${c}" font-family="JetBrains Mono, monospace" font-size="10.5">${Math.round(p*100)}</text></g>`});
   g+=`<text x="10" y="280" fill="${css('--muted')}" font-family="JetBrains Mono, monospace" font-size="10">arrow = "needed before"   ·   orange = root cause</text>`;
   $("#tree").innerHTML=g;
-  $("#treeNote").innerHTML=`Searching back from your two weakest topics, BST and Backtracking, lands on <b style="color:var(--b5)">${root}</b> (${Math.round(CONCEPTS[root]*100)}%). Fix it first.`;
+  $("#treeNote").innerHTML=`Searching back from your two weakest topics, Recursion and Call by reference, lands on <b style="color:var(--b5)">${root}</b> (${Math.round(CONCEPTS[root]*100)}%). Fix it first.`;
 }
 drawTree();
 
-const PLAN=[["Mon","Recursion: trace 5 calls on paper","Visualise the call stack · 40 min",2],["Tue","8-min explainer + 6 Apply-level problems","Base case and smaller subproblem",2],["Wed","Linked list reversal, recursive version","Feeds directly into Lab 6",2],["Thu","Tree traversals: in, pre, post order","Recursion on trees",3],["Fri","BST insert and delete","Timed set of 5 · 25 min",3],["Sat","Mixed mock: 10 questions across levels","Re-check with knowledge tracing",4]];
-let done=store.get("plan",[0]);
+const PLAN=[["Mon","Functions: write 5 small functions that return values","Inputs, outputs and return types · 40 min",2],["Tue","Call by value vs. reference: trace swap()","Draw a memory box for each variable",1],["Wed","Recursion: trace factorial and sum on paper","Base case and smaller subproblem",2],["Thu","Pass arrays to functions","Feeds directly into Lab 6",2],["Fri","Functions worksheet from the Library","Apply and Analyze sections · 25 min",3],["Sat","Mixed mock: 10 questions across levels","Re-check with knowledge tracing",4]];
+let done=store.get("plan2",[0]);
 function renderPlan(){$("#plan").innerHTML=PLAN.map(([d,t,s,b],i)=>`<label class="step ${done.includes(i)?'done':''}"><span class="d">${d}</span><div><b>${t}</b><span>${s}</span></div><div class="row">${bloomChip(b)}<input type="checkbox" data-p="${i}" ${done.includes(i)?'checked':''} aria-label="Mark ${d} done"></div></label>`).join("")}
-$("#plan").addEventListener("change",e=>{const i=+e.target.dataset.p;done=e.target.checked?[...done,i]:done.filter(x=>x!==i);store.set("plan",done);renderPlan()});
+$("#plan").addEventListener("change",e=>{const i=+e.target.dataset.p;done=e.target.checked?[...done,i]:done.filter(x=>x!==i);store.set("plan2",done);renderPlan()});
 renderPlan();
 
 /* ---------- faculty ---------- */
-const HC=["Arrays","Loops","Pointers","Linked lists","Recursion","Trees","Stacks","Queues"];
-const HD=[[88,90,91,93],[92,93,94,94],[61,64,66,70],[58,63,67,71],[49,47,52,55],[52,50,48,51],[74,77,80,82],[78,79,83,85]];
+const HC=["Data types","Operators","Loops","Arrays","Strings","Pointers","Functions","Recursion"];
+const HD=[[88,90,91,93],[84,86,88,90],[92,93,94,94],[74,77,80,82],[70,72,75,78],[61,64,66,70],[52,50,48,51],[49,47,46,50]];
 const heatC=v=>{const t=Math.max(0,Math.min(1,(v-40)/55));const a=[255,93,93],b=[242,193,78],c=[107,219,152];const m=t<.5?a.map((x,i)=>x+(b[i]-x)*t*2):b.map((x,i)=>x+(c[i]-x)*(t-.5)*2);return `rgb(${m.map(Math.round).join(",")})`};
 $("#heat").style.gridTemplateColumns="110px repeat(4,minmax(0,1fr)) 90px";
 $("#heat").innerHTML=`<span></span>${["QUIZ 1","QUIZ 2","QUIZ 3","QUIZ 4"].map(q=>`<span class="hh">${q}</span>`).join("")}<span class="hh">TREND</span>`+HC.map((c,i)=>{const d=HD[i],tr=d[3]-d[0];return `<span class="hl">${c}</span>${d.map(v=>`<span class="hc" style="background:${heatC(v)}" title="${c}: ${v}%">${v}</span>`).join("")}<span class="hl" style="justify-content:center;color:${tr<3?css('--bad'):css('--ok')}">${tr>0?'+':''}${tr}${tr<3?' ⚑':''}</span>`}).join("");
 
-const PAPER=store.get("paper",[["Define a binary tree and list its properties.",0],["State the time complexity of linear search.",0],["Explain how a stack supports function calls.",1],["Trace inorder traversal of the given tree.",2],["Write a recursive function to count leaf nodes.",2],["List the operations of a queue.",0],["Compare arrays and linked lists for insertion.",3],["Explain the difference between BFS and DFS.",1]]);
+const PAPER=store.get("paper2",[["Define a variable and list the basic data types in C.",0],["State the difference between = and == in C.",0],["Explain how a for loop works, naming its three parts.",1],["Trace the output of the given nested loop.",2],["Write a function that returns the largest of three numbers.",2],["List four functions from the string.h header.",0],["Compare call by value and call by reference.",3],["Explain what a pointer stores, with an example.",1]]);
 const TARGET=[15,20,25,20,10,10];
 function renderPaper(){
   const cnt=[0,0,0,0,0,0];PAPER.forEach(q=>cnt[q[1]]++);const share=cnt.map(c=>Math.round(c/PAPER.length*100));
@@ -1029,20 +1111,20 @@ function renderPaper(){
   $("#balanceNote").innerHTML=low>45?`<span class="pill bad">Unbalanced</span> ${low}% of marks test recall or explanation. NBA guidance suggests about 35%. Higher-order levels make up only ${high}%. Change two questions to Analyze or Create.`:`<span class="pill ok">Balanced</span> Lower-order ${low}%, higher-order ${high}%. This paper meets the outcome mapping.`;
   $("#qlist").innerHTML=PAPER.map(([t,b],i)=>`<div class="qitem"><span class="mono" style="color:var(--muted)">Q${i+1}</span><span>${t}</span><select data-q="${i}" aria-label="Bloom level for question ${i+1}" style="color:var(${BLOOM[b][1]})">${BLOOM.map((x,j)=>`<option value="${j}" ${j===b?'selected':''}>${x[0]}</option>`).join("")}</select></div>`).join("");
 }
-$("#qlist").addEventListener("change",e=>{const i=+e.target.dataset.q;PAPER[i][1]=+e.target.value;store.set("paper",PAPER);renderPaper()});
+$("#qlist").addEventListener("change",e=>{const i=+e.target.dataset.q;PAPER[i][1]=+e.target.value;store.set("paper2",PAPER);renderPaper()});
 renderPaper();
-$("#risk").innerHTML=[["Student 23CS041",64.3,-4,"bad","High"],["Student 23CS017",70.1,-3,"bad","High"],["Student 23CS088",73.8,-2,"warn","Watch"],["Student 23CS102",74.5,1,"warn","Watch"]].map(([n,a,t,c,l])=>`<tr><td>${n}</td><td class="num">${a}</td><td class="num" style="color:${t<0?css('--bad'):css('--ok')}">${t>0?'+':''}${t}</td><td><span class="pill ${c}">${l}</span></td></tr>`).join("");
+$("#risk").innerHTML=[["26BCP041",64.3,-4,"bad","High"],["26BCP017",70.1,-3,"bad","High"],["26BCP088",73.8,-2,"warn","Watch"],["26BCP102",74.5,1,"warn","Watch"]].map(([n,a,t,c,l])=>`<tr><td>${n}</td><td class="num">${a}</td><td class="num" style="color:${t<0?css('--bad'):css('--ok')}">${t>0?'+':''}${t}</td><td><span class="pill ${c}">${l}</span></td></tr>`).join("");
 $("#nudgeBtn").onclick=e=>{e.target.disabled=true;e.target.textContent="Nudges sent to mentors";toast("4 mentors notified")};
 $("#naacBtn").onclick=()=>toast("Criterion 2.6 report ready: CO–PO attainment + Bloom mapping");
 
 /* ---------- leave ---------- */
 // classes per weekday (0 = Sun … 6 = Sat)
-const WEEK={ds:{1:1,2:1,3:2,5:1},dm:{1:1,2:1,4:1,5:1},dl:{1:1,3:1,4:1},pc:{2:1,3:1,5:1,6:1},ph:{2:1,4:1,5:1},ev:{3:1,6:1}};
+const WEEK={prog:{1:1,2:1,3:2,5:1},math:{1:1,2:1,4:1,5:1},sci:{1:1,3:1,4:1},comm:{2:1,3:1,5:1,6:1},env:{2:1,4:1,5:1},eg:{3:1,6:1}};
 const DAYN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const safeMissR=(a,h,r)=>Math.floor(a/r+1e-9)-h;                       // ⌊attended ÷ r⌋ − held
 const needR=(a,h,r)=>Math.max(0,Math.ceil((r*h-a)/(1-r)-1e-9));          // smallest x with (a+x)/(h+x) ≥ r
 const colR=(p,r)=>p>=r*100+5?css("--ok"):p>=r*100?css("--warn"):css("--bad");
-let lv=store.get("lv",{sub:"dl",r:75,left:20,custom:null});
+let lv=store.get("lv2",{sub:"sci",r:75,left:20,custom:null});
 $("#lvSub").innerHTML=SUBJ.map(s=>`<option value="${s.id}">${s.name}</option>`).join("")+`<option value="custom">My own numbers</option>`;
 function fillLeave(){
   $("#lvSub").value=lv.sub;$("#lvR").value=lv.r;$("#lvLeft").value=lv.left;
@@ -1066,9 +1148,9 @@ function calcLeave(){
   $("#lvFacts").innerHTML=[[p.toFixed(1)+"%","Right now"],[best.toFixed(1)+"%",`Best by semester end`],[sm>=0?`${Math.max(0,Math.floor((a+left)/r+1e-9)-(h+left))}`:"0","Can still skip of "+left+" left"]].map(([v,l])=>`<div class="fact"><b>${v}</b><span>${l}</span></div>`).join("");
   $("#lvFormula").innerHTML=`⌊${a} ÷ ${r} ⌋ − ${h} = ${Math.floor(a/r+1e-9)} − ${h} = <b style="color:var(--fg)">${sm}</b>${sm<0?`  ·  need x where (${a}+x)/(${h}+x) ≥ ${r} → x = ⌈(${r}·${h} − ${a}) ÷ ${(1-r).toFixed(2)}⌉ = <b style="color:var(--fg)">${need}</b>`:''}`;
   if(lv.sub==="custom"){lv.custom=[a,h]}
-  lv.r=r*100;lv.left=left;store.set("lv",lv);
+  lv.r=r*100;lv.left=left;store.set("lv2",lv);
 }
-$("#lvSub").onchange=e=>{lv.sub=e.target.value;store.set("lv",lv);fillLeave();calcLeave()};
+$("#lvSub").onchange=e=>{lv.sub=e.target.value;store.set("lv2",lv);fillLeave();calcLeave()};
 ["#lvA","#lvH"].forEach(id=>$(id).addEventListener("input",()=>{if(lv.sub!=="custom"){lv.custom=[+$("#lvA").value||0,+$("#lvH").value||0];lv.sub="custom";$("#lvSub").value="custom"}calcLeave()}));
 ["#lvR","#lvLeft"].forEach(id=>$(id).addEventListener("input",()=>{calcLeave();planLeave()}));
 
@@ -1116,7 +1198,7 @@ const fmtDate=d=>new Date(d+"T00:00").toLocaleDateString(undefined,{day:"numeric
 function prng(seed){let r=seed%2147483647||1;return()=>(r=(r*16807)%2147483647)/2147483647}
 const COMMENTS={
  Recursion:["I don't get when the base case stops it","Tracing the call stack on the board was too fast","Need more examples before the lab","The return values going back up confused me","I understood factorial but not fib","Can we trace one more problem step by step","Lost track of the stack after 3 calls","I can read recursion but can't write my own","Felt rushed at the end","More practice problems please","Why doesn't it run forever? Where does it stop?"],
- "Linked lists":["Pointer changes during delete were tricky","Good pace, the diagrams helped","Need one more example of reversing","Clear explanation","Insert at tail with no tail pointer confused me","More practice problems please","Clear, the drawings made it easy"],
+ Pointers:["The * and & symbols confused me at first","Good pace, the memory box drawings helped","Need one more example of pointer arithmetic","Clear explanation","Pointer to pointer was tricky","More practice problems please","Clear, the diagrams made it easy"],
  default:["Need more examples","Pace was a bit fast","Clear explanation","Could you trace one problem step by step","More practice problems please","Felt rushed at the end","Good pace"]
 };
 const THEMES=[
@@ -1146,14 +1228,14 @@ function genResponses(sv,n,seed,diff){ // diff: 0 = easy topic … 1 = hard topi
   return out;
 }
 function seedSurveys(){
-  const a={id:"s-rec",subject:"ds",topic:"Recursion",by:"Dr. Iyer",date:"2026-10-16",status:"open",subtopics:["Base case","Recursive call","Call stack","Return values","Recursion vs iteration"],check:{q:"What does f(4) return?",code:"int f(int n){\n  if(n == 0) return 0;\n  return n + f(n - 1);\n}",o:["4","10","24","0"],a:1},responses:[]};
+  const a={id:"s-rec",subject:"prog",topic:"Recursion",by:"Dr. Iyer",date:"2026-10-16",status:"open",subtopics:["Base case","Recursive call","Call stack","Return values","Recursion vs iteration"],check:{q:"What does f(4) return?",code:"int f(int n){\n  if(n == 0) return 0;\n  return n + f(n - 1);\n}",o:["4","10","24","0"],a:1},responses:[]};
   a.responses=genResponses(a,41,7,0.85);
-  const b={id:"s-ll",subject:"ds",topic:"Linked lists",by:"Dr. Iyer",date:"2026-10-09",status:"closed",subtopics:["Node structure","Insert at head","Insert at tail","Delete a node","Reverse a list"],check:{q:"A singly linked list has only a head pointer. What does inserting at the tail cost?",o:["O(1)","O(log n)","O(n)","O(n²)"],a:2},responses:[]};
+  const b={id:"s-ptr",subject:"prog",topic:"Pointers",by:"Dr. Iyer",date:"2026-10-09",status:"closed",subtopics:["What a pointer stores","& and * operators","Pointer arithmetic","Pointers and arrays","Pointer to pointer"],check:{q:"int a[3] = {10, 20, 30}; int *p = a; What is *(p + 1)?",o:["10","20","30","An address"],a:1},responses:[]};
   b.responses=genResponses(b,58,11,0.15);
   return [a,b];
 }
-let SURVEYS=store.get("surveys1",null)||seedSurveys();
-const saveSurveys=()=>store.set("surveys1",SURVEYS);
+let SURVEYS=store.get("surveys2",null)||seedSurveys();
+const saveSurveys=()=>store.set("surveys2",SURVEYS);
 const myResp=sv=>sv.responses.find(x=>x.own);
 function pendingCount(){return SURVEYS.filter(s=>s.status==="open"&&!myResp(s)).length}
 
@@ -1176,7 +1258,7 @@ const P=x=>Math.round(x*100);
 function gauge(score,c){const R=58,L=Math.PI*R,v=Math.max(0,Math.min(1,score));
   return `<svg viewBox="0 0 150 92" role="img" aria-label="Reteach index ${P(v)} of 100"><path d="M17 80 A58 58 0 0 1 133 80" fill="none" stroke="${css('--line-2')}" stroke-width="12" stroke-linecap="round"/><path d="M17 80 A58 58 0 0 1 133 80" fill="none" stroke="${c}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${L*v} ${L}"/><text x="75" y="70" text-anchor="middle" fill="${css('--fg')}" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="30">${P(v)}</text><text x="75" y="88" text-anchor="middle" fill="${css('--muted')}" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="1">RETEACH INDEX</text></svg>`}
 
-let fsSel=store.get("fsSel","s-rec");
+let fsSel=store.get("fsSel2","s-rec");
 function renderFS(){
   if(!SURVEYS.find(s=>s.id===fsSel))fsSel=SURVEYS[0]&&SURVEYS[0].id;
   $("#fsPick").innerHTML=SURVEYS.map(s=>`<option value="${s.id}" ${s.id===fsSel?'selected':''}>${esc(s.topic)} · ${fmtDate(s.date)}</option>`).join("");
@@ -1226,8 +1308,8 @@ function analysisHTML(sv){
     <div class="card"><div class="card-h"><h3>What students wrote</h3><span class="label">Grouped by theme</span></div><div>${a.themes.length?a.themes.slice(0,4).map(([k,o])=>`<div class="theme"><div class="card-h"><b>${esc(k)}</b><span class="mono" style="font-size:.75rem;color:var(--muted)">${o.n} students</span></div>${o.q.map(q=>`<p class="quote">"${esc(q)}"</p>`).join("")}</div>`).join(""):'<p style="color:var(--muted)">No comments yet.</p>'}</div></div>
   </div>`;
 }
-$("#fsPick").onchange=e=>{fsSel=e.target.value;store.set("fsSel",fsSel);renderFS()};
-$("#fsList").addEventListener("click",e=>{const b=e.target.closest("[data-fs]");if(b){fsSel=b.dataset.fs;store.set("fsSel",fsSel);renderFS();$("#fsAnalysis").scrollIntoView({behavior:"smooth",block:"start"})}});
+$("#fsPick").onchange=e=>{fsSel=e.target.value;store.set("fsSel2",fsSel);renderFS()};
+$("#fsList").addEventListener("click",e=>{const b=e.target.closest("[data-fs]");if(b){fsSel=b.dataset.fs;store.set("fsSel2",fsSel);renderFS();$("#fsAnalysis").scrollIntoView({behavior:"smooth",block:"start"})}});
 $("#fsAnalysis").addEventListener("click",e=>{
   const sd=e.target.closest("[data-seed]"),cl=e.target.closest("[data-close]"),sn=e.target.closest("[data-send]");
   if(sd){const sv=SURVEYS.find(s=>s.id===sd.dataset.seed);sv.responses.push(...genResponses(sv,40,Date.now()%99991,0.35+Math.random()*0.55));saveSurveys();renderFS();toast("40 sample responses added")}
@@ -1235,14 +1317,14 @@ $("#fsAnalysis").addEventListener("click",e=>{
   if(sn){sn.disabled=true;sn.textContent="Sent to class";toast("Recap plan and worksheet sent to students")}
 });
 $("#fsSub").innerHTML=SUBJ.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
-$("#fsOpts").innerHTML=["1","2","3","5"].map((v,i)=>`<div class="optrow"><input type="radio" name="fsA" value="${i}" ${i===1?'checked':''} aria-label="Option ${i+1} is correct"><input class="fsO" value="${v}" aria-label="Option ${i+1}" style="width:100%;background:var(--panel-2);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px"></div>`).join("");
+$("#fsOpts").innerHTML=["3","4","10","It never stops"].map((v,i)=>`<div class="optrow"><input type="radio" name="fsA" value="${i}" ${i===1?'checked':''} aria-label="Option ${i+1} is correct"><input class="fsO" value="${v}" aria-label="Option ${i+1}" style="width:100%;background:var(--panel-2);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px"></div>`).join("");
 $("#fsForm").onsubmit=e=>{e.preventDefault();
   const topic=$("#fsTopic").value.trim(),q=$("#fsQ").value.trim(),opts=$$(".fsO").map(i=>i.value.trim()),a=+(($$('input[name=fsA]').find(r=>r.checked)||{}).value??-1);
   const subs=$("#fsSubs").value.split(",").map(x=>x.trim()).filter(Boolean).slice(0,8);
   const err=!topic?"Add the topic name.":!q?"Add a concept check question.":opts.some(o=>!o)?"Fill in all four options.":a<0?"Tick the correct option.":subs.length<2?"List at least two subtopics.":"";
   $("#fsErr").textContent=err;if(err)return;
   const sv={id:"s-"+Date.now(),subject:$("#fsSub").value,topic,by:facName(),date:iso(new Date()),status:"open",subtopics:subs,check:{q,o:opts,a},responses:[]};
-  SURVEYS.unshift(sv);saveSurveys();fsSel=sv.id;store.set("fsSel",fsSel);renderFS();window.scrollTo({top:0,behavior:"smooth"});
+  SURVEYS.unshift(sv);saveSurveys();fsSel=sv.id;store.set("fsSel2",fsSel);renderFS();window.scrollTo({top:0,behavior:"smooth"});
   toast("Published. Students see it in their Surveys tab.");
 };
 
@@ -1292,190 +1374,482 @@ $("#ssForm").addEventListener("click",e=>{
 });
 
 /* ---------- library ---------- */
-const LIB=[
- {id:"w-rec",type:"worksheet",sub:"ds",unit:"Unit 2",topic:"Recursion",title:"Recursion",mins:40,secs:[
-  [0,[["Define recursion. Name the two parts every recursive function must have.",2,"A function that solves a problem by calling itself on a smaller input.\nParts: the base case (where it stops) and the recursive case (the call on a smaller input)."],["What error do you get when a recursive function has no base case?",1,"Stack overflow. The calls never stop, so the call stack runs out of memory."]]],
-  [1,[["Explain why each recursive call needs its own stack frame.",3,"Every call has its own parameters and local variables and must remember where to return. The frame keeps these until that call finishes, so calls don't overwrite each other."]]],
-  [2,[["Trace sum(4), where sum(n) = (n == 0) ? 0 : n + sum(n − 1). Show every call and every return.",4,"sum(4) = 4 + sum(3)\nsum(3) = 3 + sum(2)\nsum(2) = 2 + sum(1)\nsum(1) = 1 + sum(0)\nsum(0) = 0\nReturns: 1, 3, 6, 10. Answer: 10"],["Write a recursive C function that counts the digits of a positive integer.",4,"int digits(int n){\n  if(n < 10) return 1;\n  return 1 + digits(n / 10);\n}"]]],
-  [3,[["fib(n) = fib(n − 1) + fib(n − 2), with fib(0) = 0 and fib(1) = 1. How many calls does fib(5) make? What does this tell you about its running time?",5,"15 calls. The same subproblems are solved again and again, so the number of calls grows roughly like 2ⁿ. Memoisation brings it down to O(n)."]]],
-  [4,[["A friend says: \"Recursion is always slower than a loop.\" Do you agree? Give one case for and one against.",5,"For: each call has overhead (a new stack frame), so a simple loop like summing an array is faster.\nAgainst: for tree traversal or merge sort, recursion has the same time complexity and is much clearer; tail calls can also be optimised by the compiler."]]],
-  [5,[["Design a recursive function that prints every binary string of length n. Write the base case and the recursive step.",6,"void gen(char s[], int i, int n){\n  if(i == n){ s[n] = '\\0'; printf(\"%s\\n\", s); return; }\n  s[i] = '0'; gen(s, i + 1, n);\n  s[i] = '1'; gen(s, i + 1, n);\n}\nBase case: i == n. Step: fix position i to 0, then 1, and recurse."]]]
- ]},
- {id:"w-kmap",type:"worksheet",sub:"dl",unit:"Unit 2",topic:"Boolean algebra",title:"Boolean algebra and K-maps",mins:35,secs:[
-  [0,[["State both of De Morgan's theorems.",2,"(A · B)' = A' + B'\n(A + B)' = A' · B'"]]],
-  [1,[["Why are K-map cells ordered 00, 01, 11, 10 instead of 00, 01, 10, 11?",3,"That is Gray code: neighbouring cells differ in exactly one variable, so grouping neighbours cancels that variable."]]],
-  [2,[["Simplify F = A'B + AB + AB'.",4,"A'B + AB = B, so F = B + AB' = A + B."],["Minimise F(A, B, C) = Σm(0, 2, 4, 5, 6) with a K-map.",5,"Group the four cells where C = 0 (m0, m2, m4, m6) → C'.\nGroup m4 and m5 → AB'.\nF = C' + AB'"]]],
-  [3,[["X = AB + AC and Y = A(B + C). Are they equivalent? Which needs fewer gates?",4,"Equivalent by the distributive law. Y needs 2 gates (one OR, one AND); X needs 3 (two AND, one OR)."]]],
-  [4,[["A design uses 4 NAND gates to build F = A + B. Can you do it with fewer?",4,"Yes, with 3: A + B = (A' · B')' = NAND(NAND(A, A), NAND(B, B))."]]],
-  [5,[["Design a circuit that outputs 1 when a 3-bit input ABC is a prime number (2, 3, 5 or 7). Give the minimised expression.",6,"Primes are m2, m3, m5, m7.\nGroup m2, m3 → A'B. Group m5, m7 → AC.\nF = A'B + AC"]]]
- ]},
- {id:"w-logic",type:"worksheet",sub:"dm",unit:"Unit 1",topic:"Propositional logic",title:"Propositional logic",mins:25,secs:[
-  [0,[["Write the truth table of p → q.",2,"p q | p→q\nT T | T\nT F | F\nF T | T\nF F | T"]]],
-  [1,[["Explain why p → q has the same truth table as ¬p ∨ q.",3,"Both are false in exactly one case: p true and q false."]]],
-  [2,[["Show that (p ∧ q) → p is a tautology.",4,"If p ∧ q is true, then p is true, so the implication is true. If p ∧ q is false, an implication with a false premise is true. True in every row."]]],
-  [3,[["\"If it rains, the match is cancelled.\" Write the converse and the contrapositive. Which one means the same as the original?",4,"Converse: If the match is cancelled, it rained.\nContrapositive: If the match is not cancelled, it did not rain.\nThe contrapositive is equivalent; the converse is not."]]],
-  [5,[["Write a compound proposition that is true exactly when an odd number of p, q, r are true.",5,"p ⊕ q ⊕ r"]]]
- ]},
- {id:"m-ll",type:"mindmap",sub:"ds",unit:"Unit 2",topic:"Linked lists",title:"Linked lists",map:{c:"Linked lists",b:[
-  ["Types",["Singly","Doubly","Circular","Circular doubly"]],
-  ["A node holds",["data","next pointer","prev (doubly only)","head and tail"]],
-  ["Operations",["Insert at head: O(1)","Insert at tail: O(n)","Delete a node: O(n)","Search: O(n)","Reverse in place"]],
-  ["vs. arrays",["No random access","Grows at run time","No shifting on insert","Extra memory per node"]],
-  ["Used for",["Stacks and queues","Polynomial addition","Undo history","Graph adjacency lists"]],
-  ["Common bugs",["Losing the head","NULL dereference","Memory leaks","Off by one at tail"]]]}},
- {id:"m-srf",type:"mindmap",sub:"dm",unit:"Unit 2",topic:"Sets, relations, functions",title:"Sets, relations, functions and logic",map:{c:"Sets · Relations · Logic",b:[
-  ["Sets",["Finite and infinite","Union, intersection","Inclusion–exclusion","Power set: 2ⁿ"]],
-  ["Relations",["Reflexive","Symmetric","Transitive","Equivalence relation"]],
-  ["Functions",["One-to-one","Onto","Bijection","Inverse exists iff bijective"]],
-  ["Logic",["Truth tables","Tautology, contradiction","Conditional, biconditional","Valid argument, fallacy"]],
-  ["Proof",["Mathematical induction","Counting principle"]],
-  ["Orders",["Partial order","Hasse diagram","Lattice"]]]}},
- {id:"n-sq",type:"notes",sub:"ds",unit:"Unit 2",topic:"Stacks and queues",title:"Stacks and queues",mins:8,body:[
-  ["h","Stack: last in, first out"],["p","A stack only lets you add or remove at one end, the top. Think of a pile of plates in the canteen."],
-  ["ul",["push(x) puts x on top in O(1)","pop() removes the top in O(1)","peek() reads the top without removing it","Overflow means pushing onto a full stack; underflow means popping an empty one"]],
-  ["code","#define MAX 100\nint st[MAX], top = -1;\n\nvoid push(int x){ if(top == MAX - 1) return; st[++top] = x; }\nint  pop(void)  { if(top == -1) return -1;    return st[top--]; }"],
-  ["h","Queue: first in, first out"],["p","A queue adds at the rear and removes from the front, like the line at the fee counter."],
-  ["ul",["enqueue at the rear and dequeue at the front, both O(1)","A plain array queue wastes the slots at the front after dequeues","A circular queue reuses them: rear = (rear + 1) % MAX"]],
-  ["tip","Exam favourite: convert the infix expression A + B * C to postfix using a stack. Answer: A B C * +"],
-  ["h","Where they show up"],["ul",["Stack: function calls, undo, bracket matching, depth-first search","Queue: printer jobs, CPU scheduling, breadth-first search"]]]},
- {id:"n-oop",type:"notes",sub:"pc",unit:"Unit 2",topic:"Inheritance and polymorphism",title:"Inheritance and polymorphism",mins:8,body:[
-  ["h","Inheritance"],["p","A derived class reuses the members of a base class and adds its own. It models an is-a relationship: a Student is a Person."],
-  ["ul",["Single: one base class, one derived class","Multilevel: A → B → C","Multiple: C inherits from both A and B","Hierarchical: one base class, many derived classes"]],
-  ["code","class Person {\nprotected:\n  string name;\npublic:\n  virtual void show() { cout << name; }\n};\n\nclass Student : public Person {\n  int sem;\npublic:\n  void show() override { cout << name << \", sem \" << sem; }\n};"],
-  ["h","Overloading vs. overriding"],["ul",["Overloading: same name, different parameters. Chosen at compile time","Overriding: a derived class redefines a virtual function. Chosen at run time","Operator overloading lets your objects use +, == and << naturally"]],
-  ["h","Virtual functions and abstract classes"],["p","Calling show() through a Person* runs Student::show() only if show() is virtual. A class with a pure virtual function, such as virtual double area() = 0;, is abstract and can't be instantiated."],
-  ["tip","Exam favourite: the diamond problem in multiple inheritance. Fix it with virtual inheritance: class B : virtual public A."]]},
- {id:"w-hash",type:"worksheet",sub:"ds",unit:"Unit 4",topic:"Hashing",title:"Hashing and collision resolution",mins:35,secs:[
-  [0,[["What is a hash table, and what does a hash function do?",2,"A table that stores each key at a position computed from the key itself. The hash function maps a key to an index, for example h(k) = k mod m."],["Name the four hashing functions in your syllabus.",2,"Division, multiplication, mid-square and folding."]]],
-  [1,[["What is a collision? Why can't even a good hash function avoid collisions completely?",3,"Two different keys mapping to the same index. There are far more possible keys than slots, so by the pigeonhole principle some keys must share a slot."]]],
-  [2,[["Insert 23, 43, 13, 27 into a table of size 10 using h(k) = k mod 10 and linear probing. Show the final table.",4,"23 → slot 3\n43 → 3 is taken → slot 4\n13 → 3 and 4 taken → slot 5\n27 → slot 7\nFinal: [3] 23, [4] 43, [5] 13, [7] 27"],["Hash the key 56 with the mid-square method to a 2-digit address.",3,"56² = 3136. The middle two digits are 13, so the address is 13."]]],
-  [3,[["Compare linear and quadratic probing. What is primary clustering, and which method reduces it?",5,"Linear probing tries i+1, i+2, … so filled slots join into long runs (primary clustering) and searches slow down.\nQuadratic probing tries i+1², i+2², … which spreads keys out and reduces primary clustering. Keys with the same home slot still follow the same path (secondary clustering)."]]],
-  [4,[["A student-records system has frequent inserts and deletes. Would you choose separate chaining or open addressing? Justify.",5,"Separate chaining. Deleting is just removing a node from a list, the table never fills up, and performance degrades gradually as the load factor rises. Open addressing needs special 'deleted' markers and slows sharply near a full table."]]],
-  [5,[["Design double hashing for a table of size 11. Give h1, h2 and the first four probes for key 25.",6,"h1(k) = k mod 11, h2(k) = 7 − (k mod 7)\nFor 25: h1 = 3, h2 = 7 − 4 = 3\nProbes: 3, 6, 9, 1 (12 mod 11)"]]]
- ]},
- {id:"n-ff",type:"notes",sub:"dl",unit:"Unit 3",topic:"Flip-flops",title:"Latches and flip-flops",mins:7,body:[
-  ["h","Latch vs. flip-flop"],["p","A latch changes whenever its enable input is active. A flip-flop changes only on a clock edge, which keeps every part of a sequential circuit in step."],
-  ["h","The four flip-flops"],["ul",["SR: S = 1 sets Q, R = 1 resets it. S = R = 1 is not allowed","D: Q takes the value of D on the clock edge. Used in registers","JK: like SR, but J = K = 1 toggles Q instead of being invalid","T: T = 1 toggles Q, T = 0 holds it. Used in counters"]],
-  ["code","Characteristic equations\nD  : Q(next) = D\nT  : Q(next) = T ⊕ Q\nJK : Q(next) = JQ' + K'Q\nSR : Q(next) = S + R'Q    (with SR = 0)"],
-  ["h","Excitation table for JK"],["p","When you design a counter you know the present and next state, and need the inputs that cause it. For a JK flip-flop: 0→0 needs J = 0, K = X. 0→1 needs J = 1, K = X. 1→0 needs J = X, K = 1. 1→1 needs J = X, K = 0."],
-  ["tip","A 3-bit ripple counter uses three T flip-flops with T = 1, each clocked by the previous flip-flop's output. It counts 0 to 7 and then wraps to 0."]]},
- {id:"w-rr",type:"worksheet",sub:"dm",unit:"Unit 2",topic:"Recurrence relations",title:"Recurrence relations",mins:30,secs:[
-  [0,[["What is a recurrence relation? Give one example with an initial condition.",2,"An equation that defines each term using earlier terms, for example aₙ = aₙ₋₁ + 2 with a₀ = 1."]]],
-  [1,[["Explain what \"linear homogeneous with constant coefficients\" means for aₙ = 5aₙ₋₁ − 6aₙ₋₂.",3,"Linear: each earlier term appears only to the first power. Homogeneous: there is no extra term that doesn't involve a. Constant coefficients: 5 and −6 don't depend on n."]]],
-  [2,[["Solve aₙ = 5aₙ₋₁ − 6aₙ₋₂ with a₀ = 1 and a₁ = 4.",5,"Characteristic equation: r² − 5r + 6 = 0, so r = 2, 3.\naₙ = α·2ⁿ + β·3ⁿ\na₀: α + β = 1;  a₁: 2α + 3β = 4  →  β = 2, α = −1\naₙ = 2·3ⁿ − 2ⁿ   (check: a₂ = 14)"],["Find a₅ if aₙ = aₙ₋₁ + aₙ₋₂ with a₀ = 2 and a₁ = 1.",3,"2, 1, 3, 4, 7, 11 → a₅ = 11"]]],
-  [3,[["The characteristic equation of aₙ = 4aₙ₋₁ − 4aₙ₋₂ has a repeated root. Find the general solution and explain why it has that form.",4,"r² − 4r + 4 = 0 gives r = 2 twice. With a repeated root, 2ⁿ alone gives only one independent solution, so the second is n·2ⁿ.\naₙ = (α + βn)·2ⁿ"]]],
-  [5,[["Write a recurrence for the number of n-bit binary strings with no two consecutive 1s. Give initial values and find a₄.",6,"A valid string ends in 0 (any valid string of length n−1, then 0) or in 01 (any valid string of length n−2, then 01).\naₙ = aₙ₋₁ + aₙ₋₂, a₁ = 2, a₂ = 3\na₃ = 5, a₄ = 8"]]]
- ]},
- {id:"w-sql",type:"worksheet",sub:"ph",unit:"Unit 2",topic:"SQL",title:"SQL queries",mins:40,intro:"Use these tables. Student(roll, name, branch, sem) and Enrol(roll, course_code, marks).",secs:[
-  [0,[["Expand DDL, DML and DCL, and give one command for each.",3,"Data Definition Language: CREATE\nData Manipulation Language: INSERT, SELECT\nData Control Language: GRANT"]]],
-  [1,[["What is the difference between a primary key and a UNIQUE constraint?",2,"Both stop duplicate values. A table has only one primary key and it can't be NULL. It can have many UNIQUE columns, and those may hold NULL."]]],
-  [2,[["List the names of semester 3 students in branch 'CE', sorted by name.",3,"SELECT name FROM Student\nWHERE sem = 3 AND branch = 'CE'\nORDER BY name;"],["Show the average marks for each course, but only courses averaging above 60.",4,"SELECT course_code, AVG(marks)\nFROM Enrol\nGROUP BY course_code\nHAVING AVG(marks) > 60;"]]],
-  [3,[["This query should list students with no enrolments but returns no rows at all. Why?\nSELECT name FROM Student WHERE roll NOT IN (SELECT roll FROM Enrol);",5,"If any roll in Enrol is NULL, every NOT IN comparison becomes UNKNOWN, so no row qualifies. Use NOT EXISTS with a correlated subquery:\nSELECT name FROM Student s\nWHERE NOT EXISTS (SELECT 1 FROM Enrol e WHERE e.roll = s.roll);"]]],
-  [4,[["A view is used so students can't see each other's marks. Is a view alone enough? Explain.",4,"No. A view only limits which rows and columns are shown. You also need to GRANT access on the view and REVOKE access on the base table, or users can still query Enrol directly."]]],
-  [5,[["Using a join, show each student's name with their highest mark and the course it came from.",6,"SELECT s.name, e.course_code, e.marks\nFROM Student s JOIN Enrol e ON s.roll = e.roll\nWHERE e.marks = (SELECT MAX(e2.marks) FROM Enrol e2\n                 WHERE e2.roll = s.roll);"]]]
- ]},
- {id:"m-norm",type:"mindmap",sub:"ph",unit:"Unit 3",topic:"Normalization",title:"Normalization",map:{c:"Normalization",b:[
-  ["Why normalize",["Removes redundancy","Update anomaly","Insert anomaly","Delete anomaly"]],
-  ["Dependencies",["X → Y","Armstrong's axioms","Attribute closure","Minimal cover"]],
-  ["1NF",["Atomic values only","No repeating groups"]],
-  ["2NF",["1NF, plus","No partial dependency","Matters for composite keys"]],
-  ["3NF",["2NF, plus","No transitive dependency"]],
-  ["BCNF",["Every determinant is a key","Stricter than 3NF"]]]}}
+// First-year subjects from the PDEU B.Tech Computer Engineering curriculum handbook (2024–28).
+// Units and topics follow the course pages; worksheets and notes are written against them.
+const LIBSUBJ=[
+ {k:"cp1",sem:1,code:"24CP101T",name:"Computer Programming – I",short:"Programming · in C",cr:"1 + 1 lab",kind:"Theory + lab",
+  units:[["Basics of C",3,["Structure of a C program","Tokens and data types","Operators","if and switch","Loops, break, continue"]],
+         ["Derived data types",4,["1D and 2D arrays","Matrix operations","Strings","Pointers","Pointer arithmetic"]],
+         ["Functions, structures",4,["User-defined functions","Call by value, reference","Recursion","Structures","Unions"]],
+         ["File handling",3,["Types of files","Read, write, append","File concatenation","fseek and ftell"]]],
+  ws:{title:"Functions and recursion",topic:"Recursion",unit:"Unit 3",mins:40,secs:[
+   [0,[["Define recursion. Name the two parts every recursive function must have.",2,"A function that solves a problem by calling itself on a smaller input.\nParts: the base case (where it stops) and the recursive case (the call on a smaller input)."],["What happens when a recursive function has no base case?",1,"It never stops calling itself, and the program crashes with a stack overflow."]]],
+   [1,[["Explain the difference between call by value and call by reference in C.",3,"Call by value copies the argument, so changes inside the function don't affect the caller. Call by reference passes the address (a pointer), so the function can change the caller's variable."]]],
+   [2,[["Trace sum(4), where sum(n) = (n == 0) ? 0 : n + sum(n − 1). Show every call and every return.",4,"sum(4) = 4 + sum(3)\nsum(3) = 3 + sum(2)\nsum(2) = 2 + sum(1)\nsum(1) = 1 + sum(0)\nsum(0) = 0\nReturns: 1, 3, 6, 10. Answer: 10"],["Write a recursive C function that counts the digits of a positive integer.",4,"int digits(int n){\n  if(n < 10) return 1;\n  return 1 + digits(n / 10);\n}"]]],
+   [3,[["fib(n) = fib(n − 1) + fib(n − 2), with fib(0) = 0 and fib(1) = 1. How many calls does fib(5) make? What does that tell you?",5,"15 calls. The same values are worked out again and again, so the number of calls grows very fast (roughly doubling with n). A loop, or storing results, avoids this."]]],
+   [4,[["A friend says: \"Recursion is always worse than a loop.\" Do you agree? Give one case for and one against.",5,"For: every call adds a stack frame, so a simple loop (like summing an array) is faster and uses less memory.\nAgainst: for problems that split into smaller copies of themselves, like printing all combinations or the Tower of Hanoi, recursion is much shorter and clearer."]]],
+   [5,[["Design a recursive function that prints every binary string of length n. Write the base case and the recursive step.",6,"void gen(char s[], int i, int n){\n  if(i == n){ s[n] = '\\0'; printf(\"%s\\n\", s); return; }\n  s[i] = '0'; gen(s, i + 1, n);\n  s[i] = '1'; gen(s, i + 1, n);\n}\nBase case: i == n. Step: fix position i to 0, then 1, and recurse."]]]]},
+  notes:{title:"Pointers in C",topic:"Pointers",unit:"Unit 2",mins:7,body:[
+   ["h","What a pointer is"],["p","A pointer stores the memory address of another variable. &x gives the address of x, and *p gives the value stored at the address held in p."],
+   ["code","int x = 10;\nint *p = &x;   // p holds the address of x\n*p = 20;       // x is now 20"],
+   ["h","Pointer arithmetic"],["ul",["p + 1 moves forward by sizeof(*p) bytes, not by 1 byte","For int a[5], a[i] is exactly *(a + i)","Subtracting two pointers into the same array gives the number of elements between them"]],
+   ["h","Passing by reference"],["code","void swap(int *a, int *b){\n  int t = *a; *a = *b; *b = t;\n}\n\nswap(&x, &y);   // x and y really swap"],
+   ["h","Pointer to pointer"],["p","int **pp = &p; stores the address of a pointer. **pp reaches the original value. It's used for 2D arrays and for functions that must change a pointer."],
+   ["tip","Most common mistake: using a pointer before giving it an address. Set it to NULL or a real address before writing *p."]]}},
+
+ {k:"ma1",sem:1,code:"24MA101T",name:"Mathematics – I",short:"Mathematics · I",cr:"4",kind:"Theory",
+  units:[["Differential calculus",8,["Partial derivatives","Euler's theorem","Total derivatives","Jacobians","Lagrange's multipliers","Taylor's series"]],
+         ["Integral calculus",12,["Double integrals","Change of order","Change of variables","Triple integrals","Area and volume","Centre of mass"]],
+         ["Vector calculus",10,["Grad, div and curl","Directional derivative","Irrotational, solenoidal","Line, surface integrals","Green, Gauss, Stokes"]],
+         ["Sequence and series",12,["Convergent sequences","Bounded, monotone","Convergence tests","Leibnitz test","Absolute convergence"]]],
+  ws:{title:"Partial derivatives and vector calculus",topic:"Vector calculus",unit:"Units 1 and 3",mins:45,secs:[
+   [0,[["State Euler's theorem for a homogeneous function u(x, y) of degree n.",2,"x·∂u/∂x + y·∂u/∂y = n·u"]]],
+   [1,[["What does it mean for a vector field to be irrotational? To be solenoidal?",3,"Irrotational: curl F = 0 everywhere.\nSolenoidal: div F = 0 everywhere."]]],
+   [2,[["If u = x³ + y³ + 3xy, find ∂u/∂x and ∂²u/∂x∂y.",3,"∂u/∂x = 3x² + 3y\n∂²u/∂x∂y = 3"],["Find the gradient of φ = x²y + yz at the point (1, 2, 3).",4,"∇φ = (2xy, x² + z, y)\nAt (1, 2, 3): (4, 4, 2)"]]],
+   [3,[["Is F = (yz, xz, xy) irrotational? Show your working.",5,"curl F = ( ∂(xy)/∂y − ∂(xz)/∂z , ∂(yz)/∂z − ∂(xy)/∂x , ∂(xz)/∂x − ∂(yz)/∂y )\n       = ( x − x , y − y , z − z ) = 0\nYes, it is irrotational. In fact F = ∇(xyz)."]]],
+   [4,[["Does Σ 1/n² converge? Justify with a test from your syllabus.",4,"Yes. It is a p-series with p = 2 > 1, so it converges. The integral test agrees: ∫₁^∞ dx/x² = 1 is finite."]]],
+   [5,[["Design an open-top box of volume 32 m³ that uses the least material. Set it up with Lagrange's multipliers and find the dimensions.",6,"Minimise S = xy + 2xz + 2yz subject to xyz = 32.\nSolving the Lagrange equations gives x = y = 2z, so 4z³ = 32 → z = 2.\nBox: 4 m × 4 m × 2 m, using 48 m² of material."]]]]},
+  notes:{title:"Vector calculus essentials",topic:"Vector calculus",unit:"Unit 3",mins:7,body:[
+   ["h","Three operators built from ∇"],["ul",["Gradient ∇φ turns a scalar field into a vector pointing to the steepest increase","Divergence ∇·F is a scalar: how much the field spreads out from a point","Curl ∇×F is a vector: how much the field rotates around a point"]],
+   ["code","∇φ  = (∂φ/∂x, ∂φ/∂y, ∂φ/∂z)\n∇·F = ∂F₁/∂x + ∂F₂/∂y + ∂F₃/∂z\n∇×F = | i     j     k    |\n      | ∂/∂x  ∂/∂y  ∂/∂z |\n      | F₁    F₂    F₃   |"],
+   ["h","Directional derivative"],["p","The rate of change of φ in the direction of a vector a is ∇φ · â, where â = a / |a|. Its largest value is |∇φ|, in the direction of ∇φ itself."],
+   ["h","The three theorems (no proofs needed)"],["ul",["Green's: a line integral round a closed curve in the plane equals a double integral over the region inside","Gauss divergence: the flux out of a closed surface equals the volume integral of div F","Stokes': the circulation round a curve equals the flux of curl F through any surface it bounds"]],
+   ["tip","If the question gives a cube or a rectangular box, it almost always wants Gauss divergence: one volume integral instead of six surface integrals."]]}},
+
+ {k:"ph1",sem:1,code:"24PH101T",name:"Applied Physics",short:"Applied · Physics",cr:"3 + 1 lab",kind:"Theory + lab",
+  units:[["Electromagnetism",12,["Grad, div and curl","Electric potential","Biot–Savart law","Faraday's law","Maxwell's equations","Poynting vector"]],
+         ["EM waves",10,["Wave equation","Reflection, transmission","Polarisation","Waves in conductors","Rectangular waveguide","Coaxial line"]],
+         ["Physics of solids",10,["Fermi level","Energy bands and gap","Intrinsic semiconductors","Doping","Hall effect","Magnetic materials"]],
+         ["Optics",10,["Fermat's principle","Thin-film interference","Newton's rings","Single and double slit","Lasers","Optical fibres"]]],
+  ws:{title:"Semiconductors and the Hall effect",topic:"Physics of solids",unit:"Unit 3",mins:35,secs:[
+   [0,[["Define the Fermi level.",2,"The energy level that has a 50% chance of being occupied by an electron at any temperature above 0 K. At 0 K in a metal, it is the highest filled level."]]],
+   [1,[["Using energy bands, explain why silicon conducts better when heated but copper conducts worse.",4,"Silicon has a small band gap (about 1.1 eV). Heat lifts more electrons into the conduction band, so the number of carriers rises.\nCopper already has many free electrons. Heat makes the lattice vibrate more, which scatters electrons and raises resistance."]]],
+   [2,[["A Hall voltage of 0.12 mV is measured across a strip 0.2 mm thick carrying 10 mA in a 0.5 T field. Find the Hall coefficient.",4,"R_H = V_H · t / (I · B)\n    = (0.12×10⁻³ × 0.2×10⁻³) / (10×10⁻³ × 0.5)\n    = 4.8 × 10⁻⁶ m³/C"]]],
+   [3,[["The Hall voltage of a sample comes out negative. What does that tell you about the majority carriers, and how would you double-check?",4,"A negative Hall coefficient means electrons are the majority carriers, so the sample is n-type. Reverse the current or the field: the sign should flip. Compare with a known p-type sample."]]],
+   [4,[["For a solar cell, would you choose a semiconductor with a band gap of 0.3 eV or 1.4 eV? Justify.",4,"1.4 eV. It matches the sunlight spectrum well and gives a useful voltage. With 0.3 eV, most of each photon's energy is lost as heat and the cell's voltage is very low."]]],
+   [5,[["Design an experiment to find the band gap of a semiconductor with the four-probe method. List the steps and the graph you'd plot.",6,"Pass a constant current through the outer probes and read the voltage on the inner probes while heating the sample slowly.\nWork out resistivity ρ at each temperature.\nPlot ln ρ against 1/T. The slope equals Eg / 2k, so Eg = 2k × slope."]]]]},
+  notes:{title:"Interference and Newton's rings",topic:"Optics",unit:"Unit 4",mins:6,body:[
+   ["h","Interference"],["p","When two coherent waves meet, they add up. Crest on crest gives a bright fringe; crest on trough gives a dark one. Coherent means the phase difference stays constant, which is why one source is split in two."],
+   ["h","Thin films"],["ul",["Light reflects from both the top and the bottom of a thin film","The path difference for reflected light is 2μt cos r","Reflection from a denser medium adds an extra λ/2","This is why soap bubbles and oil films look coloured"]],
+   ["h","Newton's rings"],["p","A plano-convex lens resting on a glass plate traps a thin air film that gets thicker away from the centre. In reflected light the centre is dark, surrounded by alternate bright and dark rings."],
+   ["code","Diameter of the nth dark ring:  Dₙ² = 4nλR\nWavelength from two rings:     λ = (D²ₙ₊ₚ − D²ₙ) / (4pR)"],
+   ["tip","In the lab, use the difference formula with rings far apart. It cancels the error from where exactly the lens touches the plate."]]}},
+
+ {k:"en1",sem:1,code:"24HS101T",name:"English Communication",short:"English · Communication",cr:"2",kind:"Theory",
+  units:[["Communication",7,["Language and communication","Why English?","Types of communication","Barriers","Digital communication"]],
+         ["Grammar and vocabulary",7,["Tenses and articles","Prepositions","Active and passive voice","Subject–verb concord","Synonyms, antonyms","Idioms, collocations"]],
+         ["Receptive skills",7,["Listening vs hearing","Active listening","Good listener traits","Speed reading","The SQ3R method"]],
+         ["Compendium skills",7,["Note taking","Note making","Summarizing","Creating e-content"]]],
+  ws:{title:"Grammar and communication",topic:"Grammar",unit:"Units 1–3",mins:30,secs:[
+   [0,[["List four barriers to effective communication.",2,"Physical (noise, distance), language (jargon, unclear words), psychological (stress, bias) and cultural differences."]]],
+   [1,[["Explain the difference between hearing and listening, with an example from a lecture.",3,"Hearing is passive: the sound just reaches you. Listening is active: you pay attention, make sense of it and respond.\nHearing the lecturer while scrolling your phone vs. taking notes and asking a question."]]],
+   [2,[["Change to passive voice: (a) The faculty checked the assignments. (b) Students will submit the report tomorrow.",4,"(a) The assignments were checked by the faculty.\n(b) The report will be submitted by the students tomorrow."],["Correct the errors: \"Each of the students have submitted there assignment on monday.\"",3,"Each of the students has submitted their assignment on Monday."]]],
+   [3,[["You read a 200-word passage using SQ3R. Which step checks your understanding, and why does it work?",4,"Recite, the third R. You close the text and say or write the main points from memory. Whatever you can't recall shows what to re-read before you Review."]]],
+   [5,[["Write a 60-word message to your class group announcing a change in the lab schedule.",5,"Subject: CP-I lab moved to Thursday\nHi all,\nThis week's Computer Programming lab moves from Wednesday 2 pm to Thursday 10 am in Lab 3 because of the department seminar. Please bring your lab files. Reply here if you have a clash.\nThanks,\nClass representative"]]]]},
+  notes:{title:"Note taking and summarizing",topic:"Compendium skills",unit:"Unit 4",mins:6,body:[
+   ["h","Note taking vs. note making"],["p","Note taking is writing down what you hear or read, during the lecture. Note making is reorganising those notes later, in your own words, so they are ready for revision."],
+   ["h","The Cornell method"],["ul",["Split the page: a narrow cue column on the left, notes on the right, a summary strip at the bottom","In class, write key points in the notes column","After class, add questions or keywords in the cue column","Sum up the page in two or three sentences at the bottom"]],
+   ["h","Summarizing in four steps"],["ul",["Read the whole text once without marking it","Underline the main idea of each paragraph","Rewrite those ideas in your own words, dropping examples","Cut it to about a third of the original length"]],
+   ["tip","A summary never adds your opinion. Keep the author's points, in your words."]]}},
+
+ {k:"ev1",sem:1,code:"24CV101T",name:"Environmental Science",short:"Environmental · Science",cr:"2",kind:"Theory",
+  units:[["Environment",5,["Sustainable development","The 17 SDGs","Environmental standards","Ecosystems","Biodiversity"]],
+         ["Pollution",6,["Air and water","Soil and solid waste","Noise and thermal","Radioactive","Man-made disasters"]],
+         ["Control strategies",9,["Wastewater treatment","Air pollution control","Noise control","Swachh Bharat Mission","Mission LiFE"]],
+         ["Emerging domains",8,["Zero liquid discharge","Green Credit Rules 2023","Carbon credits, CDM","Carbon, water footprint","Green buildings","Environmental audit"]]],
+  ws:{title:"Pollution and sustainability",topic:"Pollution",unit:"Units 1–4",mins:30,secs:[
+   [0,[["Name any four of the 17 Sustainable Development Goals.",2,"For example: No Poverty, Clean Water and Sanitation, Affordable and Clean Energy, Climate Action."]]],
+   [1,[["Explain why biodiversity makes an ecosystem more stable.",3,"Different species fill different roles, so if one declines another can take over. Biodiversity also supports pollination, fertile soil and clean water, and keeps food webs balanced."]]],
+   [2,[["A family uses 300 kWh of electricity a month. With an emission factor of 0.82 kg CO₂ per kWh, what is their yearly carbon footprint from electricity?",3,"300 × 12 × 0.82 = 2,952 kg, about 2.95 tonnes of CO₂ a year."]]],
+   [3,[["Compare primary and secondary wastewater treatment. What does each remove?",4,"Primary: screening and settling. Removes grit and suspended solids.\nSecondary: biological treatment (activated sludge, trickling filters). Removes dissolved organic matter and lowers BOD."]]],
+   [4,[["Is zero liquid discharge practical for every industry? Give one point for and one against.",4,"For: no wastewater leaves the plant, so rivers are protected and water is recovered.\nAgainst: evaporators and crystallisers need a lot of energy and money, which small units may not afford."]]],
+   [5,[["Propose three changes that would cut your hostel's water footprint, and explain how you'd measure the result.",5,"Fit aerators on taps, reuse RO reject water for cleaning, and fix leaks found in a monthly audit.\nMeasure: read the main water meter weekly before and after, and compare litres per student per day."]]]]},
+  notes:{title:"Carbon footprint and carbon credits",topic:"Emerging domains",unit:"Unit 4",mins:5,body:[
+   ["h","Carbon footprint"],["p","The total greenhouse gases caused, directly and indirectly, by a person, product or organisation, measured in tonnes of CO₂ equivalent."],
+   ["ul",["Direct: fuel burnt in your vehicle or generator","Indirect: the electricity you use and the goods you buy","A water footprint works the same way, in litres of freshwater"]],
+   ["h","Carbon credits"],["p","One carbon credit is one tonne of CO₂ not emitted or removed from the air. A project that cuts emissions earns credits, and a polluter can buy them to offset its own emissions. The Clean Development Mechanism let projects in developing countries earn such credits."],
+   ["h","Green Credit Rules 2023"],["p","India's programme that rewards voluntary environmental work, such as tree planting and water conservation, with tradable green credits."],
+   ["tip","Exam favourite: carbon credits are about emissions; green credits cover wider environmental actions."]]}},
+
+ {k:"eg1",sem:1,code:"Lab course",name:"Engineering Graphics",short:"Engineering · Graphics",cr:"2",kind:"Lab",
+  units:[["Drawing basics",4,["Drawing instruments","Lettering and lines","Dimensioning","Reading a drawing"]],
+         ["Projections",8,["1st angle projection","3rd angle projection","Isometric views","Isometric ↔ orthographic"]],
+         ["Solids",8,["Projection of solids","Inclined solids","Development of surfaces"]],
+         ["CAD drawing",12,["CAD interface","2D sketching","Constraints, patterns","Extrude and revolve","Drawing sheets"]]],
+  ws:{title:"Projections",topic:"Projections",unit:"Experiments 2–4",mins:30,secs:[
+   [0,[["In first-angle projection, where is the top view placed relative to the front view?",2,"Below the front view."]]],
+   [1,[["Why does an isometric scale make lengths about 82% of their true size?",3,"In an isometric view all three axes are equally tilted to the picture plane, so every edge is shortened by cos 35°16′ ≈ 0.816."]]],
+   [2,[["Draw the front, top and side views (first angle) of a 40 mm cube with a 20 mm hole drilled through its vertical axis.",5,"Front and side views: 40 × 40 squares with two hidden lines 20 mm apart for the hole.\nTop view: a 40 × 40 square with a 20 mm circle at the centre."]]],
+   [3,[["A cylinder stands on its base and is cut by a plane at 45° to the HP. What is the true shape of the section, and why?",4,"An ellipse. A plane that cuts every generator of a cylinder at an angle produces an ellipse; its major axis is the slant length of the cut."]]],
+   [5,[["Plan the CAD steps to model a flanged pipe: a 60 mm tube with a 120 mm flange at one end.",5,"1. Sketch circles of 60 and 50 mm on the front plane and extrude the tube.\n2. On the end face, sketch a 120 mm circle and extrude 10 mm for the flange.\n3. Add bolt holes with a circular pattern.\n4. Make a drawing sheet with the front view and a sectional side view, and dimension it."]]]]},
+  notes:{title:"Orthographic projection",topic:"Projections",unit:"Experiment 2",mins:5,body:[
+   ["h","First angle vs. third angle"],["ul",["First angle (BIS, used in India): the object sits between you and the plane. Top view goes below the front view; left view goes on the right","Third angle (used in the USA): the plane sits between you and the object. Top view goes above the front view","Draw the projection symbol in the title block"]],
+   ["h","The three views"],["ul",["Front view (elevation): length and height","Top view (plan): length and width","Side view: width and height"]],
+   ["h","Line types"],["ul",["Thick continuous: visible edges","Thin dashed: hidden edges","Thin chain: centre lines","Thin continuous: dimension and projection lines"]],
+   ["tip","Always show hidden lines for holes and slots. Missing hidden lines is the most common reason for lost marks."]]}},
+
+ {k:"ws1",sem:1,code:"24ME101T",name:"Workshop Practice",short:"Workshop · Practice",cr:"1",kind:"Lab",
+  units:[["Safety, measuring",3,["Workshop safety","Engineering materials","Vernier and micrometer"]],
+         ["Bench work",8,["Fitting","Carpentry","Sheet metal","Plumbing"]],
+         ["Machining, joining",6,["Mini lathe","Milling machine","Welding and brazing"]],
+         ["Electronics and 3D",5,["Soldering PCBs","Desoldering","3D printing"]]],
+  ws:{title:"Tools and measurement",topic:"Measurement",unit:"Experiments 1–2",mins:20,secs:[
+   [0,[["List three safety rules you must follow in the machine shop.",2,"Wear safety shoes and goggles; tie back long hair and avoid loose clothing; never leave a running machine unattended."]]],
+   [1,[["Why can't you use a steel rule to measure a 0.02 mm difference?",2,"A steel rule reads only to 0.5 mm. You need a vernier caliper (0.02 mm) or a micrometer (0.01 mm)."]]],
+   [2,[["A vernier caliper has a least count of 0.02 mm. The main scale reads 24 mm and the 13th vernier division lines up. What is the reading?",3,"24 + 13 × 0.02 = 24.26 mm"]]],
+   [3,[["Compare welding, brazing and soldering by temperature and joint strength.",4,"Welding melts the base metals (over 1500 °C for steel): strongest joint.\nBrazing uses a filler above 450 °C without melting the base: medium strength.\nSoldering uses a filler below 450 °C: weakest, used for electronics."]]],
+   [5,[["Plan the steps to make a dustpan from a sheet-metal blank.",4,"Mark the development on the sheet, cut it with snips, file the edges, bend the sides on a folding machine, fold a safe edge, then rivet on the handle."]]]]},
+  notes:{title:"Measuring instruments",topic:"Measurement",unit:"Experiment 2",mins:4,body:[
+   ["h","Least count"],["p","The smallest length an instrument can measure."],["ul",["Steel rule: 0.5 mm","Vernier caliper: 0.02 mm","Micrometer screw gauge: 0.01 mm"]],
+   ["code","Vernier reading    = main scale + (matching division × least count)\nMicrometer reading = sleeve reading + (thimble division × 0.01 mm)"],
+   ["h","Zero error"],["p","If the jaws or spindle show a reading when fully closed, that is zero error. Subtract a positive zero error from every reading; add a negative one."],
+   ["tip","Take three readings at different points and average them. Lab supervisors look for this."]]}},
+
+ {k:"uh1",sem:1,code:"24HS102T",name:"Universal Human Values",short:"Universal · Human Values",cr:"1",kind:"Theory",
+  units:[["Value education",4,["Human values","Aspirations and goals","Happiness, prosperity","Value-based education"]],
+         ["Harmony with self",4,["Understanding the self","Needs of body and mind","Healthy habits"]],
+         ["Relationships",3,["Trust and respect","Self-esteem vs. ego","Equality and inclusion","Vasudhaiva Kutumbakam"]],
+         ["Profession, ethics",3,["Ethical conduct","Professional competence","Universal human order"]]],
+  ws:{title:"Values in everyday life",topic:"Human values",unit:"Units 1–4",mins:20,secs:[
+   [0,[["Distinguish between happiness and prosperity as used in this course.",2,"Happiness is a state of harmony within yourself. Prosperity is the feeling of having more than enough physical facilities. You need both, and one doesn't guarantee the other."]]],
+   [1,[["Why does the course call the body an \"instrument\" of the self?",3,"The self decides and feels; the body acts and senses. Seeing the body as an instrument means caring for it, while not confusing its needs (food, rest) with the self's needs (trust, respect)."]]],
+   [2,[["A teammate takes credit for your work in a group project. Using trust and respect, describe how you'd respond.",4,"Talk privately first. Assume a misunderstanding rather than bad intent, state the facts calmly, and agree how credit will be shared. This protects the relationship and is fair to both of you."]]],
+   [4,[["Is competition between classmates harmful? Argue both sides briefly.",4,"Harmful when it turns into comparison and envy, which breaks trust. Helpful when it pushes everyone to improve. The course favours excellence through cooperation over beating others."]]],
+   [5,[["Write three rules for an ethical code for your class WhatsApp group.",4,"1. Never share someone's photo or message outside the group without their consent.\n2. Disagree with ideas, never insult people.\n3. Share notes freely and credit whoever made them."]]]]},
+  notes:{title:"Harmony in relationships",topic:"Relationships",unit:"Unit 3",mins:4,body:[
+   ["h","Trust comes first"],["p","Here, trust means being sure the other person wants my well-being, just as I want theirs. Respect means seeing the other person as equal to me."],
+   ["ul",["Self-esteem: valuing yourself accurately","Ego: needing others to see you as superior","Equality: the same worth as human beings","Equity: fair support based on need"]],
+   ["h","Vasudhaiva Kutumbakam"],["p","\"The world is one family.\" Harmony grows outward: from the self, to the family, to society, to nature."],
+   ["tip","Answers score better with a short personal example that shows the value in action."]]}},
+
+ {k:"cp2",sem:2,code:"24CP102T",name:"Computer Programming – II",short:"Programming · in Python",cr:"1 + 1 lab",kind:"Theory + lab",
+  units:[["Python basics",4,["Data types","Mutability","Operators","if, elif, else","for, while, else","break, continue, pass"]],
+         ["Functions",3,["Arguments and scope","Recursive functions","lambda, map, filter","Decorators","Generators"]],
+         ["Object-oriented Python",4,["Classes and objects","Constructor and self","Inheritance","Polymorphism","Abstract classes"]],
+         ["Files and exceptions",3,["Text and CSV files","Pickling","try and except","Custom exceptions"]]],
+  ws:{title:"Python functions and OOP",topic:"Functions",unit:"Units 2–3",mins:35,secs:[
+   [0,[["Which of these are mutable: list, tuple, str, dict, set?",2,"list, dict and set are mutable. tuple and str are immutable."]]],
+   [1,[["Explain what a decorator does, with a one-line example of using one.",3,"A decorator takes a function and returns a new one with extra behaviour, without editing the original. Example: writing @timer above def train(): to print how long train() takes."]]],
+   [2,[["What does this print?\nnums = [1, 2, 3, 4, 5]\nprint(list(map(lambda x: x * x, filter(lambda x: x % 2, nums))))",3,"[1, 9, 25]. filter keeps the odd numbers 1, 3, 5, and map squares them."],["Write a generator that yields the first n Fibonacci numbers.",4,"def fib(n):\n    a, b = 0, 1\n    for _ in range(n):\n        yield a\n        a, b = b, a + b"]]],
+   [3,[["Why does this function surprise you on the second call?\ndef add(x, items=[]):\n    items.append(x)\n    return items",4,"The default list is created once, when the function is defined, and every call shares it. add(1) gives [1], then add(2) gives [1, 2]. Use items=None and create a new list inside."]]],
+   [4,[["Should a Student class inherit from Person, or contain a Person object? Justify.",3,"Inherit. A student is a person (an is-a relationship), so Student(Person) reuses name and age naturally. Containing an object fits has-a relationships, like a student having an ID card."]]],
+   [5,[["Design a BankAccount class with deposit and withdraw that raises a custom InsufficientFunds exception.",6,"class InsufficientFunds(Exception):\n    pass\n\nclass BankAccount:\n    def __init__(self, owner, balance=0):\n        self.owner, self.balance = owner, balance\n    def deposit(self, amt):\n        self.balance += amt\n    def withdraw(self, amt):\n        if amt > self.balance:\n            raise InsufficientFunds(f\"Balance is {self.balance}\")\n        self.balance -= amt"]]]]},
+  notes:{title:"Exceptions and files in Python",topic:"Files and exceptions",unit:"Unit 4",mins:6,body:[
+   ["h","try, except, else, finally"],["code","try:\n    marks = int(input(\"Marks: \"))\nexcept ValueError:\n    print(\"Enter a whole number\")\nelse:\n    print(\"Saved\", marks)\nfinally:\n    print(\"Done\")"],
+   ["ul",["except runs only if that error happens","else runs only if no error happened","finally always runs, even after a return"]],
+   ["h","Reading a CSV file"],["code","import csv\nwith open(\"marks.csv\", newline=\"\") as f:\n    for row in csv.reader(f):\n        print(row)"],["p","The with statement closes the file for you, even if an error occurs."],
+   ["h","Pickling"],["p","pickle.dump(obj, file) saves almost any Python object to a binary file, and pickle.load(file) brings it back. Never unpickle a file from someone you don't trust: it can run code."],
+   ["tip","Catch specific exceptions like ValueError or FileNotFoundError. A bare except: hides real bugs."]]}},
+
+ {k:"ma2",sem:2,code:"24MA103T",name:"Mathematics – II",short:"Mathematics · II",cr:"4",kind:"Theory",
+  units:[["Complex analysis",12,["Analytic functions","Cauchy–Riemann","Harmonic functions","Cauchy integral formula","Taylor, Laurent series","Residue theorem"]],
+         ["Matrix algebra",10,["Rank of a matrix","Consistency of systems","Eigenvalues, vectors","Cayley–Hamilton","Diagonalisation"]],
+         ["Differential equations",10,["Higher-order ODEs","C.F. and P.I.","Variation of parameters","Cauchy, Legendre forms","Simultaneous ODEs"]],
+         ["Fourier series",10,["Periodic functions","Odd and even functions","Euler's formulae","Half-range series","Parseval's identity"]]],
+  ws:{title:"Eigenvalues, analytic functions and ODEs",topic:"Matrix algebra",unit:"Units 1–4",mins:45,secs:[
+   [0,[["State the Cayley–Hamilton theorem.",2,"Every square matrix satisfies its own characteristic equation."]]],
+   [1,[["What does it mean for f(z) to be analytic at a point?",3,"f is differentiable at every point in some neighbourhood of that point, not just at the point itself."]]],
+   [2,[["Find the eigenvalues of A = [[4, 1], [2, 3]].",4,"det(A − λI) = (4 − λ)(3 − λ) − 2 = λ² − 7λ + 10 = 0\nλ = 2 and λ = 5"],["Check whether f(z) = z² satisfies the Cauchy–Riemann equations.",4,"z² = (x² − y²) + i·2xy, so u = x² − y² and v = 2xy.\nuₓ = 2x = v_y and u_y = −2y = −vₓ. Both hold, so z² is analytic everywhere."]]],
+   [3,[["Solve y'' − 3y' + 2y = 0 and explain how the roots decide the form of the answer.",4,"m² − 3m + 2 = 0 gives m = 1, 2 (real and different), so y = c₁eˣ + c₂e²ˣ.\nA repeated root m gives (c₁ + c₂x)eᵐˣ. Complex roots a ± ib give eᵃˣ(c₁ cos bx + c₂ sin bx)."]]],
+   [4,[["Should you expand f(x) = x on (−π, π) as a sine series or a cosine series? Justify.",3,"A sine series. f(x) = x is odd, so a₀ and every aₙ are zero; only the bₙ sin nx terms remain."]]],
+   [5,[["Use Cayley–Hamilton to find A⁻¹ for A = [[4, 1], [2, 3]].",5,"A² − 7A + 10I = 0. Multiply by A⁻¹: A − 7I + 10A⁻¹ = 0\nA⁻¹ = (7I − A) / 10 = [[3, −1], [−2, 4]] / 10"]]]]},
+  notes:{title:"Fourier series on one page",topic:"Fourier series",unit:"Unit 4",mins:6,body:[
+   ["h","The idea"],["p","Any periodic function that meets Dirichlet's conditions can be written as a sum of sines and cosines."],
+   ["code","f(x) = a₀/2 + Σ (aₙ cos nx + bₙ sin nx)      on (−π, π)\n\na₀ = (1/π) ∫ f(x) dx\naₙ = (1/π) ∫ f(x) cos nx dx\nbₙ = (1/π) ∫ f(x) sin nx dx        (each from −π to π)"],
+   ["h","Shortcuts"],["ul",["Even function, f(−x) = f(x): every bₙ = 0, cosine terms only","Odd function, f(−x) = −f(x): a₀ = aₙ = 0, sine terms only","Half-range series: f is given on (0, π) only, so you choose sine or cosine"]],
+   ["h","Parseval's identity"],["p","(1/π) ∫ f² dx = a₀²/2 + Σ (aₙ² + bₙ²). It turns a Fourier series into the sum of a number series, for example Σ 1/n² = π²/6."],
+   ["tip","Check odd or even first. It halves the integration in most exam questions."]]}},
+
+ {k:"ch2",sem:2,code:"24CH101T",name:"Engineering Chemistry",short:"Engineering · Chemistry",cr:"3 + 1 lab",kind:"Theory + lab",
+  units:[["Engineering materials",12,["Metals, polymers, ceramics","Nanomaterials","Fullerene, CNT, graphene","Composites","Liquid crystals"]],
+         ["Analysis techniques",10,["X-ray diffraction","FTIR and UV-visible","TGA, DTA, DSC","GC and HPLC"]],
+         ["Kinetics, catalysis",10,["Adsorption isotherms","Rate law","Arrhenius equation","Collision theory","Catalysis"]],
+         ["Energy devices",10,["Batteries","Fuel cells","Supercapacitors","Photocatalytic H₂","Solar cells"]]],
+  ws:{title:"Kinetics and energy devices",topic:"Kinetics",unit:"Units 3–4",mins:35,secs:[
+   [0,[["Write the Arrhenius equation and name each term.",2,"k = A·e^(−Ea/RT)\nk: rate constant, A: frequency factor, Ea: activation energy, R: gas constant, T: temperature in kelvin."]]],
+   [1,[["Explain the difference between physisorption and chemisorption.",3,"Physisorption: weak van der Waals forces, low heat of adsorption, reversible, can form many layers.\nChemisorption: chemical bonds, high heat, often irreversible, a single layer, specific to the surface."]]],
+   [2,[["A reaction's rate constant doubles between 300 K and 310 K. Estimate Ea. (R = 8.314 J/mol·K)",5,"ln(k₂/k₁) = (Ea/R)(1/T₁ − 1/T₂)\nln 2 = (Ea / 8.314)(1/300 − 1/310)\n0.693 = (Ea / 8.314)(1.075 × 10⁻⁴)\nEa ≈ 53.6 kJ/mol"]]],
+   [3,[["Compare a lithium-ion battery with a hydrogen fuel cell for powering a city bus.",4,"Battery: efficient and simple, but heavy and slow to recharge.\nFuel cell: refuels in minutes, longer range, only water as exhaust, but needs hydrogen storage and filling stations, and costs more."]]],
+   [4,[["To confirm a powder is graphene oxide and not graphite, would you use XRD, TGA or HPLC? Justify.",4,"XRD. It shows crystal structure: graphite's peak near 2θ ≈ 26° moves to about 10° in graphene oxide because the layers move apart. TGA measures mass loss and HPLC is for liquids."]]],
+   [5,[["Design a simple lab test to show a catalyst speeds up the breakdown of H₂O₂ without being used up.",5,"Add MnO₂ to H₂O₂ and collect the oxygen in a gas syringe, reading it every 30 s; repeat without MnO₂. Afterwards filter, dry and weigh the MnO₂: its mass is unchanged."]]]]},
+  notes:{title:"Batteries, fuel cells and supercapacitors",topic:"Energy devices",unit:"Unit 4",mins:6,body:[
+   ["h","Primary vs. secondary batteries"],["ul",["Primary: single use; the reaction can't be reversed (alkaline Zn–MnO₂ cell)","Secondary: rechargeable; charging reverses the reaction (lead–acid, Li-ion)"]],
+   ["h","Lithium-ion cell"],["p","During discharge, Li⁺ ions move from the graphite anode through the electrolyte to the metal-oxide cathode, while electrons flow through the outside circuit. Charging pushes them back."],
+   ["h","Hydrogen–oxygen fuel cell"],["code","Anode  : 2H₂ → 4H⁺ + 4e⁻\nCathode: O₂ + 4H⁺ + 4e⁻ → 2H₂O\nOverall: 2H₂ + O₂ → 2H₂O"],
+   ["h","Supercapacitors"],["p","They store charge at the electrode surface, so they charge in seconds and last many cycles, but hold less energy than batteries."],
+   ["tip","Energy density: battery beats supercapacitor. Power density: supercapacitor beats battery. A common 4-mark question."]]}},
+
+ {k:"ee2",sem:2,code:"24EE101T",name:"Elements of Electrical & Electronics Engineering",short:"Electrical · & Electronics",cr:"3 + 1 lab",kind:"Theory + lab",
+  units:[["DC circuits",10,["Ohm's, Kirchhoff's laws","Thevenin and Norton","Superposition","Mesh and nodal analysis","Star–delta","RL and RC transients"]],
+         ["AC circuits",10,["RMS values","Phasors","RLC series circuits","Power factor","Resonance","Three-phase circuits"]],
+         ["Machines, installation",12,["Transformers","EMF equation","Induction motors","MCB, ELCB, fuses","Earthing","Electrical safety"]],
+         ["Electronics",10,["Diode rectifiers","Zener diode","LEDs, photodiodes","SCR","BJT configurations","JFET"]]],
+  ws:{title:"DC and AC circuits",topic:"Circuits",unit:"Units 1–4",mins:40,secs:[
+   [0,[["State Kirchhoff's current and voltage laws.",2,"KCL: the total current entering a node equals the total current leaving it.\nKVL: the voltages around any closed loop add up to zero."]]],
+   [1,[["Why do we quote AC voltages as RMS values rather than peak values?",3,"RMS is the DC value that would deliver the same power to a resistor, so P = V²/R still works. Mains 230 V is an RMS value; its peak is about 325 V."]]],
+   [2,[["A 12 V battery with 2 Ω internal resistance drives a 10 Ω load. Find the current and the power in the load.",3,"I = 12 / (2 + 10) = 1 A\nP = I²R = 1² × 10 = 10 W"],["An RL series circuit has R = 30 Ω and Xₗ = 40 Ω on 230 V AC. Find Z, I and the power factor.",4,"Z = √(30² + 40²) = 50 Ω\nI = 230 / 50 = 4.6 A\nPower factor = R / Z = 0.6 lagging"]]],
+   [3,[["Find the Thevenin equivalent across A–B: a 24 V source in series with 4 Ω, and 12 Ω connected from A to B.",5,"Vth = 24 × 12 / (4 + 12) = 18 V\nRth = 4 ∥ 12 = 3 Ω\nThe load sees 18 V in series with 3 Ω."]]],
+   [4,[["Why do homes use an ELCB or RCCB as well as an MCB?",3,"An MCB trips on overload or short circuit. It can't detect a small leakage current (about 30 mA) through a person to earth, which can be fatal. An ELCB or RCCB senses that leak and trips in milliseconds."]]],
+   [5,[["Design a full-wave bridge rectifier that gives 12 V DC from 230 V mains. Name each part and its job.",5,"A step-down transformer (230 V to about 12 V AC); four diodes in a bridge to use both half-cycles; a large capacitor (for example 1000 µF) to smooth the ripple; a 7812 regulator or Zener diode for a steady output."]]]]},
+  notes:{title:"Thevenin, Norton and superposition",topic:"DC circuits",unit:"Unit 1",mins:6,body:[
+   ["h","Thevenin's theorem"],["p","Any linear circuit seen from two terminals can be replaced by one voltage source Vth in series with one resistance Rth."],
+   ["ul",["Vth: the open-circuit voltage across the terminals","Rth: the resistance across the terminals with sources switched off (voltage sources shorted, current sources opened)"]],
+   ["h","Norton's theorem"],["p","The same circuit as a current source Iₙ in parallel with Rₙ. Iₙ is the short-circuit current and Rₙ = Rth. Convert with Vth = Iₙ · Rth."],
+   ["h","Superposition"],["p","With several sources, find the effect of each source on its own (others switched off) and add them up. It works for voltages and currents, not for power."],
+   ["h","Maximum power transfer"],["code","The load gets maximum power when R_load = Rth\nP_max = Vth² / (4 · Rth)"],
+   ["tip","Short voltage sources, open current sources. Mixing these up is the most common mistake."]]}},
+
+ {k:"pc2",sem:2,code:"24HS105T",name:"Professional Communication",short:"Professional · Communication",cr:"2",kind:"Theory",
+  units:[["Technical writing",7,["E-mails","Report writing","Proposal writing","Book and article reviews"]],
+         ["Oratory skills",7,["Introducing yourself","Presentation skills","Public speaking"]],
+         ["Employability skills",7,["Reading a job description","Cover letters","Resume writing","Group discussion","Interview skills"]],
+         ["Critical thinking",7,["Advanced reading","Ethical considerations","Interdisciplinary view","Philosophy of science"]]],
+  ws:{title:"Resumes, emails and interviews",topic:"Employability skills",unit:"Units 1–3",mins:30,secs:[
+   [0,[["List the standard sections of a technical report.",2,"Title page, abstract, introduction, method, results, discussion, conclusion and references (plus appendices if needed)."]]],
+   [1,[["How is a cover letter different from a resume?",3,"A resume lists your education, skills and experience in short points and suits many jobs. A cover letter is a one-page letter for one specific job that explains why you fit it."]]],
+   [2,[["Rewrite this resume line as an achievement: \"Was part of the coding club.\"",3,"Organised four coding contests for 120+ first-year students as a Coding Club core member."],["Write a formal email asking for a two-day extension on a lab report.",4,"Subject: Extension request for CP-II Lab Report 5\nDear Prof. Shah,\nI was unwell on 12 and 13 March (certificate attached) and could not finish Lab Report 5. Could I submit it by Friday, 15 March?\nThank you,\n[Your name], [Roll number]"]]],
+   [3,[["In a group discussion, one member keeps interrupting. Analyse two ways to handle it and how each affects your evaluation.",4,"Build on their point and steer the group back (\"Good point, and to add to that…\"): this shows leadership. Or invite a quiet member to speak: this shows teamwork. Arguing directly looks aggressive and usually costs marks."]]],
+   [5,[["Prepare a 30-second self-introduction for a summer internship interview.",4,"Your name, programme and year; one technical strength with proof (a project); one soft skill with an example; and why this company. Keep it to four or five sentences."]]]]},
+  notes:{title:"Writing a strong resume",topic:"Employability skills",unit:"Unit 3",mins:5,body:[
+   ["h","One page, built for skimming"],["p","Recruiters spend under a minute on a fresher's resume. Put your strongest facts at the top of each section."],
+   ["ul",["Header: name, college email, phone, GitHub or LinkedIn","Education: B.Tech, PDEU, CGPA, expected graduation year","Projects: two or three, each with what you built, the tools and a result","Skills: languages and tools you can actually use","Achievements and activities"]],
+   ["h","Write achievements, not duties"],["code","Weak  : Responsible for the tech-fest website\nStrong: Built the tech-fest website in React;\n        3,000 visits in launch week"],
+   ["tip","Send it as a PDF named Firstname_Lastname_Resume.pdf, never as a .docx."]]}},
+
+ {k:"bt2",sem:2,code:"24BT101T",name:"Biological Systems for Engineers",short:"Biology · for Engineers",cr:"2",kind:"Theory",
+  units:[["Biomolecules",7,["Prokaryotes, eukaryotes","Cell organelles","Carbohydrates, lipids","Proteins","DNA and RNA"]],
+         ["Bio-inspired design",7,["Brain as a CPU","Eye as a camera","Heart as a pump","Kidney as a filter","Lotus leaf effect","Burrs and Velcro"]],
+         ["Bioengineering trends",7,["Stem cells","Bioprinting","Bioinformatics","AI in diagnosis","Biosensors"]],
+         ["Biology meets eng.",7,["Hybridoma technology","Tissue engineering","Biomimicry","Nanobiotechnology","PCR and DNA chips"]]],
+  ws:{title:"Bio-inspired engineering",topic:"Bio-inspired design",unit:"Units 1–3",mins:25,secs:[
+   [0,[["List two differences between prokaryotic and eukaryotic cells.",2,"Prokaryotic cells have no nucleus (the DNA sits in the cytoplasm) and no membrane-bound organelles. Eukaryotic cells have a nucleus and organelles such as mitochondria."]]],
+   [1,[["Explain how the eye works like a camera.",3,"The cornea and lens focus light like a camera lens, the iris adjusts the opening like an aperture, and the retina records the image like a sensor, sending signals along the optic nerve."]]],
+   [2,[["The lotus leaf stays clean because of tiny bumps and wax. Suggest one product that uses this effect.",3,"Self-cleaning glass or paint, water-repellent fabric, or anti-dust coatings for solar panels."]]],
+   [3,[["Compare a glucose biosensor with a lab blood test for a diabetes patient.",4,"Biosensor: an enzyme (glucose oxidase) reacts with glucose and produces an electrical signal. Results in seconds at home and cheap per test, but less precise.\nLab test: more accurate and measures more, but slower and needs a visit."]]],
+   [4,[["Is AI-based diagnosis ready to replace doctors? Give one point for and one against.",3,"For: AI matches experts at reading some X-rays and eye scans and never gets tired. Against: it can fail on cases unlike its training data and can't take responsibility, so a doctor should confirm."]]],
+   [5,[["Propose a bio-inspired way to cool a hostel building, and name the organism that inspired it.",5,"Termite mounds. Add tall vents and a central shaft so hot air rises out, drawing cool air in through shaded openings near the ground, as in the Eastgate Centre in Harare."]]]]},
+  notes:{title:"Organs as engineering systems",topic:"Bio-inspired design",unit:"Unit 2",mins:4,body:[
+   ["h","Nature solved it first"],["ul",["Brain → CPU: neurons process signals and nerves are the wiring","Heart → pump: four chambers and valves keep blood flowing one way","Kidney → filter: about a million nephrons filter blood, the idea behind dialysis","Lungs → exchanger: a huge surface area for gas exchange","Ears and nose → sensors that turn vibrations and molecules into signals"]],
+   ["h","Products inspired by nature"],["ul",["Bat echolocation → sonar and ultrasound scans","Photosynthesis → solar cells and the bionic leaf","Bird flight → aircraft wings","Plant burrs → Velcro"]],
+   ["tip","Always give the pair: biological system → engineered system, plus one sentence on the shared principle."]]}},
+
+ {k:"ob2",sem:2,code:"24HS104T",name:"Organizational Behavior",short:"Organizational · Behavior",cr:"1",kind:"Theory",
+  units:[["Introduction to OB",4,["Scope of OB","Perception and biases","Learning theories","Personality","Attitudes at work"]],
+         ["Emotions and groups",4,["Emotional labour","Stress management","Group dynamics","Team building","Power and politics"]],
+         ["Leadership, culture",3,["Leadership theories","Leadership styles","Organisational culture"]],
+         ["Change and structure",3,["Managing change","Organisation structure","Job satisfaction","Work–life balance"]]],
+  ws:{title:"People at work",topic:"Group dynamics",unit:"Units 1–3",mins:20,secs:[
+   [0,[["Define organisational behaviour.",2,"The study of how people and groups behave in organisations, and how that behaviour affects performance."]]],
+   [1,[["What is the halo effect? Give an example.",3,"Judging someone overall from one good trait. Example: assuming the most confident speaker is also the best coder in the team."]]],
+   [2,[["Your project team is stuck in the storming stage. Suggest two actions to move it to norming.",3,"Agree written roles and deadlines, and set ground rules for disagreement (criticise ideas, not people). A short weekly check-in also helps."]]],
+   [3,[["Compare autocratic and democratic leadership for a hackathon team with 24 hours to deliver.",4,"Autocratic is fast and clear under pressure but can demotivate people. Democratic uses everyone's ideas but is slower. A mix works best: decide the plan together, then let one lead make quick calls."]]],
+   [5,[["Design a one-week plan to reduce exam stress in your hostel wing.",4,"A shared study timetable with breaks, a 20-minute evening walk group, quiet hours after 11 pm, and one session with the counsellor on sleep and time management."]]]]},
+  notes:{title:"Groups and leadership",topic:"Group dynamics",unit:"Units 2–3",mins:4,body:[
+   ["h","Tuckman's five stages"],["ul",["Forming: polite and unsure; people rely on the leader","Storming: conflict over roles and ideas","Norming: roles and rules settle and trust grows","Performing: the team works smoothly towards the goal","Adjourning: the task ends and the group breaks up"]],
+   ["h","Leadership styles"],["ul",["Autocratic: the leader decides alone","Democratic: the group discusses, the leader decides","Laissez-faire: the group decides, the leader steps back","Transformational: the leader inspires change"]],
+   ["tip","Link theory to a real team you've been part of. Examiners reward a concrete example."]]}}
 ];
-LIB.sort((a,b)=>SUBJ.findIndex(x=>x.id===a.sub)-SUBJ.findIndex(x=>x.id===b.sub)||a.unit.localeCompare(b.unit));
-const TYPE={worksheet:["Worksheet","--b3"],mindmap:["Mind map","--b6"],notes:["Notes","--b2"]};
+const LIB=LIBSUBJ.flatMap(s=>[
+  {id:s.k+"-map",type:"mindmap",sub:s.k,unit:"All units",topic:s.name,title:"Syllabus map",map:{c:s.short,b:s.units.map(u=>[u[0],u[2]])}},
+  {id:s.k+"-ws",type:"worksheet",sub:s.k,...s.ws},
+  {id:s.k+"-n",type:"notes",sub:s.k,...s.notes}
+]);
+const libS=k=>LIBSUBJ.find(s=>s.k===k)||{name:k,code:"",units:[]};
+const ROMAN=["","I","II"];
+const TYPE={worksheet:["Worksheet","--b3"],mindmap:["Syllabus map","--b6"],notes:["Notes","--b2"]};
 const levelsOf=it=>it.type==="worksheet"?it.secs.map(s=>s[0]):it.type==="mindmap"?[0,1,3]:[0,1,2];
-const metaOf=it=>it.type==="worksheet"?(()=>{const q=it.secs.reduce((a,s)=>a+s[1].length,0),m=it.secs.reduce((a,s)=>a+s[1].reduce((b,x)=>b+x[1],0),0);return `${q} questions · ${m} marks · ${it.mins} min`})():it.type==="mindmap"?`${it.map.b.length} branches · ${it.map.b.reduce((a,b)=>a+b[1].length,0)} ideas`:`${it.mins} min read`;
+const metaOf=it=>it.type==="worksheet"?(()=>{const q=it.secs.reduce((a,s)=>a+s[1].length,0),m=it.secs.reduce((a,s)=>a+s[1].reduce((b,x)=>b+x[1],0),0);return `${q} questions · ${m} marks · ${it.mins} min`})():it.type==="mindmap"?`${it.map.b.length} units · ${it.map.b.reduce((a,b)=>a+b[1].length,0)} topics`:`${it.mins} min read`;
 function thumb(it){const c=css(TYPE[it.type][1]),l=css("--line-2"),f=css("--muted");
-  if(it.type==="mindmap"){let g=`<circle cx="160" cy="62" r="13" fill="${c}"/>`;it.map.b.forEach((b,i)=>{const a=-Math.PI/2+i*2*Math.PI/it.map.b.length,x=160+Math.cos(a)*62,y=62+Math.sin(a)*38;g=`<line x1="160" y1="62" x2="${x}" y2="${y}" stroke="${css(BLOOM[i%6][1])}" stroke-opacity=".7"/>`+g+`<circle cx="${x}" cy="${y}" r="6" fill="${css(BLOOM[i%6][1])}"/>`});return `<svg viewBox="0 0 320 118" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${g}</svg>`}
+  if(it.type==="mindmap"){let g=`<circle cx="160" cy="62" r="13" fill="${c}"/>`;it.map.b.forEach((b,i)=>{const a=-Math.PI/2+(i+.5)*2*Math.PI/it.map.b.length,x=160+Math.cos(a)*64,y=62+Math.sin(a)*38;g=`<line x1="160" y1="62" x2="${x}" y2="${y}" stroke="${css(BLOOM[i%6][1])}" stroke-opacity=".7"/>`+g+`<circle cx="${x}" cy="${y}" r="6" fill="${css(BLOOM[i%6][1])}"/>`});return `<svg viewBox="0 0 320 118" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${g}</svg>`}
   if(it.type==="worksheet"){let g="",y=38;it.secs.forEach(s=>{g+=`<rect x="70" y="${y}" width="6" height="6" rx="1" fill="${css(BLOOM[s[0]][1])}"/><rect x="84" y="${y}" width="${90+((s[0]*37)%80)}" height="5" rx="2" fill="${f}" fill-opacity=".5"/><line x1="84" y1="${y+11}" x2="250" y2="${y+11}" stroke="${l}" stroke-dasharray="2 3"/>`;y+=13});return `<svg viewBox="0 0 320 118" aria-hidden="true"><rect x="60" y="18" width="200" height="110" rx="6" fill="${css('--panel')}" stroke="${l}"/><rect x="70" y="26" width="70" height="5" rx="2" fill="${c}"/>${g}</svg>`}
   return `<svg viewBox="0 0 320 118" aria-hidden="true"><rect x="60" y="18" width="200" height="110" rx="6" fill="${css('--panel')}" stroke="${l}"/><rect x="72" y="28" width="90" height="7" rx="2" fill="${c}"/>${[44,53,62].map(y=>`<rect x="72" y="${y}" width="${170-(y%3)*20}" height="4" rx="2" fill="${f}" fill-opacity=".45"/>`).join("")}<rect x="72" y="74" width="176" height="26" rx="4" fill="${css('--ink')}" stroke="${l}"/><rect x="80" y="82" width="80" height="4" rx="2" fill="${css('--b2')}" fill-opacity=".7"/><rect x="80" y="90" width="110" height="4" rx="2" fill="${css('--b2')}" fill-opacity=".45"/></svg>`}
-let libF=store.get("libF","all"),libS="all";
-$("#libSub").innerHTML=`<option value="all">All subjects</option>`+[...new Set(LIB.map(l=>l.sub))].map(id=>`<option value="${id}">${subjName(id)}</option>`).join("");
+
+let libSem=store.get("libSem",null)||((profile&&profile.sem)||1),libOpen=null;
 function renderLibrary(){
-  $("#libFilters").innerHTML=[["all","All"],["worksheet","Worksheets"],["mindmap","Mind maps"],["notes","Notes"]].map(([k,l])=>`<button aria-pressed="${k===libF}" data-lf="${k}">${l}</button>`).join("");
-  const q=$("#libQ").value.trim().toLowerCase();
-  const items=LIB.filter(it=>(libF==="all"||it.type===libF)&&(libS==="all"||it.sub===libS)&&(!q||(it.title+" "+it.topic+" "+subjName(it.sub)).toLowerCase().includes(q)));
-  $("#libGrid").innerHTML=items.length?items.map(it=>{const lv=levelsOf(it);return `<button class="lib-card" data-lib="${it.id}"><div class="lib-thumb">${thumb(it)}<span class="kind bloom" style="--c:var(${TYPE[it.type][1]})">${TYPE[it.type][0]}</span></div><div class="lib-body"><span class="label">${(SUBJ.find(x=>x.id===it.sub)||{}).code} · ${it.unit}</span><h3>${esc(it.title)}</h3><span class="meta">${esc(subjName(it.sub))}<br>${metaOf(it)}</span><div class="levels" aria-label="Bloom levels covered">${BLOOM.map((b,i)=>`<i style="${lv.includes(i)?`background:var(${b[1]})`:''}" title="${b[0]}"></i>`).join("")}</div></div></button>`}).join(""):`<p style="color:var(--muted)">Nothing matches "${esc(q)}". Try a topic name like stacks or K-map.</p>`;
+  $$("#libSem button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.sem===libSem));
+  const q=$("#libQ").value.trim().toLowerCase(),m=$("#libMain");
+  if(q){
+    const hits=LIBSUBJ.map(s=>{const topics=s.units.flatMap((u,i)=>u[2].map(t=>[i+1,t])).filter(([,t])=>t.toLowerCase().includes(q));const name=(s.name+" "+s.code).toLowerCase().includes(q);return {s,topics,name}}).filter(h=>h.name||h.topics.length);
+    m.innerHTML=hits.length?`<div class="subjlist">${hits.map(({s,topics})=>`<button class="subj" data-subj="${s.k}"><span class="label">Semester ${ROMAN[s.sem]} · ${esc(s.code)}</span><h3>${esc(s.name)}</h3><p class="meta">${topics.length?topics.slice(0,4).map(([u,t])=>`Unit ${u}: ${esc(t)}`).join(" · "):"Matches the subject name"}</p><span class="go" aria-hidden="true">→</span></button>`).join("")}</div>`:`<p class="empty">Nothing matches "${esc(q)}". Try a topic like pointers, Fourier or Hall effect.</p>`;
+    return;
+  }
+  const s=libOpen&&libS(libOpen);
+  if(!s||!s.k){
+    const list=LIBSUBJ.filter(x=>x.sem===libSem);
+    m.innerHTML=`<div class="subjlist">${list.map(x=>{const hrs=x.units.reduce((a,u)=>a+u[1],0);return `<button class="subj" data-subj="${x.k}"><span class="label">${esc(x.code)} · ${esc(x.kind)} · ${esc(x.cr)} credit${x.cr==="1"?"":"s"}</span><h3>${esc(x.name)}</h3><p class="meta">${x.units.length} units · ${hrs} hours · worksheet, notes and syllabus map</p><span class="go" aria-hidden="true">→</span></button>`}).join("")}</div>`;
+    return;
+  }
+  const items=LIB.filter(l=>l.sub===s.k);
+  m.innerHTML=`<div class="subj-page">
+    <button class="linkbtn" data-libback>← All Semester ${ROMAN[s.sem]} subjects</button>
+    <div class="subj-head"><span class="label">${esc(s.code)} · ${esc(s.kind)} · Semester ${ROMAN[s.sem]}</span><h2>${esc(s.name)}</h2></div>
+    <div class="res">${items.map(it=>{const lv=levelsOf(it);return `<button class="lib-card" data-lib="${it.id}"><div class="lib-thumb">${thumb(it)}<span class="kind bloom" style="--c:var(${TYPE[it.type][1]})">${TYPE[it.type][0]}</span></div><div class="lib-body"><span class="label">${esc(it.unit)}</span><h3>${esc(it.type==="mindmap"?"All units at a glance":it.title)}</h3><span class="meta">${metaOf(it)}</span><div class="levels" aria-label="Bloom levels covered">${BLOOM.map((b,i)=>`<i style="${lv.includes(i)?`background:var(${b[1]})`:''}" title="${b[0]}"></i>`).join("")}</div></div></button>`}).join("")}</div>
+    <div class="units"><span class="label">Syllabus</span>${s.units.map((u,i)=>`<div class="unit"><span class="no">${s.kind==="Lab"?"Part":"Unit"} ${i+1}</span><div><b>${esc(u[0])}</b><p>${u[2].map(esc).join(" · ")}</p></div><span class="hrs">${u[1]} h</span></div>`).join("")}</div>
+  </div>`;
 }
-$("#libFilters").addEventListener("click",e=>{const b=e.target.closest("[data-lf]");if(b){libF=b.dataset.lf;store.set("libF",libF);renderLibrary()}});
-$("#libSub").onchange=e=>{libS=e.target.value;renderLibrary()};
+$("#libSem").addEventListener("click",e=>{const b=e.target.closest("[data-sem]");if(!b)return;libSem=+b.dataset.sem;libOpen=null;store.set("libSem",libSem);$("#libQ").value="";renderLibrary()});
 $("#libQ").addEventListener("input",renderLibrary);
+$("#libMain").addEventListener("click",e=>{
+  const sj=e.target.closest("[data-subj]");if(sj){libOpen=sj.dataset.subj;libSem=libS(libOpen).sem;$("#libQ").value="";renderLibrary();window.scrollTo({top:0,behavior:"smooth"});return}
+  if(e.target.closest("[data-libback]")){libOpen=null;renderLibrary()}
+});
 
 // reader
 let rdItem=null,rdShow=false,rdReturn=null;
 function mindmapSVG(m){
-  const B=m.b,R=B.filter((_,i)=>i%2===0),L=B.filter((_,i)=>i%2===1),RH=24,GAP=26;
+  const B=m.b,R=B.filter((_,i)=>i%2===0),L=B.filter((_,i)=>i%2===1),RH=26,GAP=30;
   const side=list=>{let y=0;return list.map(b=>{const h=b[1].length*RH;const o={b,top:y,h};y+=h+GAP;return o})};
-  const r=side(R),l=side(L),hR=r.length?r[r.length-1].top+r[r.length-1].h:0,hL=l.length?l[l.length-1].top+l[l.length-1].h:0,H=Math.max(hR,hL)+60,cy=H/2;
+  const r=side(R),l=side(L),hR=r.length?r[r.length-1].top+r[r.length-1].h:0,hL=l.length?l[l.length-1].top+l[l.length-1].h:0,H=Math.max(hR,hL)+70,cy=H/2;
   let g="";const ci=b=>css(BLOOM[B.indexOf(b)%6][1]);
-  const draw=(list,hS,dir)=>{const off=(H-hS)/2;list.forEach(o=>{const c=ci(o.b),by=off+o.top+o.h/2,bx=dir>0?585:225,bw=150;
+  const draw=(list,hS,dir)=>{const off=(H-hS)/2;list.forEach(o=>{const c=ci(o.b),by=off+o.top+o.h/2,bw=170,bx=dir>0?575:215;
     const sx=dir>0?555:405,ex=dir>0?bx:bx+bw;g+=`<path d="M${sx} ${cy} C ${(sx+ex)/2} ${cy}, ${(sx+ex)/2} ${by}, ${ex} ${by}" fill="none" stroke="${c}" stroke-width="2" stroke-opacity=".8"/>`;
-    g+=`<rect x="${bx}" y="${by-15}" width="${bw}" height="30" rx="8" fill="${css('--ink')}" stroke="${c}" stroke-width="1.5"/><text x="${bx+bw/2}" y="${by+4.5}" text-anchor="middle" fill="${c}" font-family="Bricolage Grotesque, sans-serif" font-weight="600" font-size="13">${esc(o.b[0])}</text>`;
-    o.b[1].forEach((k,i)=>{const ky=off+o.top+i*RH+RH/2,kx=dir>0?770:190,from=dir>0?bx+bw:bx;g+=`<path d="M${from} ${by} C ${(from+kx)/2} ${by}, ${(from+kx)/2} ${ky}, ${kx-dir*6} ${ky}" fill="none" stroke="${c}" stroke-opacity=".4"/><circle cx="${kx-dir*6}" cy="${ky}" r="2.5" fill="${c}"/><text x="${kx}" y="${ky+4}" text-anchor="${dir>0?'start':'end'}" fill="${css('--fg')}" font-family="Instrument Sans, sans-serif" font-size="12.5">${esc(k)}</text>`})})};
+    g+=`<rect x="${bx}" y="${by-16}" width="${bw}" height="32" rx="9" fill="${css('--ink')}" stroke="${c}" stroke-width="1.5"/><text x="${bx+bw/2}" y="${by+4.5}" text-anchor="middle" fill="${c}" font-family="Bricolage Grotesque, sans-serif" font-weight="600" font-size="13">${esc(o.b[0])}</text>`;
+    o.b[1].forEach((k,i)=>{const ky=off+o.top+i*RH+RH/2,kx=dir>0?775:185,from=dir>0?bx+bw:bx;g+=`<path d="M${from} ${by} C ${(from+kx)/2} ${by}, ${(from+kx)/2} ${ky}, ${kx-dir*6} ${ky}" fill="none" stroke="${c}" stroke-opacity=".4"/><circle cx="${kx-dir*6}" cy="${ky}" r="2.5" fill="${c}"/><text x="${kx}" y="${ky+4}" text-anchor="${dir>0?'start':'end'}" fill="${css('--fg')}" font-family="Instrument Sans, sans-serif" font-size="12.5">${esc(k)}</text>`})})};
   draw(r,hR,1);draw(l,hL,-1);
-  const words=m.c.split(" · ");g+=`<rect x="405" y="${cy-(18+words.length*8)}" width="150" height="${36+words.length*16}" rx="12" fill="${css('--fg')}"/>`+words.map((w,i)=>`<text x="480" y="${cy-(words.length-1)*8+i*16+5}" text-anchor="middle" fill="${css('--ink')}" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="15">${esc(w)}</text>`).join("");
-  return `<svg viewBox="0 0 960 ${H}" role="img" aria-label="Mind map of ${esc(m.c)}">${g}</svg>`;
+  const words=m.c.split(" · ");g+=`<rect x="405" y="${cy-(18+words.length*8)}" width="150" height="${36+words.length*16}" rx="14" fill="${css('--fg')}"/>`+words.map((w,i)=>`<text x="480" y="${cy-(words.length-1)*8+i*16+5}" text-anchor="middle" fill="${css('--ink')}" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="15">${esc(w)}</text>`).join("");
+  return `<svg viewBox="0 0 960 ${H}" role="img" aria-label="Syllabus map of ${esc(m.c.replace(/ · /g," "))}">${g}</svg>`;
 }
 function readerBody(it){
-  if(it.type==="mindmap")return `<div class="mm-wrap">${mindmapSVG(it.map)}</div><p style="text-align:center;color:var(--muted);font-size:.85rem;margin-top:16px">Branch colours follow the Bloom spectrum used across CollegeOS.</p>`;
-  if(it.type==="notes")return `<article class="notes"><span class="label">${esc(subjName(it.sub))} · ${it.unit} · ${it.mins} min read</span>${it.body.map(([t,v])=>t==="h"?`<h2>${esc(v)}</h2>`:t==="p"?`<p>${esc(v)}</p>`:t==="ul"?`<ul>${v.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:t==="code"?`<div class="code" style="color:var(--fg)">${esc(v)}</div>`:`<div class="tip"><b>Exam tip.</b> ${esc(v)}</div>`).join("")}</article>`;
-  const code=(SUBJ.find(s=>s.id===it.sub)||{}).code||"";let n=0,total=0;it.secs.forEach(s=>s[1].forEach(q=>total+=q[1]));
+  const s=libS(it.sub);
+  if(it.type==="mindmap")return `<div class="mm-wrap">${mindmapSVG(it.map)}</div><p style="text-align:center;color:var(--muted);font-size:.85rem;margin-top:16px">Every unit and topic from the ${esc(s.code)} course page. Branch colours follow the Bloom spectrum used across CollegeOS.</p>`;
+  if(it.type==="notes")return `<article class="notes"><span class="label">${esc(s.name)} · ${esc(it.unit)} · ${it.mins} min read</span>${it.body.map(([t,v])=>t==="h"?`<h2>${esc(v)}</h2>`:t==="p"?`<p>${esc(v)}</p>`:t==="ul"?`<ul>${v.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:t==="code"?`<div class="code" style="color:var(--fg)">${esc(v)}</div>`:`<div class="tip"><b>Exam tip.</b> ${esc(v)}</div>`).join("")}</article>`;
+  let n=0,total=0;it.secs.forEach(x=>x[1].forEach(q=>total+=q[1]));
   const stu=profile&&profile.role==="student"?profile:null;
-  return `<div class="paper"><div class="paper-top"><div style="display:flex;flex-direction:column;gap:4px"><span class="label">${esc(code)} · ${esc(subjName(it.sub))} · ${it.unit}</span><h2>Worksheet: ${esc(it.title)}</h2></div><div style="text-align:right"><span class="label">Total</span><div class="mono" style="font-size:1.3rem">${total} marks</div><span class="label">${it.mins} min</span></div></div>
-   <div class="paper-fields"><div><span class="label">Name</span><b>${stu?esc(stu.name):"&nbsp;"}</b></div><div><span class="label">Roll / email ID</span><b>${stu?esc(stu.email.split("@")[0]):"&nbsp;"}</b></div><div><span class="label">Branch · Sem</span><b>${stu?esc(BR_SHORT[stu.branch]||stu.branch)+" · "+stu.sem:"&nbsp;"}</b></div><div><span class="label">Date</span><b>&nbsp;</b></div></div>
-   <p style="color:var(--muted);font-size:.88rem">Questions go from recall to design. Attempt every section; marks are shown on the right.</p>${it.intro?`<div class="note" style="color:var(--fg)">${esc(it.intro)}</div>`:""}
-   ${it.secs.map(([b,qs])=>`<section class="wsec"><div class="wsec-h">${bloomChip(b)}<span class="label">${qs.reduce((a,q)=>a+q[1],0)} marks</span></div>${qs.map(([q,m,a])=>{n++;return `<div class="wq"><span class="no">Q${n}</span><p>${esc(q)}</p><span class="mk">[${m}]</span>${rdShow?`<div class="ans">${esc(a)}</div>`:`<div class="lines" style="--n:${Math.min(6,1+m)}"></div>`}</div>`}).join("")}</section>`).join("")}</div>`;
+  return `<div class="paper"><div class="paper-top"><div style="display:flex;flex-direction:column;gap:4px"><span class="label">${esc(s.code)} · ${esc(s.name)} · ${esc(it.unit)}</span><h2>Worksheet: ${esc(it.title)}</h2></div><div style="text-align:right"><span class="label">Total</span><div class="mono" style="font-size:1.3rem">${total} marks</div><span class="label">${it.mins} min</span></div></div>
+   <div class="paper-fields"><div><span class="label">Name</span><b>${stu?esc(stu.name):"&nbsp;"}</b></div><div><span class="label">Roll number</span><b>${stu?esc(stu.roll||""):"&nbsp;"}</b></div><div><span class="label">Branch · Sem</span><b>${stu?esc(BR_SHORT[stu.branch]||stu.branch)+" · "+ROMAN[stu.sem]:"&nbsp;"}</b></div><div><span class="label">Date</span><b>&nbsp;</b></div></div>
+   <p style="color:var(--muted);font-size:.88rem">Questions go from recall up to design. Attempt every section; marks are on the right.</p>${it.intro?`<div class="note" style="color:var(--fg)">${esc(it.intro)}</div>`:""}
+   ${it.secs.map(([b,qs])=>`<section class="wsec"><div class="wsec-h">${bloomChip(b)}<span class="label">${qs.reduce((a,q)=>a+q[1],0)} marks</span></div>${qs.map(([q,m,a])=>{n++;return `<div class="wq"><span class="no">Q${n}</span><p style="white-space:pre-wrap">${esc(q)}</p><span class="mk">[${m}]</span>${rdShow?`<div class="ans">${esc(a)}</div>`:`<div class="lines" style="--n:${Math.min(6,1+m)}"></div>`}</div>`}).join("")}</section>`).join("")}</div>`;
 }
-function openReader(id){const it=LIB.find(l=>l.id===id);if(!it)return;rdItem=it;rdShow=false;rdReturn=document.activeElement;
-  $("#rdMeta").textContent=`${TYPE[it.type][0]} · ${subjName(it.sub)} · ${it.unit}`;$("#rdTitle").textContent=it.title;$("#rdAns").hidden=it.type!=="worksheet";$("#rdAns").textContent="Show answers";
+function openReader(id){const it=LIB.find(l=>l.id===id);if(!it)return;const s=libS(it.sub);rdItem=it;rdShow=false;rdReturn=document.activeElement;
+  $("#rdMeta").textContent=`${TYPE[it.type][0]} · ${s.code} · ${it.unit}`;$("#rdTitle").textContent=it.type==="mindmap"?s.name:it.title;$("#rdAns").hidden=it.type!=="worksheet";$("#rdAns").textContent="Show answers";
   $("#rdBody").innerHTML=readerBody(it);$("#rdBody").scrollTop=0;$("#reader").hidden=false;document.body.style.overflow="hidden";$("#rdClose").focus()}
 function closeReader(){$("#reader").hidden=true;document.body.style.overflow="";if(rdReturn&&rdReturn.focus)rdReturn.focus()}
 $("#rdClose").onclick=closeReader;
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#reader").hidden)closeReader()});
 $("#rdAns").onclick=()=>{rdShow=!rdShow;$("#rdAns").textContent=rdShow?"Hide answers":"Show answers";$("#rdBody").innerHTML=readerBody(rdItem)};
-document.addEventListener("click",e=>{const b=e.target.closest("[data-lib]");if(b){if(view!=="library"&&role==="student")go("library");openReader(b.dataset.lib)}});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-lib]");if(b){const it=LIB.find(l=>l.id===b.dataset.lib);if(it&&view!=="library"&&role==="student"){libOpen=it.sub;libSem=libS(it.sub).sem;go("library")}openReader(b.dataset.lib)}});
 
 /* ---------- sign in ---------- */
-const BRANCHES=["Computer Science & Engineering","Information & Communication Technology","Electronics & Communication","Electrical Engineering","Mechanical Engineering","Civil Engineering","Chemical Engineering","Petroleum Engineering"];
-const BR_SHORT={"Computer Science & Engineering":"CSE","Information & Communication Technology":"ICT","Electronics & Communication":"ECE","Electrical Engineering":"EE","Mechanical Engineering":"ME","Civil Engineering":"Civil","Chemical Engineering":"Chemical","Petroleum Engineering":"Petroleum"};
-const DEPTS=["Computer Science & Engineering","Information & Communication Technology","Mathematics","Physics","Electronics & Communication","Mechanical Engineering","Humanities & Liberal Arts"];
+// Live mode: the page is served by collegeos/server, which emails a real one-time code.
+// Preview mode: no server is reachable (e.g. the published preview), so the code is shown on screen.
+const BRANCHES=["Computer Engineering","Information & Communication Technology","Electronics & Communication","Electrical Engineering","Mechanical Engineering","Civil Engineering","Chemical Engineering","Petroleum Engineering"];
+const BR_SHORT={"Computer Engineering":"CE","Information & Communication Technology":"ICT","Electronics & Communication":"ECE","Electrical Engineering":"EE","Mechanical Engineering":"ME","Civil Engineering":"Civil","Chemical Engineering":"Chemical","Petroleum Engineering":"Petroleum"};
+const PROG_CODE={bcp:"Computer Engineering"}; // programme letters in the roll number we can map with confidence
+const DEPTS=["Computer Engineering","Information & Communication Technology","Mathematics","Physics","Chemistry","Electrical Engineering","Mechanical Engineering","Humanities & Liberal Arts"];
+const STUDENT_MAIL=/^(\d{2})([a-z]{3})(\d{3})@sot\.pdpu\.ac\.in$/;
+const FACULTY_MAIL=/^[a-z][a-z0-9._-]{1,40}@(sot\.)?pdpu\.ac\.in$/;
 $("#gBranch").innerHTML=`<option value="">Choose branch</option>`+BRANCHES.map(b=>`<option>${b}</option>`).join("");
-$("#gSem").innerHTML=`<option value="">—</option>`+[1,2,3,4,5,6,7,8].map(n=>`<option value="${n}">${n}</option>`).join("");
 $("#gDept").innerHTML=`<option value="">Choose department</option>`+DEPTS.map(b=>`<option>${b}</option>`).join("");
-const MAIL=/^[a-z0-9._%+-]+@([a-z0-9-]+\.)*(pdpu|pdeu)\.ac\.in$/i;
-let gRole="student",gCode="";
+let gRole="student",gCode="",gEmail="",gSem=null,gToken=null,API="checking",expT=null,resT=null;
+
+async function detectApi(){
+  if(!/^https?:$/.test(location.protocol))return "preview";
+  try{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
+    const r=await fetch("/api/health",{signal:ctl.signal,headers:{Accept:"application/json"}});clearTimeout(t);
+    if(!r.ok)return "preview";const j=await r.json();return j&&j.ok?"live":"preview"}catch(e){return "preview"}
+}
+function showMode(){
+  $("#gMode").innerHTML=API==="live"?`<span class="dot ok"></span>Codes are emailed to your college inbox in Gmail.`:API==="checking"?`<span class="dot"></span>Connecting…`:`<span class="dot warn"></span>Preview mode: the email server isn't connected here, so your code appears on screen. Run the CollegeOS server to email real codes.`;
+}
+detectApi().then(m=>{API=m;showMode()});showMode();
+
 function gStep(n){["#gEmail","#gOtp","#gProf"].forEach((id,i)=>$(id).hidden=i!==n);$$("#gSteps i").forEach((el,i)=>el.classList.toggle("on",i<=n))}
-$("#gRoleSeg").addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(!b)return;gRole=b.dataset.r;$$("#gRoleSeg button").forEach(x=>x.setAttribute("aria-pressed",x===b));$("#gMail").placeholder=gRole==="student"?"tanish.pce24@sot.pdpu.ac.in":"firstname.lastname@sot.pdpu.ac.in"});
-$("#gEmail").onsubmit=e=>{e.preventDefault();const v=$("#gMail").value.trim();
-  if(!MAIL.test(v)){$("#gMailErr").textContent=v?"That isn't a college email. Use the address ending in pdpu.ac.in or pdeu.ac.in.":"Enter your college email to continue.";$("#gMail").focus();return}
-  $("#gMailErr").textContent="";gCode=String(Math.floor(100000+Math.random()*900000));$("#gDemo").textContent=gCode;$("#gMailShow").textContent=v;$("#gCode").value="";$("#gCodeErr").textContent="";gStep(1);$("#gCode").focus()};
-$("#gCode").addEventListener("input",e=>{e.target.value=e.target.value.replace(/\D/g,"").slice(0,6);if(e.target.value.length===6)$("#gOtp").requestSubmit()});
-$("#gOtp").onsubmit=e=>{e.preventDefault();
-  if($("#gCode").value!==gCode){$("#gCodeErr").textContent="That code doesn't match. Check the code and try again.";return}
-  const words=$("#gMail").value.split("@")[0].split(/[._-]/).filter(w=>/^[a-z]{2,}$/i.test(w)).map(w=>w[0].toUpperCase()+w.slice(1).toLowerCase());
-  if(!$("#gName").value)$("#gName").value=(gRole==="faculty"?"Dr. ":"")+words.join(" ");
-  $("#gStu").hidden=gRole!=="student";$("#gFac").hidden=gRole!=="faculty";
-  $("#gProfLead").textContent=gRole==="student"?"This sets up your subjects, timetable and library.":"This sets up your classes and topic surveys.";
-  $("#gProfErr").textContent="";gStep(2);$("#gName").focus()};
-$("#gBack").onclick=()=>{gStep(0);$("#gMail").focus()};
-$("#gProf").onsubmit=e=>{e.preventDefault();const name=$("#gName").value.trim().replace(/\s+/g," ");
-  const err=name.length<2?"Enter your full name.":gRole==="student"&&!$("#gBranch").value?"Choose your branch.":gRole==="student"&&!$("#gSem").value?"Choose your semester.":gRole==="faculty"&&!$("#gDept").value?"Choose your department.":"";
+$("#gRoleSeg").addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(!b)return;gRole=b.dataset.r;$$("#gRoleSeg button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+  $("#gMail").placeholder=gRole==="student"?"26bcp160@sot.pdpu.ac.in":"firstname.lastname@sot.pdpu.ac.in";
+  $("#gHint").textContent=gRole==="student"?"Your roll number, then @sot.pdpu.ac.in":"Your faculty email at pdpu.ac.in";$("#gMailErr").textContent=""});
+$("#gMail").addEventListener("input",()=>{$("#gMailErr").textContent=""});
+
+async function postJSON(url,body){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({ok:false,error:"The server sent an unexpected reply."}));if(!r.ok||!j.ok){const e=new Error(j.error||"Something went wrong. Try again.");e.data=j;throw e}return j}
+async function sendCode(){
+  if(API==="live"){const j=await postJSON("/api/otp/request",{email:gEmail,role:gRole});return{expiresIn:j.expiresIn||300,resendIn:j.resendIn||30}}
+  gCode=String(Math.floor(100000+Math.random()*900000));$("#gDemo").textContent=gCode;return{expiresIn:300,resendIn:30};
+}
+function startTimers(exp,res){
+  clearInterval(expT);clearInterval(resT);let e=exp,r=res;
+  const fmt=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+  const tickE=()=>{$("#gExp").textContent=e>0?`Code expires in ${fmt(e)}`:"This code has expired. Send a new one.";if(e<=0)clearInterval(expT);e--};
+  const tickR=()=>{const b=$("#gResend");b.disabled=r>0;b.textContent=r>0?`Resend code in ${r} s`:"Resend code";if(r<=0)clearInterval(resT);r--};
+  tickE();tickR();expT=setInterval(tickE,1000);resT=setInterval(tickR,1000);
+}
+$("#gEmail").onsubmit=async e=>{e.preventDefault();
+  const v=$("#gMail").value.trim().toLowerCase(),ok=gRole==="student"?STUDENT_MAIL.test(v):FACULTY_MAIL.test(v);
+  if(!ok){$("#gMailErr").textContent=!v?"Enter your college email to continue.":gRole==="student"?(STUDENT_MAIL.test(v.replace(/@.*/,"@sot.pdpu.ac.in"))?"Use your college address ending in @sot.pdpu.ac.in.":"Use your roll-number email, like 26bcp160@sot.pdpu.ac.in."):"Use your faculty email ending in pdpu.ac.in.";$("#gMail").focus();return}
+  if(API==="checking"){API=await detectApi();showMode()}
+  const btn=$("#gEmail button[type=submit]");btn.disabled=true;btn.textContent="Sending…";gEmail=v;
+  try{const t=await sendCode();$("#gMailShow").textContent=v;$("#gCode").value="";$("#gCodeErr").textContent="";$("#gDemoBox").hidden=API==="live";
+    $("#gOtpLead").innerHTML=API==="live"?`We emailed a 6-digit code to <b>${esc(v)}</b>. Open Gmail on your phone or laptop; it usually arrives within a minute. Check Spam if you don't see it.`:`Enter the 6-digit code for <b>${esc(v)}</b>.`;
+    gStep(1);startTimers(t.expiresIn,t.resendIn);$("#gCode").focus()}
+  catch(err){$("#gMailErr").textContent=err.message}
+  finally{btn.disabled=false;btn.textContent="Send code"}
+};
+$("#gResend").onclick=async()=>{$("#gCodeErr").textContent="";$("#gResend").disabled=true;
+  try{const t=await sendCode();startTimers(t.expiresIn,t.resendIn);toast(API==="live"?"New code sent. Check Gmail.":"New code ready")}
+  catch(err){$("#gCodeErr").textContent=err.message;const w=err.data&&err.data.retryIn;startTimers(300,w||30)}};
+$("#gCode").addEventListener("input",e=>{e.target.value=e.target.value.replace(/\D/g,"").slice(0,6);$("#gCodeErr").textContent="";if(e.target.value.length===6)$("#gOtp").requestSubmit()});
+let verifying=false;
+$("#gOtp").onsubmit=async e=>{e.preventDefault();if(verifying)return;const code=$("#gCode").value;
+  if(code.length!==6){$("#gCodeErr").textContent="Enter all 6 digits.";return}
+  verifying=true;const btn=$("#gOtp button[type=submit]");btn.disabled=true;btn.textContent="Checking…";
+  try{
+    if(API==="live"){const j=await postJSON("/api/otp/verify",{email:gEmail,code});gToken=j.token}
+    else if(code!==gCode)throw new Error("That code doesn't match. Check the code and try again.");
+    clearInterval(expT);clearInterval(resT);prepProfile();gStep(2);$("#gName").focus();
+  }catch(err){$("#gCodeErr").textContent=err.message;$("#gCode").select()}
+  finally{verifying=false;btn.disabled=false;btn.textContent="Verify"}
+};
+$("#gBack").onclick=()=>{clearInterval(expT);clearInterval(resT);gStep(0);$("#gMail").focus()};
+
+function prepProfile(){
+  const isStu=gRole==="student";$("#gStu").hidden=!isStu;$("#gFac").hidden=isStu;$("#gProfErr").textContent="";
+  $("#gProfLead").textContent=isStu?"This sets up your subjects, timetable and library.":"This sets up your classes and topic surveys.";
+  if(isStu){const m=gEmail.match(STUDENT_MAIL),yr=2000+ +m[1],prog=m[2],now=new Date();
+    $("#gRoll").textContent=(m[1]+m[2]+m[3]).toUpperCase();$("#gRollBox").hidden=false;
+    const br=PROG_CODE[prog];$("#gBranch").value=br||"";$("#gBranchNote").textContent=br?"Filled in from your roll number. Change it if it's wrong.":"";
+    const months=(now.getFullYear()-yr)*12+now.getMonth()-6,sem=months<0?1:Math.floor(months/6)+1;
+    setSem(sem<=2?sem:null);$("#gSemNote").textContent=sem<=2?`You joined in ${yr}, so you're in Semester ${ROMAN[sem]}.`:"CollegeOS covers first year. Choose the semester you want to study.";
+  }else $("#gRollBox").hidden=true;
+}
+function setSem(n){gSem=n;$$("#gSemSeg button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.s===n))}
+$("#gSemSeg").addEventListener("click",e=>{const b=e.target.closest("[data-s]");if(b)setSem(+b.dataset.s)});
+$("#gProf").onsubmit=e=>{e.preventDefault();const name=$("#gName").value.trim().replace(/\s+/g," "),isStu=gRole==="student";
+  const err=name.length<2?"Enter your full name.":isStu&&!$("#gBranch").value?"Choose your branch.":isStu&&!gSem?"Choose Semester I or II.":!isStu&&!$("#gDept").value?"Choose your department.":"";
   $("#gProfErr").textContent=err;if(err)return;
-  profile={role:gRole,email:$("#gMail").value.trim().toLowerCase(),name,branch:$("#gBranch").value,sem:+$("#gSem").value||null,dept:$("#gDept").value};
-  store.set("profile",profile);store.set("view",gRole==="faculty"?"faculty":"home");enterApp();toast("Welcome to CollegeOS, "+name.split(" ")[0])};
+  const m=gEmail.match(STUDENT_MAIL);
+  profile={role:gRole,email:gEmail,roll:m?(m[1]+m[2]+m[3]).toUpperCase():null,name,branch:isStu?$("#gBranch").value:"",sem:isStu?gSem:null,dept:isStu?"":$("#gDept").value,token:gToken,verified:API==="live"?"email":"preview"};
+  store.set("profile",profile);store.set("view",isStu?"home":"faculty");store.set("role",gRole);store.set("libSem",null);
+  // the dashboard's subjects depend on the semester, so reload when it changes
+  if(isStu&&gSem!==SUBJ_SEM){location.reload();return}
+  enterApp();toast("Welcome to CollegeOS, "+name.split(" ")[0]);
+};
 function enterApp(){
   $("#gate").hidden=true;$("#shell").hidden=false;
-  $("#who").innerHTML=profile.role==="student"?`<b>${esc(profile.name)}</b><br>${esc(BR_SHORT[profile.branch]||profile.branch)} · Semester ${profile.sem}<br>${esc(profile.email)}`:`<b>${esc(profile.name)}</b><br>${esc(profile.dept)}<br>${esc(profile.email)}`;
+  const badge=profile.verified==="email"?`<span class="pill ok" style="margin-top:6px">Email verified</span>`:`<span class="pill mut" style="margin-top:6px">Preview sign-in</span>`;
+  $("#who").innerHTML=profile.role==="student"?`<b>${esc(profile.name)}</b><br>${esc(profile.roll||"")} · ${esc(BR_SHORT[profile.branch]||profile.branch)} · Sem ${ROMAN[profile.sem]||""}<br>${badge}`:`<b>${esc(profile.name)}</b><br>${esc(profile.dept)}<br>${badge}`;
   const h=new Date().getHours();$("#today").textContent=`${h<12?"Good morning":h<17?"Good afternoon":"Good evening"}, ${firstName()} · ${new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}`;
   const v=store.get("view",null)||(profile.role==="faculty"?"faculty":"home");setRole(store.get("role",null)||profile.role);go(v);
 }
-function signOut(){store.set("profile",null);store.set("role",null);store.set("view",null);profile=null;closeReader();
-  $("#shell").hidden=true;$("#gate").hidden=false;["#gMail","#gCode","#gName"].forEach(id=>$(id).value="");$("#gBranch").value="";$("#gSem").value="";$("#gDept").value="";gStep(0);window.scrollTo({top:0})}
+function signOut(){store.set("profile",null);store.set("role",null);store.set("view",null);store.set("libSem",null);location.reload()}
 $("#signOut").onclick=signOut;$("#signOut2").onclick=signOut;
 
 /* ---------- boot ---------- */
-if(profile)enterApp();else{$("#gate").hidden=false;gStep(0)}
+if(profile&&profile.roll!==undefined)enterApp();else{if(profile){store.set("profile",null);profile=null}$("#gate").hidden=false;gStep(0)}
 
+/* ---------- floating background ---------- */
+(function(){
+  const c=$("#bgc"),x=c.getContext("2d"),reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cols=BLOOM.map(b=>css(b[1]));let W=0,H=0,pts=[],mx=0,my=0,tx=0,ty=0;
+  function init(){const d=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;c.width=W*d;c.height=H*d;x.setTransform(d,0,0,d,0,0);
+    const n=Math.round(Math.max(18,Math.min(64,W*H/24000)));
+    pts=Array.from({length:n},(_,i)=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.16,vy:(Math.random()-.5)*.16,r:Math.random()*1.4+.7,c:cols[i%6],z:Math.random()*.8+.2}))}
+  function frame(){x.clearRect(0,0,W,H);mx+=(tx-mx)*.04;my+=(ty-my)*.04;const ox=(mx-W/2)*.02,oy=(my-H/2)*.02;
+    for(const p of pts){if(!reduce){p.x+=p.vx;p.y+=p.vy;if(p.x<-30)p.x=W+30;else if(p.x>W+30)p.x=-30;if(p.y<-30)p.y=H+30;else if(p.y>H+30)p.y=-30}p.px=p.x+ox*p.z;p.py=p.y+oy*p.z}
+    x.lineWidth=1;for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const a=pts[i],b=pts[j],dx=a.px-b.px,dy=a.py-b.py,d=Math.hypot(dx,dy);if(d<150){x.strokeStyle=`rgba(255,255,255,${(1-d/150)*.06})`;x.beginPath();x.moveTo(a.px,a.py);x.lineTo(b.px,b.py);x.stroke()}}
+    for(const p of pts){x.globalAlpha=.25+.5*p.z;x.fillStyle=p.c;x.beginPath();x.arc(p.px,p.py,p.r*(.7+p.z),0,6.283);x.fill()}x.globalAlpha=1;
+    if(!reduce)requestAnimationFrame(frame)}
+  addEventListener("resize",()=>{init();if(reduce)frame()});
+  addEventListener("pointermove",e=>{tx=e.clientX;ty=e.clientY},{passive:true});
+  tx=mx=innerWidth/2;ty=my=innerHeight/2;init();frame();
+})();
 })();
 </script>

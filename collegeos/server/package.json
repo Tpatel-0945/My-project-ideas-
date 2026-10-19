@@ -1,0 +1,17 @@
+{
+  "name": "collegeos-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CollegeOS backend: email one-time-code sign-in and static hosting",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "express": "4.21.2",
+    "nodemailer": "6.9.16"
+  }
+}
