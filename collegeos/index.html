@@ -273,6 +273,136 @@ tbody tr:hover td{background:var(--panel-2)}
 .days span{font-family:var(--mono);font-size:.68rem;padding:3px 7px;border-radius:5px;border:1px solid var(--line-2);color:var(--muted)}
 .days span.has{color:var(--fg);border-color:var(--muted)}
 @media (max-width:520px){.fields,.facts{grid-template-columns:1fr 1fr}.answer{grid-template-columns:1fr;text-align:left}.answer .n{text-align:left}}
+[hidden]{display:none!important}
+/* sign in */
+.gate{min-height:100%;display:grid;place-items:center;padding-block:48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:radial-gradient(60% 50% at 50% 0%,color-mix(in srgb,var(--b2) 10%,transparent),transparent 70%),radial-gradient(50% 40% at 100% 100%,color-mix(in srgb,var(--b6) 9%,transparent),transparent 70%),var(--ink)}
+.gate-card{width:100%;max-width:440px;display:flex;flex-direction:column;gap:24px}
+.gate .brand{padding:0}
+.steps{display:flex;gap:6px}
+.steps i{flex:1;height:3px;border-radius:2px;background:var(--line-2);transition:background .3s}
+.steps i.on{background:var(--spectrum)}
+.gstep{display:flex;flex-direction:column;gap:14px}
+.gh{font-size:clamp(1.6rem,5vw,2rem);font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.gp{color:var(--muted)}
+.gp b{color:var(--fg);font-weight:500;word-break:break-all}
+.gerr{color:var(--bad);font-size:.85rem;min-height:1.3em}
+.gdemo{font-size:.85rem;color:var(--muted);padding:9px 12px;border:1px dashed var(--line-2);border-radius:8px}
+.gfine{font-size:.78rem;color:var(--dim);text-align:center}
+.seg{display:flex;border:1px solid var(--line-2);border-radius:10px;padding:3px;gap:3px}
+.seg button{all:unset;flex:1;text-align:center;padding:8px 6px;border-radius:7px;cursor:pointer;color:var(--muted);font-size:.9rem}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--ink);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--b2)}
+.btn.wide{width:100%;padding:12px}
+.linkbtn{all:unset;cursor:pointer;color:var(--muted);font-size:.85rem;text-decoration:underline;text-underline-offset:3px}
+.linkbtn:hover{color:var(--fg)}
+.linkbtn:focus-visible{outline:2px solid var(--b2)}
+.otp{letter-spacing:.5em;font-size:1.4rem!important;text-align:center}
+.who{font-size:.82rem;line-height:1.45;color:var(--muted)}
+.who b{color:var(--fg);font-weight:600}
+.top .demo{display:flex;align-items:center;gap:8px;margin-left:auto}
+.top .demo .role{margin-left:0}
+/* surveys */
+.sq{display:flex;flex-direction:column;gap:9px;padding:16px 0;border-top:1px solid var(--line)}
+.sq .qn{font-weight:500}
+.sq .qn span{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-right:8px}
+.scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.scale button,.pick{all:unset;cursor:pointer;text-align:center;padding:10px 4px;border:1px solid var(--line-2);border-radius:8px;font-family:var(--mono);font-size:.9rem}
+.scale button:hover,.pick:hover{border-color:var(--muted)}
+.scale button[aria-pressed="true"],.pick[aria-pressed="true"]{border-color:var(--fg);background:var(--fg);color:var(--ink);font-weight:600}
+.scale button:focus-visible,.pick:focus-visible{outline:2px solid var(--b2)}
+.scale-l{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted)}
+.picks{display:flex;flex-wrap:wrap;gap:6px}
+.picks .pick{padding:7px 12px;font-family:var(--body);font-size:.85rem;text-align:left}
+textarea{width:100%;min-height:84px;resize:vertical;background:var(--panel-2);border:1px solid var(--line-2);border-radius:8px;padding:10px;font:inherit;color:inherit}
+textarea:focus{border-color:var(--fg);outline:none}
+.slist{display:flex;flex-direction:column;gap:8px}
+.sitem{all:unset;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px 14px;border:1px solid var(--line);border-radius:8px}
+.sitem:hover{border-color:var(--line-2);background:var(--panel-2)}
+.sitem[aria-current="true"]{border-color:var(--fg);background:var(--panel-2)}
+.sitem:focus-visible{outline:2px solid var(--b2)}
+.sitem b{font-weight:600}
+.sitem span{font-size:.8rem;color:var(--muted)}
+.vhero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;padding:22px;border:1px solid currentColor;border-radius:var(--r);background:radial-gradient(90% 140% at 100% 0%,color-mix(in srgb,currentColor 14%,transparent),transparent 60%),var(--panel)}
+.vhero p{color:var(--fg);max-width:62ch}
+.vword{font-family:var(--display);font-size:clamp(2.2rem,6vw,3.4rem);font-weight:800;letter-spacing:-.04em;line-height:1}
+.gauge{width:150px}
+.gauge svg{width:150px;height:auto;display:block}
+.reasons{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.reasons li{display:grid;grid-template-columns:8px 1fr;gap:10px;font-size:.92rem;align-items:start}
+.reasons li::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--muted));margin-top:7px}
+.hist{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;align-items:end;height:130px}
+.hist div{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.hist i{width:100%;border-radius:5px 5px 2px 2px;min-height:2px;transition:height .5s}
+.hist span{font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+.quad{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:4px;font-size:.8rem}
+.quad .qh{font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;justify-content:center;padding:4px}
+.quad .qc{border-radius:8px;padding:12px 10px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--line-2)}
+.quad .qc b{font-family:var(--display);font-size:1.4rem;font-weight:800;line-height:1}
+.quad .qc span{font-size:.75rem;color:var(--muted)}
+.theme{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
+.theme:first-child{border-top:0;padding-top:0}
+.theme .card-h b{font-weight:600}
+.quote{font-size:.85rem;color:var(--muted);border-left:2px solid var(--line-2);padding-left:10px;font-style:italic}
+.fsform{display:flex;flex-direction:column;gap:12px}
+.optrow{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}
+.optrow input[type=radio]{width:18px;height:18px;accent-color:var(--b3)}
+.note{font-size:.82rem;color:var(--muted);padding:10px 12px;border:1px dashed var(--line-2);border-radius:8px}
+.banner{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 18px;border:1px solid var(--b2);border-radius:var(--r);background:color-mix(in srgb,var(--b2) 8%,var(--panel))}
+.banner .ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--b2);color:var(--ink)}
+.banner .ic svg{width:20px;height:20px}
+.banner p{color:var(--muted);font-size:.86rem}
+/* library */
+.libbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.libbar input,.libbar select{background:var(--panel-2);border:1px solid var(--line-2);border-radius:99px;padding:6px 14px;font-size:.85rem}
+.libbar input{flex:1;min-width:180px}
+.libbar input:focus,.libbar select:focus{border-color:var(--fg);outline:none}
+.libgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.lib-card{all:unset;cursor:pointer;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--panel);transition:border-color .15s,transform .15s}
+.lib-card:hover{border-color:var(--muted);transform:translateY(-2px)}
+.lib-card:focus-visible{outline:2px solid var(--b2)}
+.lib-thumb{height:118px;background:var(--ink);border-bottom:1px solid var(--line);position:relative}
+.lib-thumb svg{width:100%;height:100%;display:block}
+.lib-thumb .kind{position:absolute;left:10px;top:10px}
+.lib-body{padding:14px;display:flex;flex-direction:column;gap:6px}
+.lib-body h3{font-size:1.02rem}
+.lib-body .meta{font-size:.8rem;color:var(--muted)}
+.levels{display:flex;gap:3px;margin-top:4px}
+.levels i{width:18px;height:4px;border-radius:2px;background:var(--line-2)}
+.reader{position:fixed;inset:0;z-index:40;background:var(--ink);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+.rd-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line)}
+.rd-body{flex:1;overflow:auto;padding-block:28px calc(60px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.paper{max-width:840px;margin:0 auto;border:1px solid var(--line-2);border-radius:12px;background:var(--panel);padding:clamp(18px,4vw,36px);display:flex;flex-direction:column;gap:22px}
+.paper-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line-2);padding-bottom:16px}
+.paper-top h2{font-size:1.5rem;font-weight:800;letter-spacing:-.02em}
+.paper-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 16px}
+.paper-fields div{display:flex;flex-direction:column;gap:2px;border-bottom:1px dashed var(--line-2);padding-bottom:4px;min-width:0}
+.paper-fields b{font-weight:500;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wsec{display:flex;flex-direction:column;gap:12px}
+.wsec-h{display:flex;align-items:center;gap:10px}
+.wsec-h::after{content:"";flex:1;height:1px;background:var(--line-2)}
+.wq{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:6px 10px;align-items:start}
+.wq .no{font-family:var(--mono);font-size:.8rem;color:var(--muted);padding-top:2px}
+.wq .mk{font-family:var(--mono);font-size:.72rem;color:var(--muted);white-space:nowrap;padding-top:3px}
+.wq .lines{grid-column:2/3;height:calc(var(--n,3)*28px);background:repeating-linear-gradient(to bottom,transparent 0 27px,var(--line-2) 27px 28px)}
+.wq .ans{grid-column:2/3;font-size:.88rem;padding:10px 12px;border-radius:8px;border:1px solid color-mix(in srgb,var(--b3) 50%,transparent);background:color-mix(in srgb,var(--b3) 8%,transparent);white-space:pre-wrap}
+.wq .ans code,.wq .code{font-family:var(--mono);font-size:.8rem}
+.mm-wrap{overflow-x:auto;max-width:1000px;margin:0 auto}
+.mm-wrap svg{min-width:760px;width:100%;height:auto;display:block}
+.notes{max-width:70ch;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.notes h2{font-size:1.3rem;margin-top:14px}
+.notes p,.notes li{color:color-mix(in srgb,var(--fg) 88%,var(--muted));line-height:1.65}
+.notes ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.notes .tip{padding:12px 14px;border-radius:8px;border:1px solid var(--b4);background:color-mix(in srgb,var(--b4) 8%,transparent);font-size:.92rem}
+.notes .tip b{color:var(--b4)}
+@media (max-width:860px){
+  .nav{overflow-x:auto;justify-content:flex-start;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav button{flex:0 0 74px}
+  .vhero{grid-template-columns:1fr}
+  .paper-fields{grid-template-columns:1fr 1fr}
+  .banner{grid-template-columns:auto 1fr}
+  .banner .btn{grid-column:1/-1}
+}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--fg);color:var(--ink);padding:10px 16px;border-radius:8px;font-weight:600;font-size:.9rem;opacity:0;transition:.25s;pointer-events:none;z-index:30;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
@@ -303,23 +433,65 @@ tbody tr:hover td{background:var(--panel-2)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
-<div class="shell">
+<div class="gate" id="gate" hidden>
+  <div class="gate-card">
+    <div class="brand"><span class="mark"><i></i></span><b>CollegeOS</b></div>
+    <div class="steps" id="gSteps" aria-hidden="true"><i></i><i></i><i></i></div>
+    <form id="gEmail" class="gstep" novalidate>
+      <span class="label">Step 1 of 3</span>
+      <h1 class="gh">Sign in with your college email</h1>
+      <p class="gp">We'll send a one-time code to your college inbox. No password needed.</p>
+      <div class="seg" id="gRoleSeg" role="group" aria-label="I am a"><button type="button" data-r="student" aria-pressed="true">I'm a student</button><button type="button" data-r="faculty" aria-pressed="false">I'm faculty</button></div>
+      <div class="field"><label for="gMail">College email</label><input id="gMail" type="email" autocomplete="email" placeholder="tanish.pce24@sot.pdpu.ac.in" style="font-family:var(--body)"></div>
+      <p class="gerr" id="gMailErr" role="alert"></p>
+      <button class="btn primary wide" type="submit">Send code</button>
+      <p class="gfine">Only addresses ending in pdpu.ac.in or pdeu.ac.in can sign in.</p>
+    </form>
+    <form id="gOtp" class="gstep" novalidate hidden>
+      <span class="label">Step 2 of 3</span>
+      <h1 class="gh">Check your inbox</h1>
+      <p class="gp">Enter the 6-digit code we sent to <b id="gMailShow"></b>.</p>
+      <div class="field"><label for="gCode">6-digit code</label><input id="gCode" class="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
+      <p class="gdemo">Demo build, so no email is sent. Your code is <b class="mono" id="gDemo" style="color:var(--fg)"></b></p>
+      <p class="gerr" id="gCodeErr" role="alert"></p>
+      <button class="btn primary wide" type="submit">Verify</button>
+      <button class="linkbtn" type="button" id="gBack" style="align-self:center">Use a different email</button>
+    </form>
+    <form id="gProf" class="gstep" novalidate hidden>
+      <span class="label">Step 3 of 3</span>
+      <h1 class="gh">Tell us about you</h1>
+      <p class="gp" id="gProfLead">This sets up your subjects, timetable and library.</p>
+      <div class="field"><label for="gName">Full name</label><input id="gName" autocomplete="name" style="font-family:var(--body)"></div>
+      <div id="gStu" class="fields" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr)">
+        <div class="field"><label for="gBranch">Branch</label><select id="gBranch" style="font-family:var(--body)"></select></div>
+        <div class="field"><label for="gSem">Semester</label><select id="gSem"></select></div>
+      </div>
+      <div id="gFac" hidden><div class="field"><label for="gDept">Department</label><select id="gDept" style="font-family:var(--body)"></select></div></div>
+      <p class="gerr" id="gProfErr" role="alert"></p>
+      <button class="btn primary wide" type="submit">Enter CollegeOS</button>
+    </form>
+  </div>
+</div>
+
+<div class="shell" id="shell" hidden>
   <aside class="rail" aria-label="Main">
     <div class="brand"><span class="mark"><i></i></span><b>CollegeOS</b></div>
     <nav class="nav" id="nav"></nav>
     <div class="rail-foot">
-      <span class="label">Sample data</span>
-      <p>Aarav · B.Tech CSE · Sem 2. Every name and number here is an example.</p>
+      <span class="label">Signed in</span>
+      <p class="who" id="who"></p>
+      <p>Marks, attendance and classmates are sample data.</p>
+      <button class="linkbtn" id="signOut" style="align-self:flex-start">Sign out</button>
     </div>
   </aside>
 
   <div class="main">
     <header class="top">
       <div class="crumb"><span class="label" id="crumbRole">Student</span><span id="crumbTitle">Home</span></div>
-      <div class="role" role="group" aria-label="View as">
+      <div class="demo"><span class="label">Demo view</span><div class="role" role="group" aria-label="Demo view">
         <button id="roleStudent" aria-pressed="true">Student</button>
         <button id="roleFaculty" aria-pressed="false">Faculty</button>
-      </div>
+      </div><button class="linkbtn" id="signOut2">Sign out</button></div>
     </header>
     <div class="spectrum-line" aria-hidden="true"></div>
 
@@ -332,6 +504,7 @@ tbody tr:hover td{background:var(--panel-2)}
         </div>
         <div class="legend" id="bloomLegend" aria-label="Bloom levels"></div>
       </div>
+      <div id="homeSurvey"></div>
       <div class="grid g-4" id="pulse"></div>
       <div class="grid g-main">
         <div class="fix">
@@ -354,19 +527,19 @@ tbody tr:hover td{background:var(--panel-2)}
 
     <!-- ACADEMICS -->
     <section class="view" id="v-academics" hidden>
-      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">Semester 2 · 22 credits</span><h1>Marks, and where they're heading.</h1></div></div>
+      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">B.Tech Computer Engineering · Semester III</span><h1>Marks, and where they're heading.</h1></div></div>
       <div class="grid g-3" id="acadTiles"></div>
       <div class="card">
         <div class="card-h"><h2>Subjects</h2><span class="label">Predicted end-sem from mastery + internals</span></div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Subject</th><th class="num">Credits</th><th class="num">Internal /40</th><th class="num">Predicted /60</th><th class="num">Grade</th><th>Weakest level</th></tr></thead>
+          <thead><tr><th>Subject</th><th class="num">Credits</th><th class="num">MS + IA /50</th><th class="num">Predicted ES /50</th><th class="num">Grade</th><th>Weakest level</th></tr></thead>
           <tbody id="marksBody"></tbody>
         </table></div>
       </div>
       <div class="grid g-2">
         <div class="card">
           <div class="card-h"><h2>What-if SGPA</h2><span class="label">Drag your end-sem target</span></div>
-          <div class="conf"><div class="row"><span>Data Structures end-sem</span><span class="mono" id="wiVal">38 / 60</span></div><input type="range" id="wi" min="15" max="60" value="38" aria-label="Data Structures end-sem target"></div>
+          <div class="conf"><div class="row"><span>Data Structures end-sem</span><span class="mono" id="wiVal">32 / 50</span></div><input type="range" id="wi" min="10" max="50" value="32" aria-label="Data Structures end-sem target"></div>
           <p class="verdict" id="wiOut"></p>
         </div>
         <div class="card">
@@ -406,7 +579,7 @@ tbody tr:hover td{background:var(--panel-2)}
             <div class="qrbox" id="qrbox"><canvas id="qr" width="120" height="120" aria-hidden="true"></canvas><div class="scan"></div></div>
             <div style="display:flex;flex-direction:column;gap:10px">
               <p style="color:var(--muted);font-size:.88rem">The code on the projector changes every 20 seconds and only works on this device inside the classroom, so a friend can't scan it for you.</p>
-              <button class="btn primary" id="scanBtn">Scan for Digital Logic</button>
+              <button class="btn primary" id="scanBtn">Scan for Digital Logic and Design</button>
             </div>
           </div>
           <div class="label" style="margin-top:6px">Smallest fix</div>
@@ -450,6 +623,53 @@ tbody tr:hover td{background:var(--panel-2)}
           <div class="field"><label for="plReason">Reason for your mentor</label><input id="plReason" type="text" placeholder="e.g. Sister's wedding in Pune" style="font-family:var(--body)"></div>
           <div class="row"><button class="btn primary" id="plSend">Send leave request</button><span id="plState"></span></div>
         </div>
+      </div>
+    </section>
+
+    <!-- LIBRARY -->
+    <section class="view" id="v-library" hidden>
+      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">Worksheets · mind maps · notes</span><h1>Everything for your syllabus, in one shelf.</h1></div>
+        <p>Mapped to your Semester III courses and units. Every worksheet is split by Bloom level, from recall up to design.</p></div>
+      <div class="libbar">
+        <div class="filters" id="libFilters" role="group" aria-label="Type"></div>
+        <select id="libSub" aria-label="Subject"></select>
+        <input id="libQ" type="search" placeholder="Search topics, e.g. recursion" aria-label="Search library">
+      </div>
+      <div class="note">Built from the PDEU B.Tech Computer Engineering syllabus (2024–28), Semester III. Sample set: more units are added as faculty upload material.</div>
+      <div class="libgrid" id="libGrid"></div>
+    </section>
+
+    <!-- STUDENT SURVEYS -->
+    <section class="view" id="v-surveys" hidden>
+      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">Your name is never shown to faculty</span><h1>Tell your faculty how the topic went.</h1></div>
+        <p>Two minutes after a lecture helps them decide whether to go over it again.</p></div>
+      <div class="grid g-main">
+        <div class="card" id="ssForm"></div>
+        <div class="card"><div class="card-h"><h2>Your surveys</h2><span class="label" id="ssCount"></span></div><div class="slist" id="ssList"></div></div>
+      </div>
+    </section>
+
+    <!-- FACULTY SURVEYS -->
+    <section class="view" id="v-fsurveys" hidden>
+      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">Topic surveys</span><h1>Should I reteach this topic?</h1></div>
+        <div class="field" style="min-width:240px"><label for="fsPick">Showing results for</label><select id="fsPick" style="font-family:var(--body)"></select></div></div>
+      <div id="fsAnalysis" style="display:flex;flex-direction:column;gap:16px"></div>
+      <div class="grid g-2">
+        <div class="card"><div class="card-h"><h2>All surveys</h2><span class="label">24CS203T · 64 students</span></div><div class="slist" id="fsList"></div></div>
+        <form class="card fsform" id="fsForm" novalidate>
+          <div class="card-h"><h2>New topic survey</h2><span class="label">Goes to every student's Surveys tab</span></div>
+          <div class="fields" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+            <div class="field"><label for="fsSub">Subject</label><select id="fsSub" style="font-family:var(--body)"></select></div>
+            <div class="field"><label for="fsTopic">Topic</label><input id="fsTopic" value="Stacks and queues" style="font-family:var(--body)"></div>
+          </div>
+          <div class="field"><label for="fsSubs">Subtopics, separated by commas</label><input id="fsSubs" value="Push and pop, Overflow and underflow, Circular queue, Infix to postfix" style="font-family:var(--body)"></div>
+          <div class="field"><label for="fsQ">Concept check question</label><textarea id="fsQ">A stack holds 1, 2, 3 with 3 on top. You pop, push 5, then pop again. What is on top now?</textarea></div>
+          <div class="field"><label>Options · tick the correct one</label>
+            <div style="display:flex;flex-direction:column;gap:6px" id="fsOpts"></div></div>
+          <div class="note">Every survey also asks how well students understood the topic (1–5), the pace, their exam confidence (1–5), which subtopics confused them, and an open comment.</div>
+          <p class="gerr" id="fsErr" role="alert"></p>
+          <button class="btn primary" type="submit">Publish to students</button>
+        </form>
       </div>
     </section>
 
@@ -507,7 +727,7 @@ tbody tr:hover td{background:var(--panel-2)}
 
     <!-- FACULTY -->
     <section class="view" id="v-faculty" hidden>
-      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">CS102 Data Structures · Section A + B · 128 students</span><h1>Which concept hurt the class?</h1></div>
+      <div class="head"><div style="display:flex;flex-direction:column;gap:8px"><span class="label">24CS203T Data Structures · Section A + B · 128 students</span><h1>Which concept hurt the class?</h1></div>
         <button class="btn" id="naacBtn">Generate NAAC/NBA report</button></div>
       <div class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
         <span>You see class trends and attendance risk. Individual cognitive profiles stay with each student, enforced by row-level security in the database.</span></div>
@@ -534,6 +754,11 @@ tbody tr:hover td{background:var(--panel-2)}
     </section>
   </div>
 </div>
+<div class="reader" id="reader" hidden role="dialog" aria-modal="true" aria-labelledby="rdTitle">
+  <div class="rd-top"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="label" id="rdMeta"></span><h2 id="rdTitle"></h2></div>
+    <div class="row"><button class="btn" id="rdAns" hidden>Show answers</button><button class="btn primary" id="rdClose">Close</button></div></div>
+  <div class="rd-body" id="rdBody"></div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -553,12 +778,20 @@ const ICON={
  leave:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15.5h6"/>',
  opportunities:'<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/>',
  insights:'<circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.8 2.8M16.2 16.2L19 19M5 19l2.8-2.8M16.2 7.8L19 5"/>',
- faculty:'<path d="M3 20V10M9 20V4M15 20v-7M21 20V8"/>'
+ faculty:'<path d="M3 20V10M9 20V4M15 20v-7M21 20V8"/>',
+ library:'<path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="M15.5 5.2l3.4-.9 3.1 15.4-3.4.9z"/>',
+ surveys:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 9l1.5 1.5 2.5-2.5M8.5 15l1.5 1.5 2.5-2.5M14.5 9.5h1.5M14.5 15.5h1.5"/>',
+ fsurveys:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 9l1.5 1.5 2.5-2.5M8.5 15l1.5 1.5 2.5-2.5M14.5 9.5h1.5M14.5 15.5h1.5"/>'
 };
-const NAV={student:[["home","Home"],["academics","Academics"],["attendance","Attendance",1],["leave","Leave"],["opportunities","Opportunities"],["insights","Insights"]],faculty:[["faculty","Class insight"],["attendance","Attendance"]]};
-let role=store.get("role","student"), view=store.get("view","home");
+const NAV={student:[["home","Home"],["academics","Academics"],["attendance","Attendance"],["leave","Leave"],["library","Library"],["surveys","Surveys"],["opportunities","Opportunities"],["insights","Insights"]],faculty:[["faculty","Class insight"],["fsurveys","Surveys"]]};
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let profile=store.get("profile",null);
+const firstName=()=>profile&&profile.role==="student"?profile.name.split(" ")[0]:"Aarav";
+const facName=()=>profile&&profile.role==="faculty"?profile.name:"Dr. Iyer";
+const badgeFor=k=>role!=="student"?0:k==="attendance"?1:k==="surveys"?pendingCount():0;
+let role=store.get("role","student")||"student", view=store.get("view","home")||"home";
 function renderNav(){
-  $("#nav").innerHTML=NAV[role].map(([k,l,b])=>`<button data-go="${k}" ${k===view?'aria-current="page"':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg><span>${l}</span>${b?'<span class="badge">'+b+'</span>':''}</button>`).join("");
+  $("#nav").innerHTML=NAV[role].map(([k,l])=>`<button data-go="${k}" ${k===view?'aria-current="page"':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg><span>${l}</span>${badgeFor(k)?'<span class="badge">'+badgeFor(k)+'</span>':''}</button>`).join("");
 }
 function go(k){
   if(!NAV[role].some(n=>n[0]===k)) k=NAV[role][0][0];
@@ -566,10 +799,14 @@ function go(k){
   $$(".view").forEach(v=>v.hidden=v.id!=="v-"+k);
   renderNav();
   $("#crumbTitle").textContent=NAV[role].find(n=>n[0]===k)[1];
-  $("#crumbRole").textContent=role==="student"?"Student · Aarav":"Faculty · Dr. Iyer";
+  $("#crumbRole").textContent=role==="student"?"Student · "+firstName():"Faculty · "+facName();
   window.scrollTo({top:0});
   if(k==="insights") drawTree();
   if(k==="leave") renderLeave();
+  if(k==="library") renderLibrary();
+  if(k==="surveys") renderSurveys();
+  if(k==="fsurveys") renderFS();
+  if(k==="home") renderHomeSurvey();
 }
 function setRole(r){role=r;store.set("role",r);$("#roleStudent").setAttribute("aria-pressed",r==="student");$("#roleFaculty").setAttribute("aria-pressed",r==="faculty");go(r==="faculty"?"faculty":"home")}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b){go(b.dataset.go);if(b.hasAttribute("data-quiz"))setTimeout(()=>$("#quizCard").scrollIntoView({behavior:"smooth",block:"center"}),50)}});
@@ -579,17 +816,17 @@ $("#roleStudent").onclick=()=>setRole("student");$("#roleFaculty").onclick=()=>s
 $("#today").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
 $("#bloomLegend").innerHTML=BLOOM.map((_,i)=>bloomChip(i)).join("");
 const SUBJ=[
- {id:"ds",name:"Data Structures",code:"CS102",cr:4,int:27,att:[31,42],weak:2},
- {id:"dm",name:"Discrete Mathematics",code:"MA104",cr:4,int:33,att:[38,46],weak:3},
- {id:"dl",name:"Digital Logic",code:"EC101",cr:3,int:30,att:[26,36],weak:1},
- {id:"pc",name:"Programming in C",code:"CS101",cr:4,int:35,att:[40,44],weak:4},
- {id:"ph",name:"Engineering Physics",code:"PH101",cr:4,int:29,att:[33,41],weak:2},
- {id:"ev",name:"Environmental Studies",code:"HS102",cr:3,int:34,att:[22,28],weak:3}
+ {id:"ds",name:"Data Structures",code:"24CS203T",cr:3,int:34,att:[31,42],weak:2},
+ {id:"dm",name:"Discrete Mathematical Structures",code:"24MA202T",cr:4,int:41,att:[38,46],weak:3},
+ {id:"dl",name:"Digital Logic and Design",code:"24CS201T",cr:4,int:38,att:[26,36],weak:1},
+ {id:"pc",name:"Object Oriented Programming",code:"24CS204T",cr:3,int:44,att:[40,44],weak:4},
+ {id:"ph",name:"Database Management Systems",code:"24CS202T",cr:3,int:36,att:[33,41],weak:2},
+ {id:"ev",name:"Data Structures Laboratory",code:"24CS203P",cr:1,int:43,att:[22,28],weak:3}
 ];
 const pct=(a,h)=>h?a/h*100:100;
 const overall=()=>{let a=0,h=0;SUBJ.forEach(s=>{a+=s.att[0];h+=s.att[1]});return pct(a,h)};
 $("#pulse").innerHTML=[
- ["Predicted SGPA","8.12","+0.18 if DS end-sem ≥ 45","ok"],
+ ["Predicted SGPA","8.12","Higher if DS end-sem ≥ 40 / 50","ok"],
  ["Attendance",overall().toFixed(1)+"%","1 subject below 75%","bad"],
  ["Avg. mastery","61%","Up 6 points this week","ok"],
  ["Next deadline","2d 4h","DS Lab 6 · Linked lists","warn"]
@@ -610,14 +847,14 @@ $("#alerts").innerHTML=ALERTS.map(([c,t,d,w])=>`<div class="alert"><span class="
 
 /* ---------- academics ---------- */
 const GRADE=t=>t>=90?["O",10]:t>=80?["A+",9]:t>=70?["A",8]:t>=60?["B+",7]:t>=50?["B",6]:t>=40?["C",5]:["F",0];
-const PRED={ds:38,dm:47,dl:41,pc:50,ph:40,ev:49};
+const PRED={ds:32,dm:39,dl:34,pc:42,ph:33,ev:41};
 function sgpa(over){let p=0,c=0;SUBJ.forEach(s=>{const tot=s.int+(over&&over[s.id]!=null?over[s.id]:PRED[s.id]);p+=GRADE(tot)[1]*s.cr;c+=s.cr});return p/c}
 $("#marksBody").innerHTML=SUBJ.map(s=>{const t=s.int+PRED[s.id];return `<tr><td><b>${s.name}</b><br><span class="mono" style="font-size:.72rem;color:var(--muted)">${s.code}</span></td><td class="num">${s.cr}</td><td class="num">${s.int}</td><td class="num">${PRED[s.id]}</td><td class="num"><b>${GRADE(t)[0]}</b></td><td>${bloomChip(s.weak)}</td></tr>`}).join("");
 $("#acadTiles").innerHTML=[["Predicted SGPA",sgpa().toFixed(2),"Based on current trajectory"],["Credits",SUBJ.reduce((a,s)=>a+s.cr,0),"6 subjects this semester"],["Weakest level","Apply","Remembering is fine. Using it is the gap."]].map(([l,v,s])=>`<div class="tile"><span class="label">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join("");
-function wi(){const v=+$("#wi").value;$("#wiVal").textContent=v+" / 60";const g=sgpa({ds:v}),base=sgpa(),tot=27+v;
+function wi(){const v=+$("#wi").value;$("#wiVal").textContent=v+" / 50";const g=sgpa({ds:v}),base=sgpa(),tot=SUBJ[0].int+v;
  $("#wiOut").innerHTML=`Data Structures → <b>${GRADE(tot)[0]}</b>, SGPA <span class="mono">${g.toFixed(2)}</span> <span class="${g>=base?'ok':'bad'}" style="font-size:.9rem">(${g>=base?'+':''}${(g-base).toFixed(2)})</span>`}
 $("#wi").oninput=wi;wi();
-$("#pyq").innerHTML=[["2025","DS end-sem",[30,25,25,15,5,0]],["2024","DS end-sem",[35,25,20,15,5,0]],["2025","DM mid-sem",[20,30,30,20,0,0]],["2024","C end-sem",[25,20,35,10,5,5]]].map(([y,n,d])=>`<div class="qitem" style="grid-template-columns:44px 1fr 120px"><span class="mono" style="color:var(--muted)">${y}</span><span>${n}</span><div class="stack" style="height:10px;gap:1px">${d.map((p,i)=>p?`<i style="flex-grow:${p};background:var(${BLOOM[i][1]})" title="${BLOOM[i][0]} ${p}%"></i>`:'').join("")}</div></div>`).join("");
+$("#pyq").innerHTML=[["2025","DS end-sem",[30,25,25,15,5,0]],["2024","DS end-sem",[35,25,20,15,5,0]],["2025","DM mid-sem",[20,30,30,20,0,0]],["2024","OOP end-sem",[25,20,35,10,5,5]]].map(([y,n,d])=>`<div class="qitem" style="grid-template-columns:44px 1fr 120px"><span class="mono" style="color:var(--muted)">${y}</span><span>${n}</span><div class="stack" style="height:10px;gap:1px">${d.map((p,i)=>p?`<i style="flex-grow:${p};background:var(${BLOOM[i][1]})" title="${BLOOM[i][0]} ${p}%"></i>`:'').join("")}</div></div>`).join("");
 
 /* ---------- attendance ---------- */
 let sel=store.get("attSel","dl"), skip=0, attn=0, mentor=store.get("mentor",null);
@@ -651,7 +888,7 @@ $("#mentorBtn").onclick=()=>{mentor={sub:sel,ok:false};store.set("mentor",mentor
 function drawQR(seed){const c=$("#qr"),x=c.getContext("2d"),n=21,s=120/n;x.fillStyle=css("--panel-2");x.fillRect(0,0,120,120);let r=seed;const rnd=()=>(r=(r*9301+49297)%233280)/233280;x.fillStyle=css("--fg");
  for(let i=0;i<n;i++)for(let j=0;j<n;j++){const f=(i<7&&j<7)||(i<7&&j>n-8)||(i>n-8&&j<7);if(f){const ii=i>n-8?i-(n-7):i,jj=j>n-8?j-(n-7):j;const ring=ii===0||ii===6||jj===0||jj===6||(ii>1&&ii<5&&jj>1&&jj<5);if(ring)x.fillRect(j*s,i*s,s,s)}else if(rnd()>.55)x.fillRect(j*s,i*s,s,s)}}
 let qs=Date.now()%9999;drawQR(qs);setInterval(()=>drawQR(++qs),20000);
-$("#scanBtn").onclick=()=>{const b=$("#qrbox");b.classList.add("scanning");$("#scanBtn").disabled=true;setTimeout(()=>{b.classList.remove("scanning");const s=SUBJ.find(x=>x.id==="dl");s.att[0]++;s.att[1]++;renderAtt();$("#scanBtn").textContent="Marked present ✓";toast("Digital Logic · present. Now "+pct(...s.att).toFixed(1)+"%")},1500)};
+$("#scanBtn").onclick=()=>{const b=$("#qrbox");b.classList.add("scanning");$("#scanBtn").disabled=true;setTimeout(()=>{b.classList.remove("scanning");const s=SUBJ.find(x=>x.id==="dl");s.att[0]++;s.att[1]++;renderAtt();$("#scanBtn").textContent="Marked present ✓";toast("Digital Logic and Design · present. Now "+pct(...s.att).toFixed(1)+"%")},1500)};
 renderAtt();
 
 /* ---------- opportunities ---------- */
@@ -685,7 +922,7 @@ renderIdeas();
 
 /* ---------- insights ---------- */
 const PROF={ds:[82,71,44,52,38,30],dm:[78,66,58,41,35,22],pc:[88,80,72,55,47,40]};
-const PROFN={ds:"Data Structures",dm:"Discrete Mathematics",pc:"Programming in C"};
+const PROFN={ds:"Data Structures",dm:"Discrete Mathematics",pc:"Object Oriented Programming"};
 $("#profSub").innerHTML=Object.keys(PROF).map(k=>`<option value="${k}">${PROFN[k]}</option>`).join("");
 function radar(){
   const v=PROF[$("#profSub").value],cx=170,cy=150,R=110,n=6,ang=i=>-Math.PI/2+i*2*Math.PI/n;
@@ -872,7 +1109,375 @@ function renderLeave(){fillLeave();calcLeave();planLeave()}
 renderLeave();
 
 /* ---------- boot ---------- */
-const startView=view;setRole(role);go(startView);
+/* ---------- surveys ---------- */
+const CLASS_SIZE=64;
+const PACE=["Too slow","Just right","Too fast"];
+const subjName=id=>(SUBJ.find(s=>s.id===id)||{name:id}).name;
+const fmtDate=d=>new Date(d+"T00:00").toLocaleDateString(undefined,{day:"numeric",month:"short"});
+function prng(seed){let r=seed%2147483647||1;return()=>(r=(r*16807)%2147483647)/2147483647}
+const COMMENTS={
+ Recursion:["I don't get when the base case stops it","Tracing the call stack on the board was too fast","Need more examples before the lab","The return values going back up confused me","I understood factorial but not fib","Can we trace one more problem step by step","Lost track of the stack after 3 calls","I can read recursion but can't write my own","Felt rushed at the end","More practice problems please","Why doesn't it run forever? Where does it stop?"],
+ "Linked lists":["Pointer changes during delete were tricky","Good pace, the diagrams helped","Need one more example of reversing","Clear explanation","Insert at tail with no tail pointer confused me","More practice problems please","Clear, the drawings made it easy"],
+ default:["Need more examples","Pace was a bit fast","Clear explanation","Could you trace one problem step by step","More practice problems please","Felt rushed at the end","Good pace"]
+};
+const THEMES=[
+ {k:"When it stops (base case)",w:["base case","stop","forever"]},
+ {k:"Tracing step by step",w:["stack","trace","step by step","lost track"]},
+ {k:"Pace felt rushed",w:["fast","rushed"]},
+ {k:"Wants more examples and practice",w:["example","practice"]},
+ {k:"Return values",w:["return"]},
+ {k:"Pointer handling",w:["pointer"]},
+ {k:"Can't write it on their own",w:["write my own","can't write"]},
+ {k:"Clear, no issues",w:["clear","good pace","helped"]}
+];
+function genResponses(sv,n,seed,diff){ // diff: 0 = easy topic … 1 = hard topic
+  const r=prng(seed),out=[],cm=COMMENTS[sv.topic]||COMMENTS.default;
+  for(let i=0;i<n;i++){
+    const skill=Math.max(0,Math.min(1,r()*(1-diff*0.55)+(1-diff)*0.25+(r()-.5)*0.15));
+    const u=Math.max(1,Math.min(5,Math.round(1+skill*4+(r()-.5)*1.2)));
+    const correct=r()<0.2+skill*0.75;
+    const conf=Math.max(1,Math.min(5,Math.round(u+(r()-.5)*1.6+(!correct&&r()<diff*0.5?1.6:0))));
+    const wrong=[0,1,2,3].filter(x=>x!==sv.check.a);
+    const ans=correct?sv.check.a:wrong[Math.floor(r()*3)];
+    const pace=r()<0.12+diff*0.38?2:(r()<0.1?0:1);
+    const subs=sv.subtopics.filter((_,k)=>r()<(k===0?0.2+diff*0.45:k===2?0.15+diff*0.35:0.06+diff*0.12));
+    const text=r()<0.6?cm[Math.floor(r()*cm.length)]:"";
+    out.push({u,pace,conf,ans,subs,text,sample:true});
+  }
+  return out;
+}
+function seedSurveys(){
+  const a={id:"s-rec",subject:"ds",topic:"Recursion",by:"Dr. Iyer",date:"2026-10-16",status:"open",subtopics:["Base case","Recursive call","Call stack","Return values","Recursion vs iteration"],check:{q:"What does f(4) return?",code:"int f(int n){\n  if(n == 0) return 0;\n  return n + f(n - 1);\n}",o:["4","10","24","0"],a:1},responses:[]};
+  a.responses=genResponses(a,41,7,0.85);
+  const b={id:"s-ll",subject:"ds",topic:"Linked lists",by:"Dr. Iyer",date:"2026-10-09",status:"closed",subtopics:["Node structure","Insert at head","Insert at tail","Delete a node","Reverse a list"],check:{q:"A singly linked list has only a head pointer. What does inserting at the tail cost?",o:["O(1)","O(log n)","O(n)","O(n²)"],a:2},responses:[]};
+  b.responses=genResponses(b,58,11,0.15);
+  return [a,b];
+}
+let SURVEYS=store.get("surveys1",null)||seedSurveys();
+const saveSurveys=()=>store.set("surveys1",SURVEYS);
+const myResp=sv=>sv.responses.find(x=>x.own);
+function pendingCount(){return SURVEYS.filter(s=>s.status==="open"&&!myResp(s)).length}
+
+function analyze(sv){
+  const R=sv.responses,n=R.length;if(!n)return{n:0};
+  const uDist=[0,0,0,0,0],pace=[0,0,0],subs={},th={};sv.subtopics.forEach(x=>subs[x]=0);
+  let uS=0,cS=0,ok=0,cc=0,cw=0,uc=0,uw=0;
+  R.forEach(x=>{uDist[x.u-1]++;uS+=x.u;cS+=x.conf;const c=x.ans===sv.check.a,hi=x.conf>=4;if(c)ok++;
+    if(hi&&c)cc++;else if(hi)cw++;else if(c)uc++;else uw++;pace[x.pace]++;x.subs.forEach(t=>{if(subs[t]!=null)subs[t]++});
+    if(x.text){const low=x.text.toLowerCase();THEMES.forEach(t=>{if(t.w.some(w=>low.includes(w))){const o=th[t.k]=th[t.k]||{n:0,q:[]};o.n++;if(o.q.length<2&&!o.q.includes(x.text))o.q.push(x.text)}})}});
+  const uMean=uS/n,cMean=cS/n,acc=ok/n,mis=cw/n,fast=pace[2]/n;
+  const score=.35*(1-acc)+.25*Math.min(1,mis/.35)+.2*(1-(uMean-1)/4)+.1*fast+.1*(1-(cMean-1)/4);
+  const subRank=Object.entries(subs).sort((a,b)=>b[1]-a[1]);
+  const themes=Object.entries(th).sort((a,b)=>b[1].n-a[1].n);
+  const verdict=n<5?null:score>=.45?"reteach":score>=.3?"recap":"move";
+  return{n,uDist,pace,uMean,cMean,acc,mis,fast,cc,cw,uc,uw,score,subRank,themes,verdict};
+}
+const VERD={reteach:["Reteach","--bad"],recap:["Quick recap","--warn"],move:["Move on","--ok"]};
+const P=x=>Math.round(x*100);
+function gauge(score,c){const R=58,L=Math.PI*R,v=Math.max(0,Math.min(1,score));
+  return `<svg viewBox="0 0 150 92" role="img" aria-label="Reteach index ${P(v)} of 100"><path d="M17 80 A58 58 0 0 1 133 80" fill="none" stroke="${css('--line-2')}" stroke-width="12" stroke-linecap="round"/><path d="M17 80 A58 58 0 0 1 133 80" fill="none" stroke="${c}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${L*v} ${L}"/><text x="75" y="70" text-anchor="middle" fill="${css('--fg')}" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="30">${P(v)}</text><text x="75" y="88" text-anchor="middle" fill="${css('--muted')}" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="1">RETEACH INDEX</text></svg>`}
+
+let fsSel=store.get("fsSel","s-rec");
+function renderFS(){
+  if(!SURVEYS.find(s=>s.id===fsSel))fsSel=SURVEYS[0]&&SURVEYS[0].id;
+  $("#fsPick").innerHTML=SURVEYS.map(s=>`<option value="${s.id}" ${s.id===fsSel?'selected':''}>${esc(s.topic)} · ${fmtDate(s.date)}</option>`).join("");
+  $("#fsList").innerHTML=SURVEYS.map(s=>{const a=analyze(s),v=a.verdict?VERD[a.verdict]:null;return `<button class="sitem" data-fs="${s.id}" aria-current="${s.id===fsSel}"><b>${esc(s.topic)}</b>${s.status==="open"?'<span class="pill ok">Open</span>':'<span class="pill mut">Closed</span>'}<span>${esc(subjName(s.subject))} · ${fmtDate(s.date)} · ${a.n}/${CLASS_SIZE} responses</span>${v?`<span style="color:var(${v[1]});text-align:right">${v[0]}</span>`:'<span>Waiting</span>'}</button>`}).join("");
+  const sv=SURVEYS.find(s=>s.id===fsSel);$("#fsAnalysis").innerHTML=sv?analysisHTML(sv):"";
+}
+function analysisHTML(sv){
+  const a=analyze(sv),real=sv.responses.filter(x=>!x.sample).length;
+  const head=`<div class="card-h"><h2>${esc(sv.topic)} <span style="color:var(--muted);font-weight:400">· ${esc(subjName(sv.subject))}</span></h2><span class="label">${a.n} of ${CLASS_SIZE} responded · ${real} real, ${a.n-real} sample</span></div>`;
+  if(a.n<5) return `<div class="card">${head}<p class="verdict">Waiting for responses.</p><p style="color:var(--muted)">Results appear once 5 students have answered. Students see this survey in their Surveys tab right now.</p>
+    <div class="row"><button class="btn primary" data-seed="${sv.id}">Add 40 sample responses (demo)</button><button class="btn" data-close="${sv.id}">${sv.status==="open"?"Close survey":"Reopen survey"}</button></div></div>`;
+  const[vw,vc]=VERD[a.verdict],col=css(vc),top=a.subRank[0],topT=a.themes.find(t=>t[0]!=="Clear, no issues");
+  const lead={reteach:`Too many students left this lecture with a wrong picture of ${esc(sv.topic.toLowerCase())}. Plan a full re-explanation before moving on.`,
+    recap:`Most students followed, but a sizeable group did not. A 15-minute recap at the start of the next class should be enough.`,
+    move:`The class understood ${esc(sv.topic.toLowerCase())}. Share the library material with the few who struggled and continue with the syllabus.`}[a.verdict];
+  const reasons=[];
+  reasons.push([`${P(1-a.acc)}% got the concept check wrong.`,a.acc<.6?"--bad":a.acc<.75?"--warn":"--ok"]);
+  if(a.mis>=.12)reasons.push([`${P(a.mis)}% were confident and still wrong. That usually means a misconception, which a quick recap won't fix.`,"--bad"]);
+  reasons.push([`Average understanding is ${a.uMean.toFixed(1)} out of 5, exam confidence ${a.cMean.toFixed(1)} out of 5.`,a.uMean<3?"--bad":a.uMean<3.6?"--warn":"--ok"]);
+  if(a.fast>=.25)reasons.push([`${P(a.fast)}% said the pace was too fast.`,"--warn"]);
+  if(top&&top[1])reasons.push([`Most confusing part: ${esc(top[0])}, picked by ${P(top[1]/a.n)}% of students.`,"--b4"]);
+  if(topT)reasons.push([`Top theme in comments: "${esc(topT[0].toLowerCase())}" (${topT[1].n} students).`,"--b2"]);
+  const plan={reteach:[`Start by putting the concept check back on the board. Show the answer split (${P(a.acc)}% got it right).`,`Re-explain ${esc(top?top[0].toLowerCase():"the core idea")} with one fully worked trace (15–20 min).`,topT?`Answer the most common comment directly: ${esc(topT[0].toLowerCase())}.`:`Take two questions from the class.`,`Assign the ${esc(sv.topic)} worksheet from the Library, Apply and Analyze sections.`,`Run a 3-question re-check survey at the end of the next class.`],
+    recap:[`Open the next class with a 15-minute recap of ${esc(top?top[0].toLowerCase():"the core idea")}.`,`Solve one Apply-level problem together.`,`Point students to the ${esc(sv.topic)} notes in the Library.`],
+    move:[`Continue with the next syllabus topic.`,`Share the ${esc(sv.topic)} worksheet for practice.`,`Check in with the ${a.uw} students who were unsure and wrong during office hours.`]}[a.verdict];
+  const hmax=Math.max(...a.uDist,1),hc=["--bad","--b5","--warn","--b3","--ok"];
+  const quad=(v,l,d,c)=>`<div class="qc" style="background:color-mix(in srgb,var(${c}) ${Math.round(8+v/a.n*60)}%,transparent);border-color:color-mix(in srgb,var(${c}) 50%,transparent)"><b>${P(v/a.n)}%</b><span><b style="font-size:.8rem;font-family:var(--body);font-weight:600;color:var(--fg)">${l}</b> · ${d}</span></div>`;
+  return `<div class="vhero" style="color:${col}"><div style="display:flex;flex-direction:column;gap:10px;min-width:0"><span class="label">Recommendation for ${esc(sv.topic)}</span><div class="vword">${vw}</div><p>${lead}</p></div><div class="gauge">${gauge(a.score,col)}</div></div>
+  <div class="grid g-4">
+    <div class="tile"><span class="label">Responses</span><span class="v">${a.n}<span style="font-size:1rem;color:var(--muted)">/${CLASS_SIZE}</span></span><span class="s">${P(a.n/CLASS_SIZE)}% of the class</span></div>
+    <div class="tile"><span class="label">Concept check</span><span class="v" style="color:var(${a.acc<.6?'--bad':a.acc<.75?'--warn':'--ok'})">${P(a.acc)}%</span><span class="s">answered correctly</span></div>
+    <div class="tile"><span class="label">Understanding</span><span class="v">${a.uMean.toFixed(1)}<span style="font-size:1rem;color:var(--muted)">/5</span></span><span class="s">self-rated average</span></div>
+    <div class="tile"><span class="label">Confident but wrong</span><span class="v" style="color:var(${a.mis>=.15?'--bad':'--fg'})">${P(a.mis)}%</span><span class="s">likely misconception</span></div>
+  </div>
+  <div class="grid g-2">
+    <div class="card"><div class="card-h"><h2>Why</h2><span class="label">From ${a.n} responses</span></div><ul class="reasons">${reasons.map(([t,c])=>`<li style="--c:var(${c})">${t}</li>`).join("")}</ul></div>
+    <div class="card"><div class="card-h"><h2>Plan for the next class</h2><span class="label">${vw}</span></div><div class="plan">${plan.map((t,i)=>`<div class="step" style="grid-template-columns:34px 1fr"><span class="d">${String(i+1).padStart(2,"0")}</span><div>${t}</div></div>`).join("")}</div>
+      <div class="row"><button class="btn primary" data-send="${sv.id}">Send recap and worksheet to class</button><button class="btn" data-close="${sv.id}">${sv.status==="open"?"Close survey":"Reopen survey"}</button></div></div>
+  </div>
+  <div class="grid g-3">
+    <div class="card"><div class="card-h"><h3>How well did you understand it?</h3></div><div class="hist">${a.uDist.map((v,i)=>`<div><span>${v}</span><i style="height:${v/hmax*100}%;background:var(${hc[i]})"></i><span>${i+1}</span></div>`).join("")}</div><div class="scale-l"><span>1 · Lost</span><span>5 · Could teach it</span></div></div>
+    <div class="card"><div class="card-h"><h3>Confidence vs. correct answer</h3></div><div class="quad"><span></span><span class="qh">Correct</span><span class="qh">Wrong</span><span class="qh" style="writing-mode:vertical-rl;transform:rotate(180deg)">Sure</span>${quad(a.cc,"Mastered","sure and right","--ok")}${quad(a.cw,"Misconception","sure but wrong","--bad")}<span class="qh" style="writing-mode:vertical-rl;transform:rotate(180deg)">Unsure</span>${quad(a.uc,"Fragile","right but unsure","--warn")}${quad(a.uw,"Gap","unsure and wrong","--b5")}</div></div>
+    <div class="card"><div class="card-h"><h3>Pace of the lecture</h3></div><div class="stack" style="height:34px">${a.pace.map((v,i)=>v?`<i style="flex-grow:${v};background:var(${["--b2","--ok","--bad"][i]})">${P(v/a.n)}%</i>`:'').join("")}</div><div class="mastery">${a.pace.map((v,i)=>`<div class="mrow" style="grid-template-columns:1fr auto"><span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(${["--b2","--ok","--bad"][i]});margin-right:8px"></span>${PACE[i]}</span><span class="mono">${v}</span></div>`).join("")}</div></div>
+  </div>
+  <div class="grid g-2">
+    <div class="card"><div class="card-h"><h3>Which part confused you?</h3><span class="label">% of students</span></div><div class="mastery">${a.subRank.map(([k,v],i)=>`<div class="mrow" style="color:var(${i===0&&v?'--b4':'--muted'})"><span style="color:var(--fg)">${esc(k)}</span><div class="bar"><i style="width:${v/a.n*100}%;background:currentColor"></i></div><span class="mono">${P(v/a.n)}%</span></div>`).join("")}</div></div>
+    <div class="card"><div class="card-h"><h3>What students wrote</h3><span class="label">Grouped by theme</span></div><div>${a.themes.length?a.themes.slice(0,4).map(([k,o])=>`<div class="theme"><div class="card-h"><b>${esc(k)}</b><span class="mono" style="font-size:.75rem;color:var(--muted)">${o.n} students</span></div>${o.q.map(q=>`<p class="quote">"${esc(q)}"</p>`).join("")}</div>`).join(""):'<p style="color:var(--muted)">No comments yet.</p>'}</div></div>
+  </div>`;
+}
+$("#fsPick").onchange=e=>{fsSel=e.target.value;store.set("fsSel",fsSel);renderFS()};
+$("#fsList").addEventListener("click",e=>{const b=e.target.closest("[data-fs]");if(b){fsSel=b.dataset.fs;store.set("fsSel",fsSel);renderFS();$("#fsAnalysis").scrollIntoView({behavior:"smooth",block:"start"})}});
+$("#fsAnalysis").addEventListener("click",e=>{
+  const sd=e.target.closest("[data-seed]"),cl=e.target.closest("[data-close]"),sn=e.target.closest("[data-send]");
+  if(sd){const sv=SURVEYS.find(s=>s.id===sd.dataset.seed);sv.responses.push(...genResponses(sv,40,Date.now()%99991,0.35+Math.random()*0.55));saveSurveys();renderFS();toast("40 sample responses added")}
+  if(cl){const sv=SURVEYS.find(s=>s.id===cl.dataset.close);sv.status=sv.status==="open"?"closed":"open";saveSurveys();renderFS();toast(sv.status==="open"?"Survey reopened":"Survey closed. Students can't answer it any more.")}
+  if(sn){sn.disabled=true;sn.textContent="Sent to class";toast("Recap plan and worksheet sent to students")}
+});
+$("#fsSub").innerHTML=SUBJ.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
+$("#fsOpts").innerHTML=["1","2","3","5"].map((v,i)=>`<div class="optrow"><input type="radio" name="fsA" value="${i}" ${i===1?'checked':''} aria-label="Option ${i+1} is correct"><input class="fsO" value="${v}" aria-label="Option ${i+1}" style="width:100%;background:var(--panel-2);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px"></div>`).join("");
+$("#fsForm").onsubmit=e=>{e.preventDefault();
+  const topic=$("#fsTopic").value.trim(),q=$("#fsQ").value.trim(),opts=$$(".fsO").map(i=>i.value.trim()),a=+(($$('input[name=fsA]').find(r=>r.checked)||{}).value??-1);
+  const subs=$("#fsSubs").value.split(",").map(x=>x.trim()).filter(Boolean).slice(0,8);
+  const err=!topic?"Add the topic name.":!q?"Add a concept check question.":opts.some(o=>!o)?"Fill in all four options.":a<0?"Tick the correct option.":subs.length<2?"List at least two subtopics.":"";
+  $("#fsErr").textContent=err;if(err)return;
+  const sv={id:"s-"+Date.now(),subject:$("#fsSub").value,topic,by:facName(),date:iso(new Date()),status:"open",subtopics:subs,check:{q,o:opts,a},responses:[]};
+  SURVEYS.unshift(sv);saveSurveys();fsSel=sv.id;store.set("fsSel",fsSel);renderFS();window.scrollTo({top:0,behavior:"smooth"});
+  toast("Published. Students see it in their Surveys tab.");
+};
+
+// student side
+let ssSel=null,ssA={subs:[]};
+function renderHomeSurvey(){
+  const sv=SURVEYS.find(s=>s.status==="open"&&!myResp(s));
+  $("#homeSurvey").innerHTML=sv?`<div class="banner"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">${ICON.surveys}</svg></span><div><b>${esc(sv.by)} wants to know how ${esc(sv.topic)} went</b><p>6 quick questions · about 2 minutes · your name isn't shared</p></div><button class="btn primary" data-go="surveys">Answer now</button></div>`:"";
+}
+function renderSurveys(){
+  const vis=SURVEYS.filter(s=>s.status==="open"||myResp(s));
+  if(!ssSel||!vis.find(s=>s.id===ssSel)){ssSel=(vis.find(s=>s.status==="open"&&!myResp(s))||vis[0]||{}).id;ssA={subs:[]}}
+  const pend=pendingCount();$("#ssCount").textContent=pend?pend+" to do":"All done";
+  $("#ssList").innerHTML=vis.length?vis.map(s=>{const done=myResp(s);return `<button class="sitem" data-ss="${s.id}" aria-current="${s.id===ssSel}"><b>${esc(s.topic)}</b>${done?'<span class="pill ok">Done</span>':s.status==="open"?'<span class="pill warn">To do</span>':'<span class="pill mut">Closed</span>'}<span>${esc(subjName(s.subject))} · ${esc(s.by)} · ${fmtDate(s.date)}</span></button>`}).join(""):'<p style="color:var(--muted)">No surveys yet. When faculty publish one, it shows up here.</p>';
+  const sv=SURVEYS.find(s=>s.id===ssSel);const f=$("#ssForm");
+  if(!sv){f.innerHTML='<p class="verdict">Nothing to answer right now.</p>';return}
+  const mine=myResp(sv);
+  if(mine){const ok=mine.ans===sv.check.a;const lib=LIB.find(l=>l.topic===sv.topic);
+    f.innerHTML=`<div class="card-h"><h2>Thanks, ${esc(firstName())}</h2><span class="pill ok">Submitted</span></div><p class="verdict">${esc(sv.by)} will see the class results for ${esc(sv.topic)}, not your name.</p>
+     <div class="sq"><span class="label">Your concept check</span><p>${ok?`You got it right: <b class="ok">${esc(sv.check.o[sv.check.a])}</b>.`:`You picked <b class="bad">${esc(sv.check.o[mine.ans])}</b>. The answer is <b class="ok">${esc(sv.check.o[sv.check.a])}</b>.`}</p>
+     ${!ok||mine.u<=3?`<p style="color:var(--muted)">${lib?`The ${esc(sv.topic)} ${lib.type==="worksheet"?"worksheet":"notes"} in the Library walk through this step by step.`:"Your study plan in Insights covers this topic."}</p>`:""}
+     ${lib?`<div class="row"><button class="btn" data-lib="${lib.id}">Open ${esc(lib.title)}</button></div>`:""}</div>`;
+    return}
+  if(sv.status!=="open"){f.innerHTML=`<div class="card-h"><h2>${esc(sv.topic)}</h2><span class="pill mut">Closed</span></div><p style="color:var(--muted)">This survey closed before you answered.</p>`;return}
+  const scale=(k,lo,hi)=>`<div class="scale" role="group">${[1,2,3,4,5].map(v=>`<button type="button" data-k="${k}" data-v="${v}" aria-pressed="${ssA[k]===v}">${v}</button>`).join("")}</div><div class="scale-l"><span>${lo}</span><span>${hi}</span></div>`;
+  f.innerHTML=`<div class="card-h"><h2>${esc(sv.topic)}</h2><span class="label">${esc(subjName(sv.subject))} · ${esc(sv.by)}</span></div>
+   <p style="color:var(--muted);font-size:.9rem">6 questions · about 2 minutes. Your faculty sees class results, never your name.</p>
+   <div class="sq"><p class="qn"><span>01</span>How well did you understand ${esc(sv.topic.toLowerCase())}?</p>${scale("u","Lost","Could teach it")}</div>
+   <div class="sq"><p class="qn"><span>02</span>How was the pace of the lecture?</p><div class="scale" style="grid-template-columns:repeat(3,minmax(0,1fr))">${PACE.map((p,i)=>`<button type="button" data-k="pace" data-v="${i}" aria-pressed="${ssA.pace===i}" style="font-family:var(--body)">${p}</button>`).join("")}</div></div>
+   <div class="sq"><p class="qn"><span>03</span>How confident are you about an exam question on this?</p>${scale("conf","Not at all","Very")}</div>
+   <div class="sq"><p class="qn"><span>04</span>Quick check: ${esc(sv.check.q)}</p>${sv.check.code?`<div class="code">${esc(sv.check.code)}</div>`:""}<div class="opts">${sv.check.o.map((o,i)=>`<button type="button" class="opt" data-k="ans" data-v="${i}" aria-pressed="${ssA.ans===i}">${esc(o)}</button>`).join("")}</div></div>
+   <div class="sq"><p class="qn"><span>05</span>Which parts confused you? <span style="font-family:var(--body);font-size:.8rem">Pick any</span></p><div class="picks">${sv.subtopics.map(t=>`<button type="button" class="pick" data-k="subs" data-v="${esc(t)}" aria-pressed="${ssA.subs.includes(t)}">${esc(t)}</button>`).join("")}</div></div>
+   <div class="sq"><p class="qn"><span>06</span>What confused you most? <span style="font-family:var(--body);font-size:.8rem">Optional</span></p><textarea id="ssText" aria-label="What confused you most" placeholder="e.g. I lose track of the call stack after a few calls">${esc(ssA.text||"")}</textarea></div>
+   <p class="gerr" id="ssErr" role="alert"></p><button class="btn primary" id="ssSubmit">Submit anonymously</button>`;
+}
+$("#ssList").addEventListener("click",e=>{const b=e.target.closest("[data-ss]");if(b){ssSel=b.dataset.ss;ssA={subs:[]};renderSurveys()}});
+$("#ssForm").addEventListener("input",e=>{if(e.target.id==="ssText")ssA.text=e.target.value});
+$("#ssForm").addEventListener("click",e=>{
+  const b=e.target.closest("[data-k]");
+  if(b){const k=b.dataset.k;if(k==="subs"){const v=b.dataset.v;ssA.subs=ssA.subs.includes(v)?ssA.subs.filter(x=>x!==v):[...ssA.subs,v]}else ssA[k]=+b.dataset.v;renderSurveys();return}
+  if(e.target.id==="ssSubmit"){
+    const miss=[["u","question 1"],["pace","question 2"],["conf","question 3"],["ans","the quick check"]].filter(([k])=>ssA[k]==null).map(x=>x[1]);
+    if(miss.length){$("#ssErr").textContent="Please answer "+miss.join(", ")+".";return}
+    const sv=SURVEYS.find(s=>s.id===ssSel);sv.responses.push({u:ssA.u,pace:ssA.pace,conf:ssA.conf,ans:ssA.ans,subs:ssA.subs,text:(ssA.text||"").trim().slice(0,400),own:true,sample:false});
+    saveSurveys();ssA={subs:[]};renderSurveys();renderNav();renderHomeSurvey();toast("Submitted. Thanks for the feedback.");
+  }
+});
+
+/* ---------- library ---------- */
+const LIB=[
+ {id:"w-rec",type:"worksheet",sub:"ds",unit:"Unit 2",topic:"Recursion",title:"Recursion",mins:40,secs:[
+  [0,[["Define recursion. Name the two parts every recursive function must have.",2,"A function that solves a problem by calling itself on a smaller input.\nParts: the base case (where it stops) and the recursive case (the call on a smaller input)."],["What error do you get when a recursive function has no base case?",1,"Stack overflow. The calls never stop, so the call stack runs out of memory."]]],
+  [1,[["Explain why each recursive call needs its own stack frame.",3,"Every call has its own parameters and local variables and must remember where to return. The frame keeps these until that call finishes, so calls don't overwrite each other."]]],
+  [2,[["Trace sum(4), where sum(n) = (n == 0) ? 0 : n + sum(n − 1). Show every call and every return.",4,"sum(4) = 4 + sum(3)\nsum(3) = 3 + sum(2)\nsum(2) = 2 + sum(1)\nsum(1) = 1 + sum(0)\nsum(0) = 0\nReturns: 1, 3, 6, 10. Answer: 10"],["Write a recursive C function that counts the digits of a positive integer.",4,"int digits(int n){\n  if(n < 10) return 1;\n  return 1 + digits(n / 10);\n}"]]],
+  [3,[["fib(n) = fib(n − 1) + fib(n − 2), with fib(0) = 0 and fib(1) = 1. How many calls does fib(5) make? What does this tell you about its running time?",5,"15 calls. The same subproblems are solved again and again, so the number of calls grows roughly like 2ⁿ. Memoisation brings it down to O(n)."]]],
+  [4,[["A friend says: \"Recursion is always slower than a loop.\" Do you agree? Give one case for and one against.",5,"For: each call has overhead (a new stack frame), so a simple loop like summing an array is faster.\nAgainst: for tree traversal or merge sort, recursion has the same time complexity and is much clearer; tail calls can also be optimised by the compiler."]]],
+  [5,[["Design a recursive function that prints every binary string of length n. Write the base case and the recursive step.",6,"void gen(char s[], int i, int n){\n  if(i == n){ s[n] = '\\0'; printf(\"%s\\n\", s); return; }\n  s[i] = '0'; gen(s, i + 1, n);\n  s[i] = '1'; gen(s, i + 1, n);\n}\nBase case: i == n. Step: fix position i to 0, then 1, and recurse."]]]
+ ]},
+ {id:"w-kmap",type:"worksheet",sub:"dl",unit:"Unit 2",topic:"Boolean algebra",title:"Boolean algebra and K-maps",mins:35,secs:[
+  [0,[["State both of De Morgan's theorems.",2,"(A · B)' = A' + B'\n(A + B)' = A' · B'"]]],
+  [1,[["Why are K-map cells ordered 00, 01, 11, 10 instead of 00, 01, 10, 11?",3,"That is Gray code: neighbouring cells differ in exactly one variable, so grouping neighbours cancels that variable."]]],
+  [2,[["Simplify F = A'B + AB + AB'.",4,"A'B + AB = B, so F = B + AB' = A + B."],["Minimise F(A, B, C) = Σm(0, 2, 4, 5, 6) with a K-map.",5,"Group the four cells where C = 0 (m0, m2, m4, m6) → C'.\nGroup m4 and m5 → AB'.\nF = C' + AB'"]]],
+  [3,[["X = AB + AC and Y = A(B + C). Are they equivalent? Which needs fewer gates?",4,"Equivalent by the distributive law. Y needs 2 gates (one OR, one AND); X needs 3 (two AND, one OR)."]]],
+  [4,[["A design uses 4 NAND gates to build F = A + B. Can you do it with fewer?",4,"Yes, with 3: A + B = (A' · B')' = NAND(NAND(A, A), NAND(B, B))."]]],
+  [5,[["Design a circuit that outputs 1 when a 3-bit input ABC is a prime number (2, 3, 5 or 7). Give the minimised expression.",6,"Primes are m2, m3, m5, m7.\nGroup m2, m3 → A'B. Group m5, m7 → AC.\nF = A'B + AC"]]]
+ ]},
+ {id:"w-logic",type:"worksheet",sub:"dm",unit:"Unit 1",topic:"Propositional logic",title:"Propositional logic",mins:25,secs:[
+  [0,[["Write the truth table of p → q.",2,"p q | p→q\nT T | T\nT F | F\nF T | T\nF F | T"]]],
+  [1,[["Explain why p → q has the same truth table as ¬p ∨ q.",3,"Both are false in exactly one case: p true and q false."]]],
+  [2,[["Show that (p ∧ q) → p is a tautology.",4,"If p ∧ q is true, then p is true, so the implication is true. If p ∧ q is false, an implication with a false premise is true. True in every row."]]],
+  [3,[["\"If it rains, the match is cancelled.\" Write the converse and the contrapositive. Which one means the same as the original?",4,"Converse: If the match is cancelled, it rained.\nContrapositive: If the match is not cancelled, it did not rain.\nThe contrapositive is equivalent; the converse is not."]]],
+  [5,[["Write a compound proposition that is true exactly when an odd number of p, q, r are true.",5,"p ⊕ q ⊕ r"]]]
+ ]},
+ {id:"m-ll",type:"mindmap",sub:"ds",unit:"Unit 2",topic:"Linked lists",title:"Linked lists",map:{c:"Linked lists",b:[
+  ["Types",["Singly","Doubly","Circular","Circular doubly"]],
+  ["A node holds",["data","next pointer","prev (doubly only)","head and tail"]],
+  ["Operations",["Insert at head: O(1)","Insert at tail: O(n)","Delete a node: O(n)","Search: O(n)","Reverse in place"]],
+  ["vs. arrays",["No random access","Grows at run time","No shifting on insert","Extra memory per node"]],
+  ["Used for",["Stacks and queues","Polynomial addition","Undo history","Graph adjacency lists"]],
+  ["Common bugs",["Losing the head","NULL dereference","Memory leaks","Off by one at tail"]]]}},
+ {id:"m-srf",type:"mindmap",sub:"dm",unit:"Unit 2",topic:"Sets, relations, functions",title:"Sets, relations, functions and logic",map:{c:"Sets · Relations · Logic",b:[
+  ["Sets",["Finite and infinite","Union, intersection","Inclusion–exclusion","Power set: 2ⁿ"]],
+  ["Relations",["Reflexive","Symmetric","Transitive","Equivalence relation"]],
+  ["Functions",["One-to-one","Onto","Bijection","Inverse exists iff bijective"]],
+  ["Logic",["Truth tables","Tautology, contradiction","Conditional, biconditional","Valid argument, fallacy"]],
+  ["Proof",["Mathematical induction","Counting principle"]],
+  ["Orders",["Partial order","Hasse diagram","Lattice"]]]}},
+ {id:"n-sq",type:"notes",sub:"ds",unit:"Unit 2",topic:"Stacks and queues",title:"Stacks and queues",mins:8,body:[
+  ["h","Stack: last in, first out"],["p","A stack only lets you add or remove at one end, the top. Think of a pile of plates in the canteen."],
+  ["ul",["push(x) puts x on top in O(1)","pop() removes the top in O(1)","peek() reads the top without removing it","Overflow means pushing onto a full stack; underflow means popping an empty one"]],
+  ["code","#define MAX 100\nint st[MAX], top = -1;\n\nvoid push(int x){ if(top == MAX - 1) return; st[++top] = x; }\nint  pop(void)  { if(top == -1) return -1;    return st[top--]; }"],
+  ["h","Queue: first in, first out"],["p","A queue adds at the rear and removes from the front, like the line at the fee counter."],
+  ["ul",["enqueue at the rear and dequeue at the front, both O(1)","A plain array queue wastes the slots at the front after dequeues","A circular queue reuses them: rear = (rear + 1) % MAX"]],
+  ["tip","Exam favourite: convert the infix expression A + B * C to postfix using a stack. Answer: A B C * +"],
+  ["h","Where they show up"],["ul",["Stack: function calls, undo, bracket matching, depth-first search","Queue: printer jobs, CPU scheduling, breadth-first search"]]]},
+ {id:"n-oop",type:"notes",sub:"pc",unit:"Unit 2",topic:"Inheritance and polymorphism",title:"Inheritance and polymorphism",mins:8,body:[
+  ["h","Inheritance"],["p","A derived class reuses the members of a base class and adds its own. It models an is-a relationship: a Student is a Person."],
+  ["ul",["Single: one base class, one derived class","Multilevel: A → B → C","Multiple: C inherits from both A and B","Hierarchical: one base class, many derived classes"]],
+  ["code","class Person {\nprotected:\n  string name;\npublic:\n  virtual void show() { cout << name; }\n};\n\nclass Student : public Person {\n  int sem;\npublic:\n  void show() override { cout << name << \", sem \" << sem; }\n};"],
+  ["h","Overloading vs. overriding"],["ul",["Overloading: same name, different parameters. Chosen at compile time","Overriding: a derived class redefines a virtual function. Chosen at run time","Operator overloading lets your objects use +, == and << naturally"]],
+  ["h","Virtual functions and abstract classes"],["p","Calling show() through a Person* runs Student::show() only if show() is virtual. A class with a pure virtual function, such as virtual double area() = 0;, is abstract and can't be instantiated."],
+  ["tip","Exam favourite: the diamond problem in multiple inheritance. Fix it with virtual inheritance: class B : virtual public A."]]},
+ {id:"w-hash",type:"worksheet",sub:"ds",unit:"Unit 4",topic:"Hashing",title:"Hashing and collision resolution",mins:35,secs:[
+  [0,[["What is a hash table, and what does a hash function do?",2,"A table that stores each key at a position computed from the key itself. The hash function maps a key to an index, for example h(k) = k mod m."],["Name the four hashing functions in your syllabus.",2,"Division, multiplication, mid-square and folding."]]],
+  [1,[["What is a collision? Why can't even a good hash function avoid collisions completely?",3,"Two different keys mapping to the same index. There are far more possible keys than slots, so by the pigeonhole principle some keys must share a slot."]]],
+  [2,[["Insert 23, 43, 13, 27 into a table of size 10 using h(k) = k mod 10 and linear probing. Show the final table.",4,"23 → slot 3\n43 → 3 is taken → slot 4\n13 → 3 and 4 taken → slot 5\n27 → slot 7\nFinal: [3] 23, [4] 43, [5] 13, [7] 27"],["Hash the key 56 with the mid-square method to a 2-digit address.",3,"56² = 3136. The middle two digits are 13, so the address is 13."]]],
+  [3,[["Compare linear and quadratic probing. What is primary clustering, and which method reduces it?",5,"Linear probing tries i+1, i+2, … so filled slots join into long runs (primary clustering) and searches slow down.\nQuadratic probing tries i+1², i+2², … which spreads keys out and reduces primary clustering. Keys with the same home slot still follow the same path (secondary clustering)."]]],
+  [4,[["A student-records system has frequent inserts and deletes. Would you choose separate chaining or open addressing? Justify.",5,"Separate chaining. Deleting is just removing a node from a list, the table never fills up, and performance degrades gradually as the load factor rises. Open addressing needs special 'deleted' markers and slows sharply near a full table."]]],
+  [5,[["Design double hashing for a table of size 11. Give h1, h2 and the first four probes for key 25.",6,"h1(k) = k mod 11, h2(k) = 7 − (k mod 7)\nFor 25: h1 = 3, h2 = 7 − 4 = 3\nProbes: 3, 6, 9, 1 (12 mod 11)"]]]
+ ]},
+ {id:"n-ff",type:"notes",sub:"dl",unit:"Unit 3",topic:"Flip-flops",title:"Latches and flip-flops",mins:7,body:[
+  ["h","Latch vs. flip-flop"],["p","A latch changes whenever its enable input is active. A flip-flop changes only on a clock edge, which keeps every part of a sequential circuit in step."],
+  ["h","The four flip-flops"],["ul",["SR: S = 1 sets Q, R = 1 resets it. S = R = 1 is not allowed","D: Q takes the value of D on the clock edge. Used in registers","JK: like SR, but J = K = 1 toggles Q instead of being invalid","T: T = 1 toggles Q, T = 0 holds it. Used in counters"]],
+  ["code","Characteristic equations\nD  : Q(next) = D\nT  : Q(next) = T ⊕ Q\nJK : Q(next) = JQ' + K'Q\nSR : Q(next) = S + R'Q    (with SR = 0)"],
+  ["h","Excitation table for JK"],["p","When you design a counter you know the present and next state, and need the inputs that cause it. For a JK flip-flop: 0→0 needs J = 0, K = X. 0→1 needs J = 1, K = X. 1→0 needs J = X, K = 1. 1→1 needs J = X, K = 0."],
+  ["tip","A 3-bit ripple counter uses three T flip-flops with T = 1, each clocked by the previous flip-flop's output. It counts 0 to 7 and then wraps to 0."]]},
+ {id:"w-rr",type:"worksheet",sub:"dm",unit:"Unit 2",topic:"Recurrence relations",title:"Recurrence relations",mins:30,secs:[
+  [0,[["What is a recurrence relation? Give one example with an initial condition.",2,"An equation that defines each term using earlier terms, for example aₙ = aₙ₋₁ + 2 with a₀ = 1."]]],
+  [1,[["Explain what \"linear homogeneous with constant coefficients\" means for aₙ = 5aₙ₋₁ − 6aₙ₋₂.",3,"Linear: each earlier term appears only to the first power. Homogeneous: there is no extra term that doesn't involve a. Constant coefficients: 5 and −6 don't depend on n."]]],
+  [2,[["Solve aₙ = 5aₙ₋₁ − 6aₙ₋₂ with a₀ = 1 and a₁ = 4.",5,"Characteristic equation: r² − 5r + 6 = 0, so r = 2, 3.\naₙ = α·2ⁿ + β·3ⁿ\na₀: α + β = 1;  a₁: 2α + 3β = 4  →  β = 2, α = −1\naₙ = 2·3ⁿ − 2ⁿ   (check: a₂ = 14)"],["Find a₅ if aₙ = aₙ₋₁ + aₙ₋₂ with a₀ = 2 and a₁ = 1.",3,"2, 1, 3, 4, 7, 11 → a₅ = 11"]]],
+  [3,[["The characteristic equation of aₙ = 4aₙ₋₁ − 4aₙ₋₂ has a repeated root. Find the general solution and explain why it has that form.",4,"r² − 4r + 4 = 0 gives r = 2 twice. With a repeated root, 2ⁿ alone gives only one independent solution, so the second is n·2ⁿ.\naₙ = (α + βn)·2ⁿ"]]],
+  [5,[["Write a recurrence for the number of n-bit binary strings with no two consecutive 1s. Give initial values and find a₄.",6,"A valid string ends in 0 (any valid string of length n−1, then 0) or in 01 (any valid string of length n−2, then 01).\naₙ = aₙ₋₁ + aₙ₋₂, a₁ = 2, a₂ = 3\na₃ = 5, a₄ = 8"]]]
+ ]},
+ {id:"w-sql",type:"worksheet",sub:"ph",unit:"Unit 2",topic:"SQL",title:"SQL queries",mins:40,intro:"Use these tables. Student(roll, name, branch, sem) and Enrol(roll, course_code, marks).",secs:[
+  [0,[["Expand DDL, DML and DCL, and give one command for each.",3,"Data Definition Language: CREATE\nData Manipulation Language: INSERT, SELECT\nData Control Language: GRANT"]]],
+  [1,[["What is the difference between a primary key and a UNIQUE constraint?",2,"Both stop duplicate values. A table has only one primary key and it can't be NULL. It can have many UNIQUE columns, and those may hold NULL."]]],
+  [2,[["List the names of semester 3 students in branch 'CE', sorted by name.",3,"SELECT name FROM Student\nWHERE sem = 3 AND branch = 'CE'\nORDER BY name;"],["Show the average marks for each course, but only courses averaging above 60.",4,"SELECT course_code, AVG(marks)\nFROM Enrol\nGROUP BY course_code\nHAVING AVG(marks) > 60;"]]],
+  [3,[["This query should list students with no enrolments but returns no rows at all. Why?\nSELECT name FROM Student WHERE roll NOT IN (SELECT roll FROM Enrol);",5,"If any roll in Enrol is NULL, every NOT IN comparison becomes UNKNOWN, so no row qualifies. Use NOT EXISTS with a correlated subquery:\nSELECT name FROM Student s\nWHERE NOT EXISTS (SELECT 1 FROM Enrol e WHERE e.roll = s.roll);"]]],
+  [4,[["A view is used so students can't see each other's marks. Is a view alone enough? Explain.",4,"No. A view only limits which rows and columns are shown. You also need to GRANT access on the view and REVOKE access on the base table, or users can still query Enrol directly."]]],
+  [5,[["Using a join, show each student's name with their highest mark and the course it came from.",6,"SELECT s.name, e.course_code, e.marks\nFROM Student s JOIN Enrol e ON s.roll = e.roll\nWHERE e.marks = (SELECT MAX(e2.marks) FROM Enrol e2\n                 WHERE e2.roll = s.roll);"]]]
+ ]},
+ {id:"m-norm",type:"mindmap",sub:"ph",unit:"Unit 3",topic:"Normalization",title:"Normalization",map:{c:"Normalization",b:[
+  ["Why normalize",["Removes redundancy","Update anomaly","Insert anomaly","Delete anomaly"]],
+  ["Dependencies",["X → Y","Armstrong's axioms","Attribute closure","Minimal cover"]],
+  ["1NF",["Atomic values only","No repeating groups"]],
+  ["2NF",["1NF, plus","No partial dependency","Matters for composite keys"]],
+  ["3NF",["2NF, plus","No transitive dependency"]],
+  ["BCNF",["Every determinant is a key","Stricter than 3NF"]]]}}
+];
+LIB.sort((a,b)=>SUBJ.findIndex(x=>x.id===a.sub)-SUBJ.findIndex(x=>x.id===b.sub)||a.unit.localeCompare(b.unit));
+const TYPE={worksheet:["Worksheet","--b3"],mindmap:["Mind map","--b6"],notes:["Notes","--b2"]};
+const levelsOf=it=>it.type==="worksheet"?it.secs.map(s=>s[0]):it.type==="mindmap"?[0,1,3]:[0,1,2];
+const metaOf=it=>it.type==="worksheet"?(()=>{const q=it.secs.reduce((a,s)=>a+s[1].length,0),m=it.secs.reduce((a,s)=>a+s[1].reduce((b,x)=>b+x[1],0),0);return `${q} questions · ${m} marks · ${it.mins} min`})():it.type==="mindmap"?`${it.map.b.length} branches · ${it.map.b.reduce((a,b)=>a+b[1].length,0)} ideas`:`${it.mins} min read`;
+function thumb(it){const c=css(TYPE[it.type][1]),l=css("--line-2"),f=css("--muted");
+  if(it.type==="mindmap"){let g=`<circle cx="160" cy="62" r="13" fill="${c}"/>`;it.map.b.forEach((b,i)=>{const a=-Math.PI/2+i*2*Math.PI/it.map.b.length,x=160+Math.cos(a)*62,y=62+Math.sin(a)*38;g=`<line x1="160" y1="62" x2="${x}" y2="${y}" stroke="${css(BLOOM[i%6][1])}" stroke-opacity=".7"/>`+g+`<circle cx="${x}" cy="${y}" r="6" fill="${css(BLOOM[i%6][1])}"/>`});return `<svg viewBox="0 0 320 118" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${g}</svg>`}
+  if(it.type==="worksheet"){let g="",y=38;it.secs.forEach(s=>{g+=`<rect x="70" y="${y}" width="6" height="6" rx="1" fill="${css(BLOOM[s[0]][1])}"/><rect x="84" y="${y}" width="${90+((s[0]*37)%80)}" height="5" rx="2" fill="${f}" fill-opacity=".5"/><line x1="84" y1="${y+11}" x2="250" y2="${y+11}" stroke="${l}" stroke-dasharray="2 3"/>`;y+=13});return `<svg viewBox="0 0 320 118" aria-hidden="true"><rect x="60" y="18" width="200" height="110" rx="6" fill="${css('--panel')}" stroke="${l}"/><rect x="70" y="26" width="70" height="5" rx="2" fill="${c}"/>${g}</svg>`}
+  return `<svg viewBox="0 0 320 118" aria-hidden="true"><rect x="60" y="18" width="200" height="110" rx="6" fill="${css('--panel')}" stroke="${l}"/><rect x="72" y="28" width="90" height="7" rx="2" fill="${c}"/>${[44,53,62].map(y=>`<rect x="72" y="${y}" width="${170-(y%3)*20}" height="4" rx="2" fill="${f}" fill-opacity=".45"/>`).join("")}<rect x="72" y="74" width="176" height="26" rx="4" fill="${css('--ink')}" stroke="${l}"/><rect x="80" y="82" width="80" height="4" rx="2" fill="${css('--b2')}" fill-opacity=".7"/><rect x="80" y="90" width="110" height="4" rx="2" fill="${css('--b2')}" fill-opacity=".45"/></svg>`}
+let libF=store.get("libF","all"),libS="all";
+$("#libSub").innerHTML=`<option value="all">All subjects</option>`+[...new Set(LIB.map(l=>l.sub))].map(id=>`<option value="${id}">${subjName(id)}</option>`).join("");
+function renderLibrary(){
+  $("#libFilters").innerHTML=[["all","All"],["worksheet","Worksheets"],["mindmap","Mind maps"],["notes","Notes"]].map(([k,l])=>`<button aria-pressed="${k===libF}" data-lf="${k}">${l}</button>`).join("");
+  const q=$("#libQ").value.trim().toLowerCase();
+  const items=LIB.filter(it=>(libF==="all"||it.type===libF)&&(libS==="all"||it.sub===libS)&&(!q||(it.title+" "+it.topic+" "+subjName(it.sub)).toLowerCase().includes(q)));
+  $("#libGrid").innerHTML=items.length?items.map(it=>{const lv=levelsOf(it);return `<button class="lib-card" data-lib="${it.id}"><div class="lib-thumb">${thumb(it)}<span class="kind bloom" style="--c:var(${TYPE[it.type][1]})">${TYPE[it.type][0]}</span></div><div class="lib-body"><span class="label">${(SUBJ.find(x=>x.id===it.sub)||{}).code} · ${it.unit}</span><h3>${esc(it.title)}</h3><span class="meta">${esc(subjName(it.sub))}<br>${metaOf(it)}</span><div class="levels" aria-label="Bloom levels covered">${BLOOM.map((b,i)=>`<i style="${lv.includes(i)?`background:var(${b[1]})`:''}" title="${b[0]}"></i>`).join("")}</div></div></button>`}).join(""):`<p style="color:var(--muted)">Nothing matches "${esc(q)}". Try a topic name like stacks or K-map.</p>`;
+}
+$("#libFilters").addEventListener("click",e=>{const b=e.target.closest("[data-lf]");if(b){libF=b.dataset.lf;store.set("libF",libF);renderLibrary()}});
+$("#libSub").onchange=e=>{libS=e.target.value;renderLibrary()};
+$("#libQ").addEventListener("input",renderLibrary);
+
+// reader
+let rdItem=null,rdShow=false,rdReturn=null;
+function mindmapSVG(m){
+  const B=m.b,R=B.filter((_,i)=>i%2===0),L=B.filter((_,i)=>i%2===1),RH=24,GAP=26;
+  const side=list=>{let y=0;return list.map(b=>{const h=b[1].length*RH;const o={b,top:y,h};y+=h+GAP;return o})};
+  const r=side(R),l=side(L),hR=r.length?r[r.length-1].top+r[r.length-1].h:0,hL=l.length?l[l.length-1].top+l[l.length-1].h:0,H=Math.max(hR,hL)+60,cy=H/2;
+  let g="";const ci=b=>css(BLOOM[B.indexOf(b)%6][1]);
+  const draw=(list,hS,dir)=>{const off=(H-hS)/2;list.forEach(o=>{const c=ci(o.b),by=off+o.top+o.h/2,bx=dir>0?585:225,bw=150;
+    const sx=dir>0?555:405,ex=dir>0?bx:bx+bw;g+=`<path d="M${sx} ${cy} C ${(sx+ex)/2} ${cy}, ${(sx+ex)/2} ${by}, ${ex} ${by}" fill="none" stroke="${c}" stroke-width="2" stroke-opacity=".8"/>`;
+    g+=`<rect x="${bx}" y="${by-15}" width="${bw}" height="30" rx="8" fill="${css('--ink')}" stroke="${c}" stroke-width="1.5"/><text x="${bx+bw/2}" y="${by+4.5}" text-anchor="middle" fill="${c}" font-family="Bricolage Grotesque, sans-serif" font-weight="600" font-size="13">${esc(o.b[0])}</text>`;
+    o.b[1].forEach((k,i)=>{const ky=off+o.top+i*RH+RH/2,kx=dir>0?770:190,from=dir>0?bx+bw:bx;g+=`<path d="M${from} ${by} C ${(from+kx)/2} ${by}, ${(from+kx)/2} ${ky}, ${kx-dir*6} ${ky}" fill="none" stroke="${c}" stroke-opacity=".4"/><circle cx="${kx-dir*6}" cy="${ky}" r="2.5" fill="${c}"/><text x="${kx}" y="${ky+4}" text-anchor="${dir>0?'start':'end'}" fill="${css('--fg')}" font-family="Instrument Sans, sans-serif" font-size="12.5">${esc(k)}</text>`})})};
+  draw(r,hR,1);draw(l,hL,-1);
+  const words=m.c.split(" · ");g+=`<rect x="405" y="${cy-(18+words.length*8)}" width="150" height="${36+words.length*16}" rx="12" fill="${css('--fg')}"/>`+words.map((w,i)=>`<text x="480" y="${cy-(words.length-1)*8+i*16+5}" text-anchor="middle" fill="${css('--ink')}" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="15">${esc(w)}</text>`).join("");
+  return `<svg viewBox="0 0 960 ${H}" role="img" aria-label="Mind map of ${esc(m.c)}">${g}</svg>`;
+}
+function readerBody(it){
+  if(it.type==="mindmap")return `<div class="mm-wrap">${mindmapSVG(it.map)}</div><p style="text-align:center;color:var(--muted);font-size:.85rem;margin-top:16px">Branch colours follow the Bloom spectrum used across CollegeOS.</p>`;
+  if(it.type==="notes")return `<article class="notes"><span class="label">${esc(subjName(it.sub))} · ${it.unit} · ${it.mins} min read</span>${it.body.map(([t,v])=>t==="h"?`<h2>${esc(v)}</h2>`:t==="p"?`<p>${esc(v)}</p>`:t==="ul"?`<ul>${v.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:t==="code"?`<div class="code" style="color:var(--fg)">${esc(v)}</div>`:`<div class="tip"><b>Exam tip.</b> ${esc(v)}</div>`).join("")}</article>`;
+  const code=(SUBJ.find(s=>s.id===it.sub)||{}).code||"";let n=0,total=0;it.secs.forEach(s=>s[1].forEach(q=>total+=q[1]));
+  const stu=profile&&profile.role==="student"?profile:null;
+  return `<div class="paper"><div class="paper-top"><div style="display:flex;flex-direction:column;gap:4px"><span class="label">${esc(code)} · ${esc(subjName(it.sub))} · ${it.unit}</span><h2>Worksheet: ${esc(it.title)}</h2></div><div style="text-align:right"><span class="label">Total</span><div class="mono" style="font-size:1.3rem">${total} marks</div><span class="label">${it.mins} min</span></div></div>
+   <div class="paper-fields"><div><span class="label">Name</span><b>${stu?esc(stu.name):"&nbsp;"}</b></div><div><span class="label">Roll / email ID</span><b>${stu?esc(stu.email.split("@")[0]):"&nbsp;"}</b></div><div><span class="label">Branch · Sem</span><b>${stu?esc(BR_SHORT[stu.branch]||stu.branch)+" · "+stu.sem:"&nbsp;"}</b></div><div><span class="label">Date</span><b>&nbsp;</b></div></div>
+   <p style="color:var(--muted);font-size:.88rem">Questions go from recall to design. Attempt every section; marks are shown on the right.</p>${it.intro?`<div class="note" style="color:var(--fg)">${esc(it.intro)}</div>`:""}
+   ${it.secs.map(([b,qs])=>`<section class="wsec"><div class="wsec-h">${bloomChip(b)}<span class="label">${qs.reduce((a,q)=>a+q[1],0)} marks</span></div>${qs.map(([q,m,a])=>{n++;return `<div class="wq"><span class="no">Q${n}</span><p>${esc(q)}</p><span class="mk">[${m}]</span>${rdShow?`<div class="ans">${esc(a)}</div>`:`<div class="lines" style="--n:${Math.min(6,1+m)}"></div>`}</div>`}).join("")}</section>`).join("")}</div>`;
+}
+function openReader(id){const it=LIB.find(l=>l.id===id);if(!it)return;rdItem=it;rdShow=false;rdReturn=document.activeElement;
+  $("#rdMeta").textContent=`${TYPE[it.type][0]} · ${subjName(it.sub)} · ${it.unit}`;$("#rdTitle").textContent=it.title;$("#rdAns").hidden=it.type!=="worksheet";$("#rdAns").textContent="Show answers";
+  $("#rdBody").innerHTML=readerBody(it);$("#rdBody").scrollTop=0;$("#reader").hidden=false;document.body.style.overflow="hidden";$("#rdClose").focus()}
+function closeReader(){$("#reader").hidden=true;document.body.style.overflow="";if(rdReturn&&rdReturn.focus)rdReturn.focus()}
+$("#rdClose").onclick=closeReader;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#reader").hidden)closeReader()});
+$("#rdAns").onclick=()=>{rdShow=!rdShow;$("#rdAns").textContent=rdShow?"Hide answers":"Show answers";$("#rdBody").innerHTML=readerBody(rdItem)};
+document.addEventListener("click",e=>{const b=e.target.closest("[data-lib]");if(b){if(view!=="library"&&role==="student")go("library");openReader(b.dataset.lib)}});
+
+/* ---------- sign in ---------- */
+const BRANCHES=["Computer Science & Engineering","Information & Communication Technology","Electronics & Communication","Electrical Engineering","Mechanical Engineering","Civil Engineering","Chemical Engineering","Petroleum Engineering"];
+const BR_SHORT={"Computer Science & Engineering":"CSE","Information & Communication Technology":"ICT","Electronics & Communication":"ECE","Electrical Engineering":"EE","Mechanical Engineering":"ME","Civil Engineering":"Civil","Chemical Engineering":"Chemical","Petroleum Engineering":"Petroleum"};
+const DEPTS=["Computer Science & Engineering","Information & Communication Technology","Mathematics","Physics","Electronics & Communication","Mechanical Engineering","Humanities & Liberal Arts"];
+$("#gBranch").innerHTML=`<option value="">Choose branch</option>`+BRANCHES.map(b=>`<option>${b}</option>`).join("");
+$("#gSem").innerHTML=`<option value="">—</option>`+[1,2,3,4,5,6,7,8].map(n=>`<option value="${n}">${n}</option>`).join("");
+$("#gDept").innerHTML=`<option value="">Choose department</option>`+DEPTS.map(b=>`<option>${b}</option>`).join("");
+const MAIL=/^[a-z0-9._%+-]+@([a-z0-9-]+\.)*(pdpu|pdeu)\.ac\.in$/i;
+let gRole="student",gCode="";
+function gStep(n){["#gEmail","#gOtp","#gProf"].forEach((id,i)=>$(id).hidden=i!==n);$$("#gSteps i").forEach((el,i)=>el.classList.toggle("on",i<=n))}
+$("#gRoleSeg").addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(!b)return;gRole=b.dataset.r;$$("#gRoleSeg button").forEach(x=>x.setAttribute("aria-pressed",x===b));$("#gMail").placeholder=gRole==="student"?"tanish.pce24@sot.pdpu.ac.in":"firstname.lastname@sot.pdpu.ac.in"});
+$("#gEmail").onsubmit=e=>{e.preventDefault();const v=$("#gMail").value.trim();
+  if(!MAIL.test(v)){$("#gMailErr").textContent=v?"That isn't a college email. Use the address ending in pdpu.ac.in or pdeu.ac.in.":"Enter your college email to continue.";$("#gMail").focus();return}
+  $("#gMailErr").textContent="";gCode=String(Math.floor(100000+Math.random()*900000));$("#gDemo").textContent=gCode;$("#gMailShow").textContent=v;$("#gCode").value="";$("#gCodeErr").textContent="";gStep(1);$("#gCode").focus()};
+$("#gCode").addEventListener("input",e=>{e.target.value=e.target.value.replace(/\D/g,"").slice(0,6);if(e.target.value.length===6)$("#gOtp").requestSubmit()});
+$("#gOtp").onsubmit=e=>{e.preventDefault();
+  if($("#gCode").value!==gCode){$("#gCodeErr").textContent="That code doesn't match. Check the code and try again.";return}
+  const words=$("#gMail").value.split("@")[0].split(/[._-]/).filter(w=>/^[a-z]{2,}$/i.test(w)).map(w=>w[0].toUpperCase()+w.slice(1).toLowerCase());
+  if(!$("#gName").value)$("#gName").value=(gRole==="faculty"?"Dr. ":"")+words.join(" ");
+  $("#gStu").hidden=gRole!=="student";$("#gFac").hidden=gRole!=="faculty";
+  $("#gProfLead").textContent=gRole==="student"?"This sets up your subjects, timetable and library.":"This sets up your classes and topic surveys.";
+  $("#gProfErr").textContent="";gStep(2);$("#gName").focus()};
+$("#gBack").onclick=()=>{gStep(0);$("#gMail").focus()};
+$("#gProf").onsubmit=e=>{e.preventDefault();const name=$("#gName").value.trim().replace(/\s+/g," ");
+  const err=name.length<2?"Enter your full name.":gRole==="student"&&!$("#gBranch").value?"Choose your branch.":gRole==="student"&&!$("#gSem").value?"Choose your semester.":gRole==="faculty"&&!$("#gDept").value?"Choose your department.":"";
+  $("#gProfErr").textContent=err;if(err)return;
+  profile={role:gRole,email:$("#gMail").value.trim().toLowerCase(),name,branch:$("#gBranch").value,sem:+$("#gSem").value||null,dept:$("#gDept").value};
+  store.set("profile",profile);store.set("view",gRole==="faculty"?"faculty":"home");enterApp();toast("Welcome to CollegeOS, "+name.split(" ")[0])};
+function enterApp(){
+  $("#gate").hidden=true;$("#shell").hidden=false;
+  $("#who").innerHTML=profile.role==="student"?`<b>${esc(profile.name)}</b><br>${esc(BR_SHORT[profile.branch]||profile.branch)} · Semester ${profile.sem}<br>${esc(profile.email)}`:`<b>${esc(profile.name)}</b><br>${esc(profile.dept)}<br>${esc(profile.email)}`;
+  const h=new Date().getHours();$("#today").textContent=`${h<12?"Good morning":h<17?"Good afternoon":"Good evening"}, ${firstName()} · ${new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}`;
+  const v=store.get("view",null)||(profile.role==="faculty"?"faculty":"home");setRole(store.get("role",null)||profile.role);go(v);
+}
+function signOut(){store.set("profile",null);store.set("role",null);store.set("view",null);profile=null;closeReader();
+  $("#shell").hidden=true;$("#gate").hidden=false;["#gMail","#gCode","#gName"].forEach(id=>$(id).value="");$("#gBranch").value="";$("#gSem").value="";$("#gDept").value="";gStep(0);window.scrollTo({top:0})}
+$("#signOut").onclick=signOut;$("#signOut2").onclick=signOut;
+
+/* ---------- boot ---------- */
+if(profile)enterApp();else{$("#gate").hidden=false;gStep(0)}
+
 })();
 </script>
 </body></html>
