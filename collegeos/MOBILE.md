@@ -6,7 +6,30 @@ icon with a full-screen app. Option 2 builds real Play Store / App Store apps.
 Both need CollegeOS online at an **https** address first, because phones can't reach your laptop's
 `localhost`, and the sign-in code is sent by the server.
 
-## Step 0: put CollegeOS online (once)
+## Easiest: GitHub Pages (free, no new account)
+The repo already contains a ready-to-host copy of CollegeOS in `docs/`.
+1. Open https://github.com/Tpatel-0945/My-project-ideas-/settings/pages
+2. Under **Build and deployment → Source**, choose **Deploy from a branch**.
+3. Branch: **claude/magical-heisenberg-jqvrte**, folder: **/docs** → **Save**.
+4. Wait 1–2 minutes. Your link is **https://tpatel-0945.github.io/My-project-ideas-/**
+5. Open it on your phone and install it (steps below).
+
+GitHub Pages can't run the email server, so sign-in codes appear on screen. For codes in Gmail,
+use Render (below) or run the server on your laptop with a Cloudflare link (below).
+After any change, run `node collegeos/build.mjs`, then commit and push; Pages updates in a minute.
+
+## Other ways to get a link
+- **Your laptop + Cloudflare (real Gmail codes, free, no account):** start the server
+  (`npm start` in `collegeos/server`, with Gmail set up in `.env`), install `cloudflared`
+  from https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/ and run
+  `cloudflared tunnel --url http://localhost:8787`. It prints an `https://….trycloudflare.com` link
+  you can open on your phone. The link works while your laptop and that command are running,
+  and changes each time.
+- **Koyeb** (https://www.koyeb.com, free web service): create a Web Service from the GitHub repo, set
+  the work directory to `collegeos/server`, run command `npm start`, and add `DEMO_SHOW_CODE=1`
+  (or Brevo settings for real emails).
+
+## Step 0: put CollegeOS online with Render (once)
 1. Push this repo to GitHub (it already is: `tpatel-0945/my-project-ideas-`).
 2. Create a free account at https://www.brevo.com. Under **Senders**, verify the email you'll send from;
    under **SMTP & API → API keys**, create a key. (Render's free plan blocks Gmail's ports, so the

@@ -1919,7 +1919,7 @@ async function detectApi(){
 function showMode(){
   let h;
   if(API==="checking")h=`<span class="dot"></span>Connecting to the CollegeOS server…`;
-  else if(API==="preview")h=`<span class="dot warn"></span><span>This preview link can't send emails, so your code will appear on screen. To get it in Gmail, open CollegeOS from its server (see the README).</span>`;
+  else if(API==="preview")h=`<span class="dot warn"></span><span>This version of CollegeOS has no email server, so your code will appear on screen.</span>`;
   else if(MAIL&&MAIL.provider==="dev")h=`<span class="dot warn"></span><span>Email isn't set up on this server yet (server/.env), so your code will appear on screen.</span>`;
   else if(MAIL&&!MAIL.ready&&MAIL.error)h=`<span class="dot bad"></span><span>Email isn't working on the server right now: ${esc(MAIL.error)}</span>`;
   else h=`<span class="dot ok"></span>Your code will be emailed to your college inbox in Gmail.`;
@@ -1954,7 +1954,7 @@ $("#gEmail").onsubmit=async e=>{e.preventDefault();
   if(API==="checking"){API=await detectApi();showMode()}
   const btn=$("#gEmail button[type=submit]");btn.disabled=true;btn.textContent="Sending…";gEmail=v;
   try{const t=await sendCode();$("#gMailShow").textContent=v;$("#gCode").value="";$("#gCodeErr").textContent="";$("#gDemoBox").hidden=lastDelivery==="email";
-    $("#gDemoWhy").textContent=lastDelivery==="dev"?"Email isn't set up on this server yet, so no email was sent.":"This preview link can't send emails, so no email was sent.";
+    $("#gDemoWhy").textContent=lastDelivery==="dev"?"Email isn't set up on this server yet, so no email was sent.":"This version has no email server, so no email was sent.";
     $("#gOtpTitle").textContent=lastDelivery==="email"?"Check your Gmail":"Enter your code";
     $("#gOtpLead").innerHTML=lastDelivery==="email"?`We emailed a 6-digit code to <b>${esc(v)}</b>. Open Gmail on your phone or laptop; it usually arrives within a minute. Check Spam or Promotions if you don't see it.`:`Enter the 6-digit code for <b>${esc(v)}</b>.`;
     gStep(1);startTimers(t.expiresIn,t.resendIn);$("#gCode").focus()}
