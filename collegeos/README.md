@@ -7,8 +7,11 @@ slowly floating knowledge-graph background.
 
 | File | What it is |
 | --- | --- |
-| `index.html` | The whole app in one page |
+| `index.html` | The whole app in one page (built from `app.html` by `node build.mjs`) |
 | `app.html` | Same page without the HTML wrapper (used for the hosted preview) |
+| `pwa/` | App manifest, icons and offline worker, so phones can install CollegeOS |
+| `mobile/` | Capacitor project for real Android and iPad apps (see `MOBILE.md`) |
+| `media/` | `collegeos-demo.mp4` walkthrough video and the script that records it |
 | `server/` | Node.js backend: email one-time-code sign-in, and serves `index.html` |
 
 ## Getting the code in Gmail
@@ -76,6 +79,10 @@ Render's free plan blocks Gmail's mail ports, so online hosting uses **Brevo** (
    semester are read from the email.
 
 Run the backend tests with `npm test`.
+
+## Phones and tablets
+See **[MOBILE.md](MOBILE.md)** for installing CollegeOS on Android and iPad: add it to the home screen
+from Chrome or Safari, or build real apps with Capacitor.
 
 ## What's inside
 - **Students:** Home, Academics, Attendance, Leave planner, Library, Surveys, Opportunities, Insights.

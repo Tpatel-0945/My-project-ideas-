@@ -1,0 +1,12 @@
+{
+  "appId": "in.collegeos.app",
+  "appName": "CollegeOS",
+  "webDir": "www",
+  "backgroundColor": "#000000",
+  "server": {
+    "url": "https://REPLACE-WITH-YOUR-APP.onrender.com",
+    "cleartext": false
+  },
+  "android": { "backgroundColor": "#000000" },
+  "ios": { "backgroundColor": "#000000", "contentInset": "always" }
+}

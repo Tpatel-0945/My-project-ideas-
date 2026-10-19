@@ -83,9 +83,15 @@ app.use("/api", (req, res) => res.status(404).json({ ok: false, error: "Not foun
 // Only the app page is public; never expose the server folder.
 const page = path.join(here, "..", "index.html");
 app.get(["/", "/index.html"], (req, res) => res.sendFile(page));
+// Files that make CollegeOS installable on phones and tablets.
+const pwa = path.join(here, "..", "pwa");
+app.get("/manifest.webmanifest", (req, res) => res.type("application/manifest+json").sendFile(path.join(pwa, "manifest.webmanifest")));
+app.get("/sw.js", (req, res) => { res.set("Cache-Control", "no-cache"); res.type("text/javascript").sendFile(path.join(pwa, "sw.js")); });
+app.use("/icons", express.static(path.join(pwa, "icons"), { maxAge: "7d", fallthrough: false }));
 
 app.use((err, req, res, next) => {
   if (err?.type === "entity.parse.failed") return res.status(400).json({ ok: false, error: "Bad request" });
+  if (err?.status === 404 || err?.statusCode === 404) return res.status(404).type("text").send("Not found");
   console.error(err); res.status(500).json({ ok: false, error: "Something went wrong on our side." });
 });
 

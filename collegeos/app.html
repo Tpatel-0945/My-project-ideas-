@@ -434,10 +434,10 @@ textarea:focus{border-color:var(--fg);outline:none}
 :root{--glass:rgba(12,12,16,.56);--glass-hi:rgba(22,22,28,.62);--glass-line:rgba(255,255,255,.075)}
 #bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 #bg canvas{position:absolute;inset:0;width:100%;height:100%}
-.orb{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform}
-.orb.o1{width:44vmax;height:44vmax;left:-14vmax;top:-16vmax;background:var(--b2);opacity:.20;animation:fl1 38s ease-in-out infinite alternate}
-.orb.o2{width:38vmax;height:38vmax;right:-16vmax;top:22vh;background:var(--b6);opacity:.15;animation:fl2 46s ease-in-out infinite alternate}
-.orb.o3{width:32vmax;height:32vmax;left:28vw;bottom:-20vmax;background:var(--b3);opacity:.11;animation:fl3 54s ease-in-out infinite alternate}
+.orb{position:absolute;border-radius:50%;will-change:transform}
+.orb.o1{width:64vmax;height:64vmax;left:-24vmax;top:-26vmax;background:radial-gradient(circle,var(--b2) 0%,color-mix(in srgb,var(--b2) 40%,transparent) 30%,transparent 68%);opacity:.34;animation:fl1 38s ease-in-out infinite alternate}
+.orb.o2{width:56vmax;height:56vmax;right:-25vmax;top:10vh;background:radial-gradient(circle,var(--b6) 0%,color-mix(in srgb,var(--b6) 40%,transparent) 30%,transparent 68%);opacity:.26;animation:fl2 46s ease-in-out infinite alternate}
+.orb.o3{width:50vmax;height:50vmax;left:20vw;bottom:-29vmax;background:radial-gradient(circle,var(--b3) 0%,color-mix(in srgb,var(--b3) 40%,transparent) 30%,transparent 68%);opacity:.2;animation:fl3 54s ease-in-out infinite alternate}
 @keyframes fl1{to{transform:translate(16vw,12vh) scale(1.12)}}
 @keyframes fl2{to{transform:translate(-14vw,-10vh) scale(.9)}}
 @keyframes fl3{to{transform:translate(-12vw,-14vh) scale(1.1)}}
