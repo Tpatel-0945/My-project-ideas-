@@ -474,6 +474,7 @@ h1{font-size:clamp(2.1rem,4.6vw,3.4rem);line-height:1.04}
 .gmode .dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-top:5px}
 .gmode .dot.ok{background:var(--ok);box-shadow:0 0 10px var(--ok)}
 .gmode .dot.warn{background:var(--warn)}
+.gmode .dot.bad{background:var(--bad)}
 .ghint{font-size:.78rem;color:var(--dim)}
 .otp-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
 .roll{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--glass-line);border-radius:12px;background:var(--glass-hi)}
@@ -510,9 +511,41 @@ h1{font-size:clamp(2.1rem,4.6vw,3.4rem);line-height:1.04}
   .unit .no{grid-column:1/-1}
 }
 .gate .brand{display:flex!important}
+/* intro */
+#intro{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:#000;cursor:pointer;transition:opacity .8s ease,filter .8s ease,transform 1s cubic-bezier(.2,.7,.2,1)}
+#intro.out{opacity:0;filter:blur(10px);transform:scale(1.06);pointer-events:none}
+#intro::before{content:"";position:absolute;width:60vmax;height:60vmax;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--b2) 22%,transparent),transparent 60%);filter:blur(40px);animation:iglow 2.6s ease-out both}
+.intro-in{position:relative;display:flex;flex-direction:column;align-items:center;gap:26px;padding-inline:16px}
+.imark{position:relative;width:76px;height:76px;border-radius:22px;background:conic-gradient(from 0deg,var(--b1),var(--b2),var(--b3),var(--b4),var(--b5),var(--b6),var(--b1));animation:imark 1.2s cubic-bezier(.2,.8,.2,1) both}
+.imark::after{content:"";position:absolute;inset:10px;border-radius:14px;background:#000}
+.imark i{position:absolute;inset:27px;border-radius:6px;background:var(--fg);z-index:1;animation:icore .6s .55s cubic-bezier(.2,.9,.3,1.4) both}
+.iword{font-family:var(--display);font-weight:800;font-size:clamp(3rem,10vw,6.2rem);letter-spacing:-.05em;line-height:1;display:flex;color:var(--fg)}
+.iword span{display:inline-block;animation:iletter .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.6s + var(--i) * .065s)}
+.iword .os{background:linear-gradient(90deg,var(--b2),var(--b6));-webkit-background-clip:text;background-clip:text;color:transparent}
+.iline{height:2px;width:0;border-radius:2px;background:var(--spectrum);animation:iline 1.1s 1.15s cubic-bezier(.6,0,.2,1) both}
+.itag{font-family:var(--mono);font-size:.78rem;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);text-align:center;animation:ifade .9s 1.45s both}
+.iskip{position:absolute;bottom:calc(28px + env(safe-area-inset-bottom,0px));font-size:.75rem;color:var(--dim);animation:ifade .6s 1.8s both}
+@keyframes imark{from{opacity:0;transform:scale(.3) rotate(-160deg)}to{opacity:1;transform:none}}
+@keyframes icore{from{opacity:0;transform:scale(0)}to{opacity:1;transform:none}}
+@keyframes iletter{from{opacity:0;transform:translateY(.4em);filter:blur(12px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes iline{to{width:min(280px,60vw)}}
+@keyframes ifade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes iglow{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+.appin{animation:appin 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes appin{from{opacity:0;transform:translateY(16px) scale(.99)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#intro *,#intro::before{animation-duration:.01s!important;animation-delay:0s!important}.iline{width:min(280px,60vw)}.appin{animation:none}}
 @media (prefers-reduced-motion:reduce){.orb{animation:none}}
 </style>
 
+<div id="intro" aria-hidden="true">
+  <div class="intro-in">
+    <span class="imark"><i></i></span>
+    <div class="iword"><span style="--i:0">C</span><span style="--i:1">o</span><span style="--i:2">l</span><span style="--i:3">l</span><span style="--i:4">e</span><span style="--i:5">g</span><span style="--i:6">e</span><span class="os" style="--i:7">O</span><span class="os" style="--i:8">S</span></div>
+    <div class="iline"></div>
+    <p class="itag">Your first year, in one place</p>
+  </div>
+  <span class="iskip">Tap to skip</span>
+</div>
 <div id="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><canvas id="bgc"></canvas></div>
 
 <div class="gate" id="gate" hidden>
@@ -532,11 +565,11 @@ h1{font-size:clamp(2.1rem,4.6vw,3.4rem);line-height:1.04}
     </form>
     <form id="gOtp" class="gstep" novalidate hidden>
       <span class="label">Step 2 of 3</span>
-      <h1 class="gh">Check your Gmail</h1>
+      <h1 class="gh" id="gOtpTitle">Check your Gmail</h1>
       <p class="gp" id="gOtpLead"></p>
       <div class="field"><label for="gCode">6-digit code</label><input id="gCode" class="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
       <div class="otp-row"><span id="gExp"></span><button class="linkbtn" type="button" id="gResend" disabled>Resend code</button></div>
-      <p class="gdemo" id="gDemoBox" hidden>Preview mode, so no email was sent. Your code is <b class="mono" id="gDemo" style="color:var(--fg)"></b></p>
+      <p class="gdemo" id="gDemoBox" hidden><span id="gDemoWhy"></span> Your code is <b class="mono" id="gDemo" style="color:var(--fg)"></b></p>
       <p class="gerr" id="gCodeErr" role="alert"></p>
       <button class="btn primary wide" type="submit">Verify</button>
       <button class="linkbtn" type="button" id="gBack" style="align-self:center">Use a different email</button>
@@ -1741,16 +1774,22 @@ const STUDENT_MAIL=/^(\d{2})([a-z]{3})(\d{3})@sot\.pdpu\.ac\.in$/;
 const FACULTY_MAIL=/^[a-z][a-z0-9._-]{1,40}@(sot\.)?pdpu\.ac\.in$/;
 $("#gBranch").innerHTML=`<option value="">Choose branch</option>`+BRANCHES.map(b=>`<option>${b}</option>`).join("");
 $("#gDept").innerHTML=`<option value="">Choose department</option>`+DEPTS.map(b=>`<option>${b}</option>`).join("");
-let gRole="student",gCode="",gEmail="",gSem=null,gToken=null,API="checking",expT=null,resT=null;
+let gRole="student",gCode="",gEmail="",gSem=null,gToken=null,API="checking",MAIL=null,expT=null,resT=null,lastDelivery=null;
 
 async function detectApi(){
   if(!/^https?:$/.test(location.protocol))return "preview";
   try{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),2500);
     const r=await fetch("/api/health",{signal:ctl.signal,headers:{Accept:"application/json"}});clearTimeout(t);
-    if(!r.ok)return "preview";const j=await r.json();return j&&j.ok?"live":"preview"}catch(e){return "preview"}
+    if(!r.ok)return "preview";const j=await r.json();if(!j||!j.ok)return "preview";MAIL=j.mail||null;return "live"}catch(e){return "preview"}
 }
 function showMode(){
-  $("#gMode").innerHTML=API==="live"?`<span class="dot ok"></span>Codes are emailed to your college inbox in Gmail.`:API==="checking"?`<span class="dot"></span>Connecting…`:`<span class="dot warn"></span>Preview mode: the email server isn't connected here, so your code appears on screen. Run the CollegeOS server to email real codes.`;
+  let h;
+  if(API==="checking")h=`<span class="dot"></span>Connecting to the CollegeOS server…`;
+  else if(API==="preview")h=`<span class="dot warn"></span><span>This preview link can't send emails, so your code will appear on screen. To get it in Gmail, open CollegeOS from its server (see the README).</span>`;
+  else if(MAIL&&MAIL.provider==="dev")h=`<span class="dot warn"></span><span>Email isn't set up on this server yet (server/.env), so your code will appear on screen.</span>`;
+  else if(MAIL&&!MAIL.ready&&MAIL.error)h=`<span class="dot bad"></span><span>Email isn't working on the server right now: ${esc(MAIL.error)}</span>`;
+  else h=`<span class="dot ok"></span>Your code will be emailed to your college inbox in Gmail.`;
+  $("#gMode").innerHTML=h;
 }
 detectApi().then(m=>{API=m;showMode()});showMode();
 
@@ -1763,8 +1802,10 @@ $("#gMail").addEventListener("input",()=>{$("#gMailErr").textContent=""});
 async function postJSON(url,body){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(body)});
   const j=await r.json().catch(()=>({ok:false,error:"The server sent an unexpected reply."}));if(!r.ok||!j.ok){const e=new Error(j.error||"Something went wrong. Try again.");e.data=j;throw e}return j}
 async function sendCode(){
-  if(API==="live"){const j=await postJSON("/api/otp/request",{email:gEmail,role:gRole});return{expiresIn:j.expiresIn||300,resendIn:j.resendIn||30}}
-  gCode=String(Math.floor(100000+Math.random()*900000));$("#gDemo").textContent=gCode;return{expiresIn:300,resendIn:30};
+  if(API==="live"){const j=await postJSON("/api/otp/request",{email:gEmail,role:gRole});
+    lastDelivery=j.devCode?"dev":"email";if(j.devCode)$("#gDemo").textContent=j.devCode;
+    return{expiresIn:j.expiresIn||300,resendIn:j.resendIn||30}}
+  lastDelivery="preview";gCode=String(Math.floor(100000+Math.random()*900000));$("#gDemo").textContent=gCode;return{expiresIn:300,resendIn:30};
 }
 function startTimers(exp,res){
   clearInterval(expT);clearInterval(resT);let e=exp,r=res;
@@ -1778,14 +1819,16 @@ $("#gEmail").onsubmit=async e=>{e.preventDefault();
   if(!ok){$("#gMailErr").textContent=!v?"Enter your college email to continue.":gRole==="student"?(STUDENT_MAIL.test(v.replace(/@.*/,"@sot.pdpu.ac.in"))?"Use your college address ending in @sot.pdpu.ac.in.":"Use your roll-number email, like 26bcp160@sot.pdpu.ac.in."):"Use your faculty email ending in pdpu.ac.in.";$("#gMail").focus();return}
   if(API==="checking"){API=await detectApi();showMode()}
   const btn=$("#gEmail button[type=submit]");btn.disabled=true;btn.textContent="Sending…";gEmail=v;
-  try{const t=await sendCode();$("#gMailShow").textContent=v;$("#gCode").value="";$("#gCodeErr").textContent="";$("#gDemoBox").hidden=API==="live";
-    $("#gOtpLead").innerHTML=API==="live"?`We emailed a 6-digit code to <b>${esc(v)}</b>. Open Gmail on your phone or laptop; it usually arrives within a minute. Check Spam if you don't see it.`:`Enter the 6-digit code for <b>${esc(v)}</b>.`;
+  try{const t=await sendCode();$("#gMailShow").textContent=v;$("#gCode").value="";$("#gCodeErr").textContent="";$("#gDemoBox").hidden=lastDelivery==="email";
+    $("#gDemoWhy").textContent=lastDelivery==="dev"?"Email isn't set up on this server yet, so no email was sent.":"This preview link can't send emails, so no email was sent.";
+    $("#gOtpTitle").textContent=lastDelivery==="email"?"Check your Gmail":"Enter your code";
+    $("#gOtpLead").innerHTML=lastDelivery==="email"?`We emailed a 6-digit code to <b>${esc(v)}</b>. Open Gmail on your phone or laptop; it usually arrives within a minute. Check Spam or Promotions if you don't see it.`:`Enter the 6-digit code for <b>${esc(v)}</b>.`;
     gStep(1);startTimers(t.expiresIn,t.resendIn);$("#gCode").focus()}
   catch(err){$("#gMailErr").textContent=err.message}
   finally{btn.disabled=false;btn.textContent="Send code"}
 };
 $("#gResend").onclick=async()=>{$("#gCodeErr").textContent="";$("#gResend").disabled=true;
-  try{const t=await sendCode();startTimers(t.expiresIn,t.resendIn);toast(API==="live"?"New code sent. Check Gmail.":"New code ready")}
+  try{const t=await sendCode();startTimers(t.expiresIn,t.resendIn);toast(lastDelivery==="email"?"New code sent. Check Gmail.":"New code ready")}
   catch(err){$("#gCodeErr").textContent=err.message;const w=err.data&&err.data.retryIn;startTimers(300,w||30)}};
 $("#gCode").addEventListener("input",e=>{e.target.value=e.target.value.replace(/\D/g,"").slice(0,6);$("#gCodeErr").textContent="";if(e.target.value.length===6)$("#gOtp").requestSubmit()});
 let verifying=false;
@@ -1835,6 +1878,17 @@ $("#signOut").onclick=signOut;$("#signOut2").onclick=signOut;
 
 /* ---------- boot ---------- */
 if(profile&&profile.roll!==undefined)enterApp();else{if(profile){store.set("profile",null);profile=null}$("#gate").hidden=false;gStep(0)}
+
+/* ---------- intro ---------- */
+(function(){
+  const el=$("#intro");if(!el)return;
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;let done=false;
+  function finish(){if(done)return;done=true;el.classList.add("out");
+    [$("#gate"),$("#shell")].forEach(x=>{if(x&&!x.hidden)x.classList.add("appin")});
+    setTimeout(()=>el.remove(),1000)}
+  setTimeout(finish,reduce?900:2800);
+  el.addEventListener("click",finish);addEventListener("keydown",finish,{once:true});
+})();
 
 /* ---------- floating background ---------- */
 (function(){

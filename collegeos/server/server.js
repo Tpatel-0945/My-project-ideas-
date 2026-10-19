@@ -1,21 +1,20 @@
 // CollegeOS backend: serves the app and handles email one-time-code sign-in.
 //   POST /api/otp/request  { email }        -> emails a 6-digit code
 //   POST /api/otp/verify   { email, code }  -> returns a signed session token
-//   GET  /api/health                         -> { ok, mail: "gmail" | "dev" }
+//   GET  /api/health                         -> { ok, mail: { provider, ready, error } }
 import express from "express";
 import crypto from "node:crypto";
-import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadDotEnv } from "./env.js";
 import { createOtpStore, classifyEmail, normaliseEmail, signToken, OtpError, OTP_TTL_MS, RESEND_MS } from "./otp.js";
 import { createMailer } from "./mailer.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-loadDotEnv(path.join(here, ".env"));
+const hadEnv = loadDotEnv(path.join(here, ".env"));
 
 const PORT = Number(process.env.PORT || 8787);
 const SECRET = process.env.OTP_SECRET || crypto.randomBytes(32).toString("hex");
-if (!process.env.OTP_SECRET) console.warn("OTP_SECRET not set: using a random one (sessions reset on restart).");
 
 const otp = createOtpStore(SECRET);
 const mailer = createMailer();
@@ -40,8 +39,12 @@ function ipLimit(max, windowMs) {
     list.push(t); hits.set(key, list); next();
   };
 }
+const isLocal = req => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress) && !req.headers["x-forwarded-for"];
 
-app.get("/api/health", (req, res) => res.json({ ok: true, mail: mailer.live ? "gmail" : "dev" }));
+app.get("/api/health", (req, res) => {
+  const { provider, ready, error } = mailer.status;
+  res.json({ ok: true, mail: { provider, ready, error: isLocal(req) ? error : (error ? "Email isn't working on the server." : null) } });
+});
 
 app.post("/api/otp/request", ipLimit(20, 60 * 60 * 1000), async (req, res) => {
   const email = normaliseEmail(req.body?.email);
@@ -57,10 +60,13 @@ app.post("/api/otp/request", ipLimit(20, 60 * 60 * 1000), async (req, res) => {
     await mailer.sendCode(email, code, OTP_TTL_MS / 60000);
   } catch (e) {
     otp.revoke(email);
-    console.error("Mail send failed:", e.message);
-    return res.status(502).json({ ok: false, error: "We couldn't send the email right now. Try again in a minute." });
+    console.error(`✗ Couldn't email ${email}: ${e.friendly || e.message}`);
+    return res.status(502).json({ ok: false, error: "We couldn't send the email. " + (isLocal(req) ? e.friendly : "Please try again in a minute or tell your admin.") });
   }
-  res.json({ ok: true, role, expiresIn: OTP_TTL_MS / 1000, resendIn: RESEND_MS / 1000, delivery: mailer.live ? "gmail" : "dev" });
+  const out = { ok: true, role, expiresIn: OTP_TTL_MS / 1000, resendIn: RESEND_MS / 1000, delivery: mailer.provider };
+  // Email isn't set up yet: hand the code to a browser on this same computer so local testing still works.
+  if (mailer.provider === "dev" && isLocal(req)) out.devCode = code;
+  res.json(out);
 });
 
 app.post("/api/otp/verify", ipLimit(60, 60 * 60 * 1000), (req, res) => {
@@ -88,19 +94,17 @@ function sendError(res, e) {
   console.error(e); return res.status(500).json({ ok: false, error: "Something went wrong on our side." });
 }
 
-function loadDotEnv(file) {
-  if (!fs.existsSync(file)) return;
-  for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
-  }
-}
-
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  app.listen(PORT, () => {
-    console.log(`CollegeOS running at http://localhost:${PORT}`);
-    console.log(mailer.live ? `Emailing codes from ${process.env.GMAIL_USER} via Gmail.` : "Gmail not configured: codes are printed here instead of emailed.");
-    if (mailer.live) mailer.verify().catch(e => console.error("Gmail login failed:", e.message, "\nCheck GMAIL_USER and GMAIL_APP_PASSWORD in server/.env"));
+  app.listen(PORT, async () => {
+    console.log(`\nCollegeOS running at http://localhost:${PORT}`);
+    if (!hadEnv) console.log("No server/.env file found. Copy .env.example to .env to set up email.");
+    if (!process.env.OTP_SECRET) console.log("OTP_SECRET not set: using a random one (sign-ins reset on restart).");
+    if (mailer.provider === "dev") {
+      console.log("⚠ Email is NOT set up: codes are printed here and shown on this computer's sign-in page only.");
+      return;
+    }
+    const s = await mailer.verify();
+    console.log(s.ready ? `✓ Email ready: sending codes via ${mailer.provider} from ${mailer.fromEmail}` : `✗ Email NOT working (${mailer.provider}): ${s.error}`);
   });
 }
 
