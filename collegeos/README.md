@@ -10,6 +10,7 @@ What works:
 - **Home**: semester pulse, "fix this first" root cause, today's timetable, alerts.
 - **Academics**: marks, predicted grades, what-if SGPA slider, Bloom-tagged past papers.
 - **Attendance**: per-subject table, leave calculator (⌊attended ÷ 0.75⌋ − held), skip/attend simulator, mentor approval, QR scan demo.
+- **Leave**: calculator with your own numbers (any required %, classes left this semester), plus a date-based leave planner that shows each subject before and after, the longest safe leave, duty-leave handling and a mentor request.
 - **Opportunities**: skill-matched feed with filters, team finder, idea board.
 - **Insights**: Bloom radar profile, live Bayesian Knowledge Tracing quiz with confidence + timing error classification, root-cause prerequisite tree, study plan.
 - **Faculty**: class concept heatmap, paper balance checker (retag questions live), early warning list, NAAC/NBA report button.
