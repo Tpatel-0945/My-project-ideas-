@@ -62,7 +62,10 @@ def main():
         src = default_art()
     fit(src, 512).save(os.path.join(OUT, 'icon-512.png'))
     fit(src, 192).save(os.path.join(OUT, 'icon-192.png'))
-    fit(src, 512, scale=0.78).save(os.path.join(OUT, 'maskable-512.png'))     # Android crops to a circle/squircle
+    # Android crops the maskable icon to a circle/squircle: a full photo can fill it edge to edge (keep the face central);
+    # artwork with transparency is shrunk into the safe zone instead
+    photo = src.getchannel('A').getextrema()[0] == 255
+    fit(src, 512, scale=1.0 if photo else 0.78).save(os.path.join(OUT, 'maskable-512.png'))
     fit(src, 180).convert('RGB').save(os.path.join(OUT, 'apple-touch-icon.png'))  # iOS ignores transparency
     fit(src, 32).save(os.path.join(OUT, 'favicon-32.png'))
     print('Icons written to', os.path.normpath(OUT))
