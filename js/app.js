@@ -535,6 +535,12 @@ const App = (() => {
     toast('Preparing your backup…');
     try {
       const blob = await backupBlob(choice.pw), name = `aura-backup-${today()}${choice.pw ? '-protected' : ''}.json`;
+      // inside the claude.ai preview, files are handed over through its own save prompt
+      const host = window.top !== window.self && window.claude?.use ? await window.claude.use('downloads').catch(() => null) : null;
+      if (host) {
+        try { await host.save({ filename: name, data: blob }); store.set('lastBackup', Date.now()); toast(`Backup saved: ${name}`); if (route === '/me') render(); return; }
+        catch (e) { if (e?.code === 'declined' || e?.code === 'rate_limited') return; }
+      }
       if (choice.how === 'share') { try { await navigator.share({ files: [new File([blob], name, { type: 'application/json' })], title: 'AURA backup' }); } catch (e) { if (e.name !== 'AbortError') saveFile(blob, name); else return; } }
       else saveFile(blob, name);
       store.set('lastBackup', Date.now());
