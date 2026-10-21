@@ -1,5 +1,6 @@
 /* AURA Monitor — personal skin & hair tracking.
-   Single-page app, no build step. All data is stored in this browser (localStorage key "auram.db"). */
+   Single-page app, no build step. Data is stored on the device in IndexedDB ("aura"), with automatic daily backups,
+   and synced to your own Firebase account when you sign in. */
 
 const App = (() => {
   /* ================= helpers ================= */
@@ -75,7 +76,7 @@ const App = (() => {
   });
 
   let db;
-  const save = (localOnly) => { db.metaAt = Date.now(); const ok = store.set('db', db); if (!localOnly) cloudPush(); return ok; };
+  const save = (localOnly) => { db.metaAt = Date.now(); const ok = persistDb(); if (!localOnly) cloudPush(); dailyCheck(); return ok; };
 
   /* ================= scoring ================= */
   const skinScore = (l) => { const s = l?.skin; if (!s) return null; return Math.round(clamp(100 - Math.min(35, s.breakouts * 3.5) - s.red * 2 - s.sens * 1.5 - s.oil * 1.3 - s.dry * 1.5)); };
@@ -325,14 +326,317 @@ const App = (() => {
     });
     d.demo = true; d.demoV = DEMO_V;
   }
-  function loadDb() {
-    const saved = store.get('db', null), f = fresh();
+  /* ================= the on-device database =================
+     Everything lives in IndexedDB (database "aura"): the main record in "kv", scan photos in "imgs" (stored once, shared by
+     every backup), and automatic backups in "snaps". IndexedDB holds hundreds of MB, so photos are never dropped to make room.
+     A small copy without photos is mirrored to localStorage ("auram.db") as a last-resort fallback. */
+  const dbHealth = { from: 'new', notes: [], fixes: [], err: '', lastWrite: 0, persisted: null, usage: 0, quota: 0 };
+  let idbOK = typeof indexedDB !== 'undefined', idbConn = null, writeT = null;
+  const knownImgs = new Set(), tabId = Math.random().toString(36).slice(2);
+  let bc = null; try { bc = new BroadcastChannel('aura-db'); } catch {}
+  function idbOpen() {
+    if (idbConn) return Promise.resolve(idbConn);
+    return new Promise((res, rej) => {
+      let r; try { r = indexedDB.open('aura', 1); } catch (e) { return rej(e); }
+      r.onupgradeneeded = () => { const d = r.result; for (const s of ['kv', 'imgs']) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s); if (!d.objectStoreNames.contains('snaps')) d.createObjectStore('snaps', { keyPath: 'id' }); };
+      r.onsuccess = () => { idbConn = r.result; idbConn.onversionchange = () => { idbConn.close(); idbConn = null; }; res(idbConn); };
+      r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error('The database is busy in another tab.'));
+    });
+  }
+  // run fn inside one transaction; resolves with the request's result (or fn's return value) once it has committed
+  function idbTx(stores, mode, fn) {
+    return idbOpen().then((d) => new Promise((res, rej) => {
+      const t = d.transaction(stores, mode); let out;
+      try { out = fn(t); } catch (e) { try { t.abort(); } catch {} return rej(e); }
+      t.oncomplete = () => res(out instanceof IDBRequest ? out.result : out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('Save was interrupted.'));
+    }));
+  }
+  const reqAll = (store, method = 'getAll') => idbTx([store], 'readonly', (t) => t.objectStore(store)[method]());
+  // swap photos out for references before storing, and back in after loading
+  function stripImgs(d, put) {
+    return { ...d, scans: (d.scans || []).map((sc) => { if (typeof sc.img === 'string' && sc.img.startsWith('data:')) { put?.(sc.id, sc.img); return { ...sc, img: 'idb:' + sc.id }; } return sc; }) };
+  }
+  async function hydrate(d) {
+    const need = (d.scans || []).filter((sc) => typeof sc.img === 'string' && sc.img.startsWith('idb:')).map((sc) => sc.img.slice(4));
+    const got = {};
+    if (need.length) await idbTx(['imgs'], 'readonly', (t) => { const s = t.objectStore('imgs'); need.forEach((k) => { s.get(k).onsuccess = (e) => { got[k] = e.target.result; }; }); });
+    return { ...d, scans: (d.scans || []).map((sc) => (typeof sc.img === 'string' && sc.img.startsWith('idb:') ? { ...sc, img: got[sc.img.slice(4)] || '' } : sc)) };
+  }
+  function writeMirror() {
+    try { localStorage.setItem('auram.db', JSON.stringify(idbOK ? { ...db, scans: [], lite: true } : db)); return true; }
+    catch { if (!idbOK) { toast('This device is out of storage space. Back up to a file, then delete some old photo scans.'); return false; } return true; }
+  }
+  function persistDb() { const ok = writeMirror(); clearTimeout(writeT); writeT = setTimeout(flushDb, 250); return ok; }
+  async function flushDb() {
+    clearTimeout(writeT); writeT = null;
+    if (!idbOK || !db) return;
+    const imgs = [], rec = stripImgs(db, (id, img) => { if (!knownImgs.has(id)) imgs.push([id, img]); });
+    try {
+      await idbTx(['kv', 'imgs'], 'readwrite', (t) => { const im = t.objectStore('imgs'); imgs.forEach(([k, v]) => im.put(v, k)); t.objectStore('kv').put(rec, 'db'); });
+      imgs.forEach(([k]) => knownImgs.add(k)); dbHealth.lastWrite = Date.now(); dbHealth.err = '';
+      bc?.postMessage({ t: 'saved', tab: tabId });
+    } catch (e) {
+      dbHealth.err = e?.name === 'QuotaExceededError' ? 'This device is out of storage space.' : 'Could not save on this device: ' + (e?.message || e);
+      toast(dbHealth.err + ' Your latest changes are kept while the app is open.');
+    }
+  }
+  // another tab saved: load its version so the two tabs never overwrite each other
+  bc && (bc.onmessage = async (e) => {
+    if (e.data?.t !== 'saved' || e.data.tab === tabId) return;
+    try { const rec = await idbTx(['kv'], 'readonly', (t) => t.objectStore('kv').get('db')); if (rec) { db = await hydrate(rec); repair(db); render(); } } catch {}
+  });
+  addEventListener('pagehide', () => { writeMirror(); flushDb(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && writeT) flushDb(); });
+
+  // checks every part of the data and fixes anything malformed; returns what it fixed
+  function repair(d) {
+    const fixes = [], f = fresh(), obj = (v) => !!v && typeof v === 'object' && !Array.isArray(v), arr = Array.isArray;
+    if (!obj(d.logs)) { d.logs = {}; fixes.push('check-ins list rebuilt'); }
+    for (const [k, l] of Object.entries(d.logs)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !obj(l)) { delete d.logs[k]; fixes.push(`unreadable day ${k} removed`); continue; }
+      const n = newLog();
+      l.skin = { ...n.skin, ...(obj(l.skin) ? l.skin : {}) }; l.hair = { ...n.hair, ...(obj(l.hair) ? l.hair : {}) }; l.life = { ...n.life, ...(obj(l.life) ? l.life : {}) };
+      if (!arr(l.skin.zones)) l.skin.zones = [];
+      if (!obj(l.life.meals)) l.life.meals = { b: true, l: true, d: true };
+      l.done = obj(l.done) ? { am: arr(l.done.am) ? l.done.am : [], pm: arr(l.done.pm) ? l.done.pm : [] } : n.done;
+      if (!arr(l.flags)) l.flags = [];
+      if (typeof l.note !== 'string') l.note = '';
+    }
+    if (!arr(d.scans)) { d.scans = []; fixes.push('scan list rebuilt'); }
+    const seen = new Set();
+    d.scans = d.scans.filter((s) => { const ok = obj(s) && s.id && /^\d{4}-\d{2}-\d{2}$/.test(s.date || '') && typeof s.img === 'string' && s.img.length > 20 && !seen.has(s.id); if (ok) seen.add(s.id); else fixes.push('broken or duplicate scan removed'); return ok; })
+      .sort((a, b) => a.date.localeCompare(b.date));
+    d.profile = { ...f.profile, ...(obj(d.profile) ? d.profile : {}) };
+    if (!obj(d.routine) || !arr(d.routine.am) || !arr(d.routine.pm)) { d.routine = obj(d.routine) ? { am: arr(d.routine.am) ? d.routine.am : [], pm: arr(d.routine.pm) ? d.routine.pm : [] } : f.routine; fixes.push('routine repaired'); }
+    if (!arr(d.reminders)) { d.reminders = f.reminders; fixes.push('reminders reset'); }
+    d.sleep = { ...f.sleep, ...(obj(d.sleep) ? d.sleep : {}) };
+    if (!arr(d.sleep.sessions)) { d.sleep.sessions = []; fixes.push('sleep history rebuilt'); }
+    if (!arr(d.sleep.days)) d.sleep.days = f.sleep.days;
+    const ss = new Set();
+    d.sleep.sessions = d.sleep.sessions.filter((x) => { const ok = obj(x) && x.id && x.end > x.start && x.end - x.start < 20 * 36e5 && !ss.has(x.id); if (ok) ss.add(x.id); else fixes.push('broken or duplicate night removed'); return ok; }).sort((a, b) => a.start - b.start);
+    for (const k of ['plate', 'bowl']) if (!obj(d[k]) || !obj(d[k].items)) { d[k] = f[k]; fixes.push(`${k === 'bowl' ? 'muesli bowl' : 'lunch plate'} reset`); }
+    d.chat = arr(d.chat) ? d.chat.filter((m) => obj(m) && typeof m.t === 'string' && m.at).slice(-40) : [];
+    return fixes;
+  }
+  const statsOf = (d) => { const days = Object.keys(d.logs || {}).sort(); return { days: days.length, from: days[0] || null, to: days.at(-1) || null, scans: (d.scans || []).length, nights: (d.sleep?.sessions || []).length, chat: (d.chat || []).length }; };
+  const statsLine = (s) => `${s.days} day${s.days === 1 ? '' : 's'}${s.from ? ` (${fmtShort(s.from)} – ${fmtShort(s.to)})` : ''} · ${s.scans} scan${s.scans === 1 ? '' : 's'} · ${s.nights} night${s.nights === 1 ? '' : 's'}`;
+  const ago = (ts) => { const m = Math.round((Date.now() - ts) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} day${m < 2880 ? '' : 's'} ago`; };
+
+  async function loadDb() {
+    let saved = null;
+    if (idbOK) {
+      try {
+        const [rec, keys] = await Promise.all([idbTx(['kv'], 'readonly', (t) => t.objectStore('kv').get('db')), reqAll('imgs', 'getAllKeys')]);
+        keys.forEach((k) => knownImgs.add(k));
+        if (rec) { saved = await hydrate(rec); dbHealth.from = 'idb'; if (saved.scans.some((s) => !s.img)) dbHealth.notes.push('Some scan photos could not be read and were left out.'); }
+      } catch { idbOK = false; }
+    }
+    if (!saved) {
+      let raw = null; try { raw = localStorage.getItem('auram.db'); } catch {}
+      if (raw) {
+        try { saved = JSON.parse(raw); dbHealth.from = saved.lite ? 'mirror' : 'local'; if (saved.lite) dbHealth.notes.push('The main database was missing, so AURA recovered your data from its backup copy (scan photos excluded).'); delete saved.lite; }
+        catch { try { localStorage.setItem('auram.db.damaged', raw); } catch {} dbHealth.notes.push('Your saved data was damaged. It was kept aside and AURA loaded your latest automatic backup instead.'); }
+      }
+      // fall back to (or top up from) the latest automatic backup: it still has the scan photos
+      if (idbOK && raw && (!saved || dbHealth.from === 'mirror')) {
+        const s = (await listSnaps())[0], snap = s && await hydrate((await getSnap(s.id)).db).catch(() => null);
+        if (snap && !saved) { saved = snap; dbHealth.from = 'snapshot'; }
+        else if (snap) { const have = new Set((saved.scans || []).map((x) => x.id)); saved.scans = [...(saved.scans || []), ...snap.scans.filter((x) => x.img && !have.has(x.id))]; dbHealth.notes[dbHealth.notes.length - 1] = `The main database was missing, so AURA recovered your data from its backup copy and ${snap.scans.length} scan photo${snap.scans.length === 1 ? '' : 's'} from the automatic backup of ${new Date(s.at).toLocaleDateString('en-IN')}.`; }
+      }
+    }
+    const f = fresh();
     let d;
     if (saved && !(saved.demo && saved.demoV !== DEMO_V)) d = { ...f, ...saved, profile: { ...f.profile, ...saved.profile }, sleep: { ...f.sleep, ...saved.sleep }, plate: saved.plate || f.plate };
     else { d = f; if (saved) { Object.assign(d, { routine: saved.routine || d.routine, reminders: saved.reminders || d.reminders, profile: { ...d.profile, ...saved.profile } }); seedDemo(d); } }   // new visitors start with their own, empty data
     if (saved && saved.scanWipe !== 1) { d.scans = []; d.scanWipe = 1; }   // one-time clear of all earlier scans (requested)
-    Object.values(d.logs).forEach((l) => { const n = newLog(); l.skin = { ...n.skin, ...l.skin }; l.hair = { ...n.hair, ...l.hair }; l.life = { ...n.life, ...l.life }; l.done ||= n.done; l.flags ||= []; });
-    store.set('db', d); return d;
+    dbHealth.fixes = repair(d);
+    return d;
+  }
+
+  /* ---------- automatic backups on this device ---------- */
+  const KEEP = { daily: 14, safety: 10 };
+  async function listSnaps() { if (!idbOK) return []; try { return (await reqAll('snaps')).map(({ db: _, ...m }) => m).sort((a, b) => b.at - a.at); } catch { return []; } }
+  const getSnap = (id) => idbTx(['snaps'], 'readonly', (t) => t.objectStore('snaps').get(id));
+  async function snapshot(kind = 'daily', reason = '') {
+    if (!idbOK || !db) return null;
+    const st = statsOf(db); if (!st.days && !st.scans && !st.nights) return null;
+    if (db.demo && kind === 'daily') return null;
+    await flushDb();
+    const imgs = [], rec = { id: kind === 'daily' ? 'daily-' + today() : 'safety-' + Date.now(), kind, reason, at: Date.now(), stats: st, db: stripImgs(db, (id, img) => { if (!knownImgs.has(id)) imgs.push([id, img]); }) };
+    try {
+      await idbTx(['snaps', 'imgs'], 'readwrite', (t) => { const im = t.objectStore('imgs'); imgs.forEach(([k, v]) => im.put(v, k)); t.objectStore('snaps').put(rec); });
+      imgs.forEach(([k]) => knownImgs.add(k)); store.set('lastSnap', rec.at); await pruneSnaps(); return rec;
+    } catch { return null; }
+  }
+  async function pruneSnaps() {
+    const all = await reqAll('snaps'), keep = new Set();
+    for (const k of Object.keys(KEEP)) all.filter((s) => s.kind === k).sort((a, b) => b.at - a.at).slice(0, KEEP[k]).forEach((s) => keep.add(s.id));
+    const drop = all.filter((s) => !keep.has(s.id)).map((s) => s.id);
+    // photos are shared between the live data and every backup; delete only those nothing refers to any more
+    const used = new Set(db.scans.map((s) => s.id));
+    all.filter((s) => keep.has(s.id)).forEach((s) => s.db.scans.forEach((sc) => used.add(sc.id)));
+    const orphans = [...knownImgs].filter((k) => !used.has(k));
+    if (drop.length || orphans.length) await idbTx(['snaps', 'imgs'], 'readwrite', (t) => { drop.forEach((id) => t.objectStore('snaps').delete(id)); orphans.forEach((k) => t.objectStore('imgs').delete(k)); });
+    orphans.forEach((k) => knownImgs.delete(k));
+  }
+  async function wipeDevice() {   // used by "Delete everything" and "Sign out & remove from this device"
+    if (!idbOK) return;
+    try { await idbTx(['snaps', 'imgs', 'kv'], 'readwrite', (t) => { ['snaps', 'imgs', 'kv'].forEach((s) => t.objectStore(s).clear()); }); knownImgs.clear(); } catch {}
+  }
+  function dailyCheck() { if (!idbOK || !db) return; const last = store.get('lastSnap', 0); if (!last || iso(new Date(last)) !== today()) snapshot('daily'); }
+
+  /* ---------- backup files (optionally encrypted) ---------- */
+  const b64big = (buf) => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+  const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const gzip = async (bytes, mode) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new (mode === 'd' ? DecompressionStream : CompressionStream)('gzip'))).arrayBuffer());
+  async function pwKey(pw, salt, it) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: it }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function backupBlob(pw) {
+    await flushDb();
+    const meta = { app: 'aura-monitor', format: 2, exportedAt: new Date().toISOString(), stats: statsOf(db) };
+    const plain = new TextEncoder().encode(JSON.stringify({ ...meta, data: db }));
+    if (!pw) return new Blob([plain], { type: 'application/json' });
+    const gz = typeof CompressionStream !== 'undefined', body = gz ? await gzip(plain) : plain;
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), it = 600000;
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await pwKey(pw, salt, it), body);
+    return new Blob([JSON.stringify({ ...meta, encrypted: { alg: 'AES-256-GCM', kdf: 'PBKDF2-SHA256', it, salt: b64big(salt), iv: b64big(iv), gz }, data: b64big(ct) })], { type: 'application/json' });
+  }
+  async function readBackup(text, getPw) {
+    let j; try { j = JSON.parse(text); } catch { throw new Error('That isn\'t an AURA backup file (it couldn\'t be read).'); }
+    if (j?.encrypted) {
+      const pw = await getPw(); if (pw == null) return null;
+      const e = j.encrypted;
+      let bytes; try { bytes = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(e.iv) }, await pwKey(pw, fromB64(e.salt), e.it), fromB64(j.data))); } catch { throw new Error('Wrong password for this backup.'); }
+      if (e.gz) bytes = await gzip(bytes, 'd');
+      j = JSON.parse(new TextDecoder().decode(bytes));
+    }
+    const data = j?.app === 'aura-monitor' ? j.data : j;   // early backups were the raw database
+    if (!data || typeof data !== 'object' || typeof data.logs !== 'object') throw new Error('That file isn\'t an AURA backup.');
+    return { data, exportedAt: j.exportedAt || null };
+  }
+  function saveFile(blob, name) {
+    const u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000);
+  }
+  // small promise wrapper around the in-page dialog
+  const ask = (html, buttons) => new Promise((res) => dialog(html, buttons.map(([label, cls, val]) => ({ label, cls, fn: () => { const v = typeof val === 'function' ? val() : val; if (v === false) return false; res(v); } }))));
+  const askPw = () => ask('<h3>Backup password</h3><p class="small muted">This backup is protected. Type the password you chose when you made it.</p><input type="password" id="rPw" autocomplete="off">', [['Cancel', 'ghost', null], ['Unlock', 'primary', () => $('#rPw').value || false]]);
+
+  async function backupFlow() {
+    const st = statsOf(db), canShare = !!(navigator.canShare && window.File && navigator.canShare({ files: [new File(['x'], 'x.json', { type: 'application/json' })] }));
+    const choice = await ask(`<h3>Back up to a file</h3><p class="small">One file with everything: ${statsLine(st)}, your routine, food plans, reminders and Derma chat. Photos are included. Keep it in Google Drive, iCloud or email it to yourself.</p>
+      <label class="dcheck"><input type="checkbox" id="bkEnc" checked> Protect it with a password (recommended: it contains your face photos)</label>
+      <input type="password" id="bkPw" class="mt" placeholder="Backup password, 8+ characters" autocomplete="new-password">
+      <p class="tiny muted" style="margin:6px 0 0">You'll need this password to restore; it can't be recovered. Your PIN and Gemini key are not included.</p>`,
+      [['Cancel', 'ghost', null], ...(canShare ? [['Share…', '', () => pick('share')]] : []), ['Download', 'primary', () => pick('file')]]);
+    function pick(how) { const enc = $('#bkEnc').checked, pw = $('#bkPw').value; if (enc && pw.length < 8) { toast('Choose a password of 8 or more characters, or untick the box'); return false; } return { how, pw: enc ? pw : '' }; }
+    if (!choice) return;
+    toast('Preparing your backup…');
+    try {
+      const blob = await backupBlob(choice.pw), name = `aura-backup-${today()}${choice.pw ? '-protected' : ''}.json`;
+      if (choice.how === 'share') { try { await navigator.share({ files: [new File([blob], name, { type: 'application/json' })], title: 'AURA backup' }); } catch (e) { if (e.name !== 'AbortError') saveFile(blob, name); else return; } }
+      else saveFile(blob, name);
+      store.set('lastBackup', Date.now());
+      if (window.top !== window.self) dialog('<h3>Backup ready</h3><p class="small">If nothing downloaded, this preview is blocking downloads. Copy the backup text instead and save it in a note or file, or make the backup from your own deployed site.</p>', [{ label: 'Close', cls: 'ghost' }, { label: 'Copy backup text', cls: 'primary', fn: () => { blob.text().then(copyText); return false; } }]);
+      else toast(`Backup saved: ${name} (${(blob.size / 1048576).toFixed(1)} MB)`);
+      if (route === '/me') render();
+    } catch (e) { toast('Backup failed: ' + (e.message || e)); }
+  }
+  async function restoreFlow() {
+    const src = await ask(`<h3>Restore from a backup</h3><p class="small muted">Choose an AURA backup file, or paste backup text. A safety copy of your current data is saved first, so you can undo.</p>
+      <input type="file" id="importFile" accept="application/json,.json,.txt"><textarea id="importBox" rows="4" class="mt" placeholder="…or paste backup text here"></textarea>`,
+      [['Cancel', 'ghost', null], ['Continue', 'primary', () => { const f = $('#importFile').files[0], t = $('#importBox').value.trim(); return f || t || false; }]]);
+    if (!src) return;
+    try {
+      const got = await readBackup(typeof src === 'string' ? src : await src.text(), askPw); if (!got) return;
+      const inc = structuredClone(got.data); repair(inc);
+      const st = statsOf(inc);
+      const mode = await ask(`<h3>Restore this backup?</h3><p class="small">${got.exportedAt ? 'Made ' + new Date(got.exportedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) + '. ' : ''}It holds ${statsLine(st)}.</p>
+        <ul class="small clean"><li><b>Merge</b> adds anything missing and keeps the newer version of each day. Nothing you have now is lost.</li><li><b>Replace</b> makes AURA exactly like the backup${cloud.user ? ', on every device signed in to your account' : ''}.</li></ul>`,
+        [['Cancel', 'ghost', null], ['Replace everything', 'danger', 'replace'], ['Merge', 'primary', 'merge']]);
+      if (mode) await applyRestore(inc, mode, 'a backup file');
+    } catch (e) { dialog(`<h3>Couldn't restore</h3><p class="small">${esc(e.message || e)}</p>`); }
+  }
+  async function restoreSnap(id) {
+    const rec = await getSnap(id); if (!rec) return toast('That backup is no longer on this device');
+    const inc = await hydrate(rec.db); repair(inc);
+    const mode = await ask(`<h3>Restore the backup from ${new Date(rec.at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}?</h3><p class="small">It holds ${statsLine(rec.stats)}. Your current data is saved as a safety copy first.</p>`,
+      [['Cancel', 'ghost', null], ['Merge', '', 'merge'], ['Restore exactly', 'primary', 'replace']]);
+    if (mode) await applyRestore(inc, mode, 'an automatic backup');
+  }
+  async function applyRestore(inc, mode, label) {
+    await snapshot('safety', 'Before restoring ' + label);
+    const now = Date.now();
+    if (mode === 'replace') {
+      const keepImgs = Object.fromEntries(db.scans.map((s) => [s.id, s.img]));
+      db = { ...fresh(), ...inc, demo: false, scanWipe: 1 };
+      db.scans.forEach((s) => { if (!s.img && keepImgs[s.id]) s.img = keepImgs[s.id]; });
+      Object.values(db.logs).forEach((l) => { l.u = now; });
+    } else {
+      for (const [d, l] of Object.entries(inc.logs)) if (!db.logs[d] || (l.u || 0) > (db.logs[d].u || 0)) db.logs[d] = { ...l, u: now };
+      const have = new Set(db.scans.map((s) => s.id)); inc.scans.forEach((s) => { if (!have.has(s.id)) db.scans.push(s); });
+      const nights = new Set(db.sleep.sessions.map((s) => s.id)); inc.sleep.sessions.forEach((s) => { if (!nights.has(s.id)) db.sleep.sessions.push(s); });
+      const msgs = new Set((db.chat || []).map((m) => m.r + m.at)); (inc.chat || []).forEach((m) => { if (!msgs.has(m.r + m.at)) db.chat.push(m); });
+      db.chat.sort((a, b) => a.at - b.at);
+      if (!db.routine.am.length && !db.routine.pm.length) db.routine = inc.routine;
+      db.demo = false;
+    }
+    repair(db); current = null; cmp = [];
+    if (cloud.user) {
+      if (mode === 'replace') { try { await cloudWipe(); } catch {} }
+      Object.assign(cloud, { sent: new Set(), logU: {}, metaJ: '', chatJ: '' });
+    }
+    save(); toast(mode === 'replace' ? 'Backup restored' : 'Backup merged into your data'); go('#/');
+  }
+
+  /* ---------- weekly backups in your account (photos stay in your scans) ---------- */
+  const weekId = () => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7)); const w1 = new Date(d.getFullYear(), 0, 4); return `${d.getFullYear()}-W${pad(1 + Math.round(((d - w1) / 864e5 - 3 + ((w1.getDay() + 6) % 7)) / 7))}`; };
+  async function cloudBackup(manual) {
+    if (!cloud.user || db.demo) return false;
+    const body = JSON.stringify({ ...db, scans: db.scans.map(({ img, ...s }) => s) });
+    let j = body, gz = false;
+    if (typeof CompressionStream !== 'undefined') { j = b64big(await gzip(new TextEncoder().encode(body))); gz = true; }
+    if (j.length > 950000) { if (manual) toast('Too much data for one account backup; download a backup file instead'); return false; }
+    const col = userRef().collection('backups'), id = manual ? 'manual-' + Date.now() : 'week-' + weekId();
+    await col.doc(id).set({ at: Date.now(), stats: statsOf(db), gz, j, by: cloud.device });
+    const all = []; (await col.get()).forEach((d) => all.push({ id: d.id, at: d.data().at }));
+    all.sort((a, b) => b.at - a.at).slice(8).forEach((b) => col.doc(b.id).delete().catch(() => {}));
+    store.set('cloudBk', weekId()); return true;
+  }
+  async function listCloudBackups() { if (!cloud.user) return []; const out = []; try { (await userRef().collection('backups').get()).forEach((d) => out.push({ id: d.id, at: d.data().at, stats: d.data().stats })); } catch {} return out.sort((a, b) => b.at - a.at); }
+  async function restoreCloud(id) {
+    const s = await userRef().collection('backups').doc(id).get(); if (!s.exists) return toast('That backup is gone');
+    const r = s.data(), inc = JSON.parse(r.gz ? new TextDecoder().decode(await gzip(fromB64(r.j), 'd')) : r.j);
+    const imgs = Object.fromEntries(db.scans.map((x) => [x.id, x.img])); inc.scans = (inc.scans || []).map((x) => ({ ...x, img: imgs[x.id] || '' }));
+    repair(inc);
+    const mode = await ask(`<h3>Restore the account backup from ${new Date(r.at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}?</h3><p class="small">It holds ${statsLine(r.stats)}. Scan photos come from the scans still in your account. Your current data is saved as a safety copy first.</p>`,
+      [['Cancel', 'ghost', null], ['Merge', '', 'merge'], ['Restore exactly', 'primary', 'replace']]);
+    if (mode) await applyRestore(inc, mode, 'an account backup');
+  }
+  async function storageInfo() {
+    try { if (navigator.storage?.persisted) dbHealth.persisted = await navigator.storage.persisted(); const e = await navigator.storage?.estimate?.(); if (e) { dbHealth.usage = e.usage || 0; dbHealth.quota = e.quota || 0; } } catch {}
+  }
+  const mb = (b) => (b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : (b / 1048576).toFixed(b < 10485760 ? 1 : 0) + ' MB');
+  function dataCard() {
+    const st = statsOf(db), lastFile = store.get('lastBackup', 0), lastSnap = store.get('lastSnap', 0), bad = !!dbHealth.err;
+    return `<div class="card data-card"><h3>Data & backups</h3>
+      <div class="health ${bad ? 'bad' : 'ok'}"><span class="dot"></span><div><b>${bad ? 'Saving problem' : 'Database healthy'}</b><div class="small muted">${bad ? esc(dbHealth.err) : statsLine(st) + (db.demo ? ' · sample data' : '')}</div></div></div>
+      <p class="tiny muted">${idbOK ? 'Stored in this device\'s database' : 'Stored in this browser (limited space)'}${dbHealth.usage ? ` · ${mb(dbHealth.usage)} used of ${mb(dbHealth.quota)}` : ''}${dbHealth.persisted ? ' · protected from automatic clean-up' : dbHealth.persisted === false ? ' · not yet protected from clean-up (installing the app protects it)' : ''}${cloud.user ? ' · copied to your account' : ''}.</p>
+      ${!cloud.user && !db.demo && st.days && (!lastFile || Date.now() - lastFile > 30 * 864e5) ? `<div class="insight warn" style="margin-bottom:10px"><div class="ic">!</div><div><p style="color:var(--text);margin:0">${lastFile ? `Your last backup file is ${ago(lastFile)} old.` : 'You have no backup file yet.'} Data on only one device can be lost with the phone. Make a backup file, or sign in to keep it in your account.</p></div></div>` : ''}
+      <div class="row"><button class="btn sm primary" data-act="backupFile">Back up to a file</button><button class="btn sm" data-act="restoreFile">Restore from a file</button><button class="btn sm ghost" data-act="dbCheck">Check & repair</button></div>
+      <p class="tiny muted" style="margin:8px 0 0">${lastFile ? `Last backup file: ${ago(lastFile)}. ` : ''}Automatic backups: every day on this device (last 14 kept)${cloud.user ? ' and every week in your account (last 8 kept)' : ''}${lastSnap ? `, latest ${ago(lastSnap)}` : ''}.</p>
+      <h4 class="sub">Automatic backups on this device</h4><div id="snapList" class="bk-list"><p class="tiny muted">Loading…</p></div>
+      ${cloud.user ? `<h4 class="sub">Backups in your account</h4><div id="cloudBkList" class="bk-list"><p class="tiny muted">Loading…</p></div><button class="btn sm mt" data-act="cloudBackupNow">Back up to my account now</button>` : ''}
+      <div class="row" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">${db.demo ? '<button class="btn sm primary" data-act="startFresh">Remove sample data</button>' : '<button class="btn sm ghost" data-act="loadDemo">Load sample data</button>'}
+        ${db.scans.length ? '<button class="btn sm danger" data-act="delAllScans">Delete all scans</button>' : ''}<button class="btn sm danger" data-act="wipe">Delete everything</button></div></div>`;
+  }
+  const bkRow = (b, act) => `<div class="bk"><div><b>${new Date(b.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</b> <span class="pill">${b.kind === 'safety' ? 'safety copy' : b.id?.startsWith('manual') ? 'manual' : b.kind === 'daily' ? 'daily' : 'weekly'}</span><div class="tiny muted">${b.stats ? statsLine(b.stats) : ''}${b.reason ? ' · ' + esc(b.reason) : ''}</div></div><button class="btn sm" data-act="${act}" data-id="${esc(b.id)}">Restore</button></div>`;
+  async function fillBackupLists() {
+    const el = $('#snapList');
+    if (el) { const s = await listSnaps(); el.innerHTML = s.length ? s.slice(0, 6).map((b) => bkRow(b, 'restoreSnap')).join('') + (s.length > 6 ? `<p class="tiny muted">+ ${s.length - 6} older</p>` : '') : '<p class="tiny muted">None yet. The first one is made today once you have data.</p>'; }
+    const c = $('#cloudBkList');
+    if (c) { const s = await listCloudBackups(); c.innerHTML = s.length ? s.slice(0, 5).map((b) => bkRow(b, 'restoreCloud')).join('') : '<p class="tiny muted">None yet. One is made every week.</p>'; }
   }
 
   /* ================= visual building blocks ================= */
@@ -1582,7 +1886,7 @@ const App = (() => {
     else {
       res.id = uid();
       db.scans.push({ id: res.id, date: today(), kind: res.kind, img: res.thumb, scores: res.scores, issues: res.issues, count: res.findings.length });
-      while (JSON.stringify(db).length > 4.2e6 && db.scans.length > 8) db.scans.shift();   // keep localStorage under its ~5 MB limit
+      if (!idbOK) while (JSON.stringify(db).length > 4.2e6 && db.scans.length > 8) db.scans.shift();   // only without IndexedDB: keep localStorage under its ~5 MB limit
       res.filled = !res.quality || res.quality.reliability >= 50 ? applyScanToLog(res) : null;
       if (save()) toast(`Scan saved · ${res.findings.length} area${res.findings.length === 1 ? '' : 's'} found`);
     }
@@ -2119,12 +2423,7 @@ const App = (() => {
           <div><label for="pHair">Hair type</label><select id="pHair" name="hairType">${['Straight', 'Wavy', 'Curly', 'Coily'].map((t) => `<option ${p.hairType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
         <button class="btn primary sm mt">Save profile</button></form>
 
-      <div class="card"><h3>Your data</h3>
-        <p class="small">${n} days logged · ${db.scans.length} photo scans${db.demo ? ' · <span class="pill warn">sample data</span>' : ''}</p>
-        <p class="tiny muted">${cloud.user ? 'Saved on this device and in your account, so it is on every device you sign in to. A backup copy is still handy to keep.' : 'Stored in this browser. Sign in (above) to keep it safe on every device, or copy a backup to move it.'}</p>
-        <div class="row"><button class="btn sm" data-act="export">Copy backup</button><button class="btn sm" data-act="import">Restore backup</button>
-          ${db.demo ? '<button class="btn sm primary" data-act="startFresh">Remove sample data</button>' : '<button class="btn sm ghost" data-act="loadDemo">Load sample data</button>'}
-          ${db.scans.length ? '<button class="btn sm danger" data-act="delAllScans">Delete all scans</button>' : ''}<button class="btn sm danger" data-act="wipe">Delete everything</button></div></div>
+      ${dataCard()}
 
       <div class="card"><h3>Reminders</h3>
         <p class="tiny muted">They pop up here while the page is open. Tap 📅 to add one to Google Calendar so your phone reminds you too.</p>
@@ -2254,6 +2553,7 @@ const App = (() => {
       if (priv.exists) mergePrivate(priv.data());
       db.scans.sort((a, b) => a.date.localeCompare(b.date));
       save(true); pushAll();
+      if (store.get('cloudBk', '') !== weekId()) setTimeout(() => cloudBackup(false).catch(() => {}), 4000);
       const live = (snapCb) => (s) => { if (!s.metadata?.hasPendingWrites) snapCb(s); };
       cloud.unsubs.push(ref.onSnapshot(live((s) => {
         if (!s.exists || s.data().by === cloud.device || !s.data().meta) return;
@@ -2292,10 +2592,11 @@ const App = (() => {
     const dirty = Object.entries(db.logs).filter(([d, l]) => (l.u || 1) > (cloud.logU[d] || 0));
     for (let i = 0; i < dirty.length; i += 400) {
       const b = cloud.fs.batch();
-      dirty.slice(i, i + 400).forEach(([d, l]) => { b.set(ref.collection('logs').doc(d), { j: JSON.stringify(l), u: l.u || 1, by: cloud.device }); cloud.logU[d] = l.u || 1; });
-      writes.push(b.commit());
+      const part = dirty.slice(i, i + 400), prev = part.map(([d]) => [d, cloud.logU[d]]);
+      part.forEach(([d, l]) => { b.set(ref.collection('logs').doc(d), { j: JSON.stringify(l), u: l.u || 1, by: cloud.device }); cloud.logU[d] = l.u || 1; });
+      writes.push(b.commit().catch((e) => { prev.forEach(([d, u]) => { if (u == null) delete cloud.logU[d]; else cloud.logU[d] = u; }); throw e; }));   // retried on the next save
     }
-    for (const sc of db.scans) if (!cloud.sent.has(sc.id)) { writes.push(ref.collection('scans').doc(sc.id).set(sc)); cloud.sent.add(sc.id); }
+    for (const sc of db.scans) if (!cloud.sent.has(sc.id)) { cloud.sent.add(sc.id); writes.push(ref.collection('scans').doc(sc.id).set(sc).catch((e) => { cloud.sent.delete(sc.id); throw e; })); }
     const chatJ = JSON.stringify(db.chat || []);
     if (chatJ !== cloud.chatJ) { writes.push(ref.collection('chat').doc('main').set({ j: chatJ, by: cloud.device, at: stamp })); cloud.chatJ = chatJ; }
     const priv = { lock: syncLock(), gkey: store.get('gsync', true) ? derma.key || null : null, gmodel: derma.model || null }, privJ = JSON.stringify(priv);
@@ -2305,10 +2606,10 @@ const App = (() => {
       .catch((e) => { cloud.status = 'error'; cloud.err = 'Could not save to your account: ' + (e.message || e); Object.assign(cloud, { metaJ: '', chatJ: '', privJ: '' }); renderAcct(); });
   }
   function cloudDeleteScans(ids) { if (!cloud.user) return; ids.forEach((id) => { userRef().collection('scans').doc(id).delete().catch(() => {}); cloud.sent.delete(id); }); }
-  async function cloudWipe() {   // "Delete everything": remove every document in your account
+  async function cloudWipe(all) {   // remove the documents in your account ("Delete everything" also removes account backups)
     if (!cloud.user) return;
     const ref = userRef();
-    for (const c of ['logs', 'scans', 'chat']) { const qs = await ref.collection(c).get(); const b = cloud.fs.batch(); qs.forEach((d) => b.delete(d.ref || ref.collection(c).doc(d.id))); await b.commit(); }
+    for (const c of ['logs', 'scans', 'chat', ...(all ? ['backups'] : [])]) { const qs = await ref.collection(c).get(); const b = cloud.fs.batch(); qs.forEach((d) => b.delete(d.ref || ref.collection(c).doc(d.id))); await b.commit(); }
     Object.assign(cloud, { sent: new Set(), logU: {}, metaJ: '', chatJ: '' });
   }
   const authMsg = (e) => ({ 'auth/invalid-credential': 'Wrong email or password.', 'auth/wrong-password': 'Wrong email or password.', 'auth/user-not-found': 'No account with that email. Create one instead.', 'auth/email-already-in-use': 'An account with that email already exists. Sign in instead.', 'auth/weak-password': 'Use a password with at least 6 characters.', 'auth/invalid-email': 'That email address doesn\'t look right.', 'auth/unauthorized-domain': 'This website address is not authorised in Firebase. Add it under Authentication → Settings → Authorized domains.', 'auth/popup-closed-by-user': 'Sign-in window was closed.', 'auth/network-request-failed': 'No connection. Check your internet and try again.', 'auth/too-many-requests': 'Too many attempts. Wait a few minutes and try again.' }[e?.code] || e?.message || 'Sign-in failed.');
@@ -2335,7 +2636,7 @@ const App = (() => {
   }
   async function cloudSignOut(wipe) {
     pushAll(); await cloud.auth.signOut();
-    if (wipe) { db = fresh(); db.scanWipe = 1; current = null; save(true); }
+    if (wipe) { db = fresh(); db.scanWipe = 1; current = null; await wipeDevice(); save(true); }
     toast('Signed out'); render();
   }
   function renderAcct() {
@@ -2859,7 +3160,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
       case 'pinOff': return askConfirm('Remove the PIN lock from this device?', () => { lockSave(null); lock.locked = false; render(); toast('Lock removed'); }, 'Remove lock');
       case 'pinForgot': return askConfirm(fbConfig() ? 'Reset the PIN? For your privacy this removes your data from this device and signs you out. Sign in again, choose a new PIN, and everything comes back from your account.' : 'Reset the lock? For your privacy this erases all AURA data stored on this device. This cannot be undone.', async () => {
         store.set('lock', null); lock.cfg = fbConfig() ? lockLoad() : null; lock.locked = false; lock.fails = 0; lock.until = 0;
-        db = fresh(); current = null; save(true); store.set('gkey', ''); Object.assign(derma, { key: '', models: [] });
+        db = fresh(); current = null; await wipeDevice(); save(true); store.set('gkey', ''); Object.assign(derma, { key: '', models: [] });
         if (cloud.user) await cloud.auth.signOut();
         Object.assign(lock, { setup: true, first: '', entry: '', len: 6 });   // choose a new PIN (after signing in again, if you use an account)
         gateCheck(true); render();
@@ -2875,27 +3176,33 @@ The app's photo scores are colour-based estimates that change with lighting and 
       case 'remOn': { const r = db.reminders.find((x) => x.id === d.id); r.on = !r.on; save(); return render(); }
       case 'remDay': { const r = db.reminders.find((x) => x.id === d.id), v = +d.v; r.days = r.days.includes(v) ? r.days.filter((x) => x !== v) : [...r.days, v].sort(); save(); return render(); }
       case 'remDel': db.reminders = db.reminders.filter((x) => x.id !== d.id); save(); return render();
-      case 'export': {
-        const txt = JSON.stringify(db);
-        return dialog(`<h3>Your backup</h3><p class="small muted">Copy this and keep it somewhere safe. Paste it into "Restore backup" on another device.</p><textarea rows="8" readonly>${esc(txt)}</textarea>`, [{ label: 'Close', cls: 'ghost' }, { label: 'Copy', cls: 'primary', fn: () => { copyText(txt); return false; } }]);
-      }
-      case 'import':
-        return dialog(`<h3>Restore backup</h3><p class="small muted">Paste your backup text, or choose a backup file.</p><textarea id="importBox" rows="8"></textarea><input type="file" id="importFile" accept="application/json,.json,.txt" class="mt">`,
-          [{ label: 'Cancel', cls: 'ghost' }, { label: 'Restore', cls: 'primary', fn: () => { restore(); return false; } }]);
-      case 'wipe': return askConfirm(`Delete all logs, photos, routine and settings${cloud.user ? ' on every device and in your account' : ' on this device'}? This cannot be undone.`, async () => { cloudDeleteScans(db.scans.map((x) => x.id)); db = fresh(); current = null; try { await cloudWipe(); } catch {} save(); toast('Everything deleted'); go('#/'); }, 'Delete everything');
+      case 'export': case 'backupFile': return backupFlow();
+      case 'import': case 'restoreFile': return restoreFlow();
+      case 'restoreSnap': return restoreSnap(d.id);
+      case 'restoreCloud': return restoreCloud(d.id).catch((e) => toast('Could not read that backup: ' + (e.message || e)));
+      case 'cloudBackupNow': return cloudBackup(true).then((ok) => { if (ok) { toast('Backed up to your account'); fillBackupLists(); } }).catch((e) => toast('Account backup failed: ' + (e.message || e)));
+      case 'dbCheck': return dbCheck();
+      case 'persistStore': return navigator.storage?.persist?.().then((ok) => { dbHealth.persisted = ok; toast(ok ? 'Storage protected' : 'The browser said no. Installing AURA as an app usually allows it.'); render(); });
+      case 'wipe': return askConfirm(`Delete all logs, photos, routine, settings and backups${cloud.user ? ' on every device and in your account' : ' on this device'}? This cannot be undone. Download a backup file first if you might want it back.`, async () => { cloudDeleteScans(db.scans.map((x) => x.id)); db = fresh(); current = null; try { await cloudWipe(true); } catch {} await wipeDevice(); store.set('lastSnap', 0); save(); toast('Everything deleted'); go('#/'); }, 'Delete everything');
       case 'startFresh': return askConfirm('Remove the sample data and start tracking your own? Your routine, reminders and profile stay.', () => {
         db = { ...fresh(), profile: db.profile, routine: db.routine, reminders: db.reminders, demo: false }; save(); toast('Ready. Log your first day!'); go('#/log');
       }, 'Start fresh');
-      case 'loadDemo': return askConfirm('Replace your data with 45 days of sample data?', () => { db = fresh(); seedDemo(db); save(); go('#/'); }, 'Load sample');
+      case 'loadDemo': return askConfirm('Replace your data with 45 days of sample data? A safety copy of your data is kept under Me → Data & backups.', async () => { await snapshot('safety', 'Before loading sample data'); db = fresh(); seedDemo(db); save(); go('#/'); }, 'Load sample');
     }
   }
-  async function restore() {
-    try {
-      const f = $('#importFile').files[0];
-      const j = JSON.parse(f ? await f.text() : $('#importBox').value);
-      if (!j.logs) throw new Error('no logs');
-      db = { ...fresh(), ...j }; save(); $('#modal').classList.add('hidden'); toast('Backup restored'); go('#/');
-    } catch { toast('That backup could not be read. Paste the complete text you copied.'); }
+  async function dbCheck() {
+    const fixes = repair(db); await flushDb(); await storageInfo();
+    let ok = true;
+    if (idbOK) { try { const back = await idbTx(['kv'], 'readonly', (t) => t.objectStore('kv').get('db')); ok = !!back && Object.keys(back.logs).length === Object.keys(db.logs).length && back.scans.length === db.scans.length; } catch { ok = false; } }
+    const snaps = await listSnaps();
+    dialog(`<h3>${ok && !dbHealth.err ? '✓ Your data is healthy' : '! Problem found'}</h3>
+      <ul class="small clean"><li>${statsLine(statsOf(db))} checked.</li>
+      <li>${fixes.length ? 'Fixed: ' + esc([...new Set(fixes)].join(', ')) + '.' : 'Nothing needed fixing.'}</li>
+      <li>${ok ? 'Saved and read back from the device database correctly.' : 'The device database could not be read back. Make a backup file now.'}</li>
+      <li>${snaps.length} automatic backup${snaps.length === 1 ? '' : 's'} on this device${cloud.user ? `; account sync is ${cloud.status === 'synced' ? 'up to date' : cloud.status}` : ''}.</li>
+      <li>${dbHealth.persisted ? 'Storage is protected from automatic clean-up.' : 'Storage is not yet protected from automatic clean-up. Safari can clear sites you haven\'t visited for 7 days; installing AURA as an app prevents that.'}</li></ul>`,
+      dbHealth.persisted ? [{ label: 'Close', cls: 'primary' }] : [{ label: 'Close', cls: 'ghost' }, { label: 'Protect storage', cls: 'primary', fn: () => { act({ dataset: { act: 'persistStore' } }); } }]);
+    if (fixes.length) save();
   }
   function onForm(form, e) {
     e.preventDefault();
@@ -3395,13 +3702,14 @@ The app's photo scores are colour-based estimates that change with lighting and 
     if (pendingFile && route === '/scan') { const f = pendingFile; pendingFile = null; runScan(f); }
     $('#logDate')?.addEventListener('change', (e) => e.target.value && go('#/log/' + e.target.value));
     $('#baRange')?.addEventListener('input', (e) => e.target.parentElement.style.setProperty('--pos', e.target.value + '%'));
+    if ($('#snapList')) fillBackupLists();
     $('[data-lockafter]')?.addEventListener('change', (e) => { lock.cfg.after = +e.target.value; lockSave(lock.cfg, !lock.cfg.preset); toast('Saved'); });
     $$('[data-rem-time]').forEach((el) => el.addEventListener('change', () => { db.reminders.find((r) => r.id === el.dataset.remTime).time = el.value; save(); render(); }));
   }
 
   let inputTimer, chartEl = null;
-  function init() {
-    db = loadDb();
+  async function init() {
+    db = await loadDb(); persistDb();   // moves older localStorage data into the database without marking it as a new edit
     route = readHash();
     document.addEventListener('click', (e) => {
       const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); return go(g.dataset.go); }
@@ -3434,6 +3742,9 @@ The app's photo scores are colour-based estimates that change with lighting and 
     addEventListener('hashchange', () => { const h = readHash(); if (h !== route) go(h, false); });
     render();
     gateCheck(); dermaRender(); registerSW();
+    storageInfo().then(() => { if (!dbHealth.persisted) navigator.storage?.persist?.().then((ok) => { dbHealth.persisted = ok; }).catch(() => {}); if (route === '/me') render(); });
+    setTimeout(dailyCheck, 3000);
+    if (dbHealth.notes.length) setTimeout(() => dialog(`<h3>Your data was recovered</h3><ul class="small clean">${dbHealth.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul><p class="tiny muted">Check Me → Data & backups. If something is missing, restore an automatic backup or a backup file.</p>`), 800);
     fx.init();
     setInterval(remTick, 20000); remTick();
     setInterval(sleepTick, 1000);

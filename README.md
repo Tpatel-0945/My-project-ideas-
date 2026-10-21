@@ -31,9 +31,13 @@ Open `index.html` through a local web server (for example `python3 -m http.serve
 
 The monitor raises a "see a dermatologist" alert when you tick a warning sign (changing mole, hair in clumps, cysts, rash with swelling or fever), when hair fall stays above 150/day for a week or suddenly jumps, or when breakouts stay high.
 
-## Data
+## Data & backups
 
-Everything is stored in your browser's `localStorage` (`auram.db`). Photos are analysed on-device and saved only as small thumbnails. A first visit starts empty: your first scan or check-in becomes your first data point.
+- **On the device:** everything is stored in the browser's IndexedDB database (`aura`): the main record, scan photos (stored once and shared by every backup), and automatic backups. It holds hundreds of MB, so photos are never dropped to make room. A small copy without photos is mirrored to `localStorage` as a fallback. The app asks the browser to protect its storage from automatic clean-up; installing AURA as an app makes that reliable (Safari clears sites you haven't visited for 7 days otherwise).
+- **Automatic backups:** one every day on the device (last 14 kept), a safety copy before anything that replaces data (restore, sample data), and, when signed in, one every week in your account (last 8 kept). Restore any of them under **Me → Data & backups**.
+- **Backup files:** **Back up to a file** makes one file with everything, photos included, optionally encrypted with a password (AES-256-GCM, key from PBKDF2-SHA256 with 600,000 rounds). Download it or share it to Google Drive, iCloud, email or WhatsApp. **Restore from a file** previews what's inside and lets you **merge** (keeps the newer version of each day, loses nothing) or **replace** (also updates every signed-in device). Older plain backups still work.
+- **Self-repair:** on every start the data is checked and anything malformed is fixed. If the main record is lost or damaged, AURA recovers from its copy and the latest automatic backup, keeps the damaged data aside, and tells you. **Check & repair** runs the same check on demand and confirms the data reads back correctly.
+- Two open tabs stay in step instead of overwriting each other. Failed uploads to your account are retried on the next change.
 
 Not medical advice. Photo scores are colour-based estimates and change with lighting.
 

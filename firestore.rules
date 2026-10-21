@@ -11,7 +11,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow read, write: if isOwner(uid);
       match /{collection}/{docId} {
-        allow read, write: if isOwner(uid) && collection in ['logs', 'scans', 'chat', 'private'];
+        allow read, write: if isOwner(uid) && collection in ['logs', 'scans', 'chat', 'private', 'backups'];
       }
     }
     match /{document=**} {

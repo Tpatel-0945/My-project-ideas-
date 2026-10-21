@@ -88,5 +88,8 @@ Google sign-in inside the installed iPhone app can fail on GitHub Pages because 
 | `users/<you>/scans/<id>` | each photo scan (small thumbnail + scores) |
 | `users/<you>/chat/main` | your Derma conversation |
 | `users/<you>/private/settings` | your PIN's hash (never the PIN) and, if you tick the box, your Gemini key |
+| `users/<you>/backups/<week>` | a compressed weekly backup of everything except photos (last 8 kept) |
 
-Every device also keeps a full copy, so the app opens instantly and works offline. **Me → Delete everything** removes it from your account and every device.
+Every device also keeps a full copy plus 14 daily backups, so the app opens instantly and works offline. Make a backup file now and then too (**Me → Data & backups**). **Me → Delete everything** removes everything, including backups, from your account and the device.
+
+After changing `firestore.rules`, run `firebase deploy` again so the new `backups` collection is allowed.

@@ -702,3 +702,15 @@ body.locked #app, body.locked footer, body.locked .topbar, body.locked .derma-fa
   .gate { padding-top: calc(24px + env(safe-area-inset-top, 0px)); }
   body { overscroll-behavior-y: none; }
 }
+
+/* ================= data & backups ================= */
+.health { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(159, 224, 141, 0.3); background: rgba(159, 224, 141, 0.06); margin-bottom: 10px; }
+.health .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--good); box-shadow: 0 0 10px var(--good); flex: none; }
+.health.bad { border-color: rgba(255, 123, 123, 0.4); background: rgba(255, 123, 123, 0.07); }
+.health.bad .dot { background: var(--bad); box-shadow: 0 0 10px var(--bad); }
+h4.sub { margin: 16px 0 6px; font: 600 0.7rem var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.bk-list { display: grid; gap: 6px; }
+.bk { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.02); }
+.bk b { font-size: 0.86rem; font-weight: 600; }
+.bk .pill { font-size: 0.62rem; margin-left: 4px; }
+.bk .btn { flex: none; }
