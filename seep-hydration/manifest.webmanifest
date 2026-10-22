@@ -1,0 +1,10 @@
+{
+  "name": "Seep Hydration",
+  "short_name": "Seep",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#03102a",
+  "theme_color": "#03102a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

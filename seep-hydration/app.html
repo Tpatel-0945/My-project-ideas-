@@ -1,0 +1,1036 @@
+<title>Seep Hydration</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: floating glass panels drifting over a deep-water backdrop; the 3D glass anchors the left on iPad, panels stack on phones. */
+:root{
+  --abyss:#03102a;      /* page ground */
+  --deep:#0b2b62;       /* panel tint */
+  --tide:#2b7bff;       /* primary accent */
+  --foam:#8fd6ff;       /* light accent */
+  --ice:#eaf6ff;        /* main text */
+  --mist:#9dbfe3;       /* muted text */
+  --line:rgba(143,214,255,.16);
+  --panel:rgba(14,48,104,.46);
+  --panel-strong:rgba(18,60,128,.72);
+  --good:#4fe3b5; --warn:#ffcc66; --bad:#ff7d93;
+  --font-display:"Unbounded","Trebuchet MS",system-ui,sans-serif;
+  --font-body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-data:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --r-lg:28px; --r-md:18px; --r-sm:12px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--abyss);color:var(--ice);font-family:var(--font-body);font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--abyss)}
+/* ambient water backdrop */
+.ocean{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  background:radial-gradient(120% 80% at 20% 0%,#0d3a85 0%,transparent 60%),radial-gradient(90% 70% at 100% 100%,#082a66 0%,transparent 60%),var(--abyss)}
+.ocean i{position:absolute;border-radius:50%;filter:blur(60px);opacity:.45;animation:drift 26s ease-in-out infinite}
+.ocean i:nth-child(1){width:46vmax;height:46vmax;left:-10vmax;top:30%;background:#1450c4}
+.ocean i:nth-child(2){width:36vmax;height:36vmax;right:-8vmax;top:-6vmax;background:#0f6fd6;animation-delay:-9s}
+.ocean i:nth-child(3){width:28vmax;height:28vmax;left:40%;bottom:-12vmax;background:#2a9cf0;opacity:.25;animation-delay:-16s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(4vmax,-3vmax) scale(1.08)}}
+
+.app{position:relative;z-index:1;max-width:1240px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:18px 120px}
+
+/* floating panels */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;
+  backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
+  box-shadow:0 20px 50px -20px rgba(0,8,30,.8),inset 0 1px 0 rgba(255,255,255,.08);
+  animation:bob 9s ease-in-out infinite;animation-delay:var(--d,0s);min-width:0}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){.panel,.ocean i{animation:none}}
+
+h1,h2,h3{font-family:var(--font-display);font-weight:600;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(22px,3vw,30px)}
+h2{font-size:17px}
+h3{font-size:14px}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);font-weight:600}
+.muted{color:var(--mist)}
+.num{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.small{font-size:13px}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:42px;height:42px;border-radius:14px;background:linear-gradient(160deg,#5ec4ff,#1d5fe0);display:grid;place-items:center;box-shadow:0 8px 24px -6px #1f7bff}
+.goal-pill{display:flex;gap:14px;align-items:center;padding:10px 16px;border-radius:999px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.goal-pill b{font-family:var(--font-data);font-weight:500}
+
+/* views */
+.view{display:grid;gap:18px}
+.grid-today{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+.stack{display:grid;gap:18px;min-width:0}
+@media (max-width:860px){.grid-today{grid-template-columns:1fr}}
+
+/* glass stage */
+.stage{position:relative;padding:0;overflow:hidden;min-height:520px;display:flex;flex-direction:column}
+@media (min-width:861px){.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 14px);min-height:min(78vh,720px)}}
+.stage-head{position:absolute;inset:18px 20px auto 20px;display:flex;justify-content:space-between;gap:12px;z-index:2;pointer-events:none}
+.stage-canvas{position:absolute;inset:0;touch-action:none;cursor:grab}
+.stage-canvas canvas{display:block;width:100%!important;height:100%!important}
+.big-ml{font-family:var(--font-display);font-size:clamp(34px,5vw,48px);font-weight:700;line-height:1}
+.big-ml small{font-size:.38em;font-weight:400;color:var(--mist);margin-left:4px}
+.stage-foot{position:absolute;inset:auto 20px 18px 20px;z-index:2;display:flex;justify-content:space-between;align-items:end;gap:10px;pointer-events:none}
+.mark{position:absolute;z-index:2;font-family:var(--font-data);font-size:11px;color:var(--foam);opacity:.8;transform:translate(8px,-50%);white-space:nowrap;pointer-events:none}
+.mark::before{content:"";display:inline-block;width:10px;height:1px;background:var(--foam);vertical-align:middle;margin-right:6px;opacity:.7}
+.fallback-glass{margin:auto;width:150px;height:240px;border:3px solid rgba(190,230,255,.5);border-top:none;border-radius:0 0 26px 26px;position:relative;overflow:hidden}
+.fallback-glass span{position:absolute;inset:auto 0 0;background:linear-gradient(#5fc0ff,#1650c8);transition:height .8s}
+
+/* controls */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{appearance:none;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--ice);font:inherit;font-size:13px;
+  padding:8px 12px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .2s,border-color .2s,transform .15s}
+.chip:hover{background:rgba(143,214,255,.1)}
+.chip[aria-pressed="true"]{background:var(--tide);border-color:transparent;color:#fff}
+.chip .dot{width:9px;height:9px;border-radius:50%}
+.sizes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.size{appearance:none;border:1px solid var(--line);color:var(--ice);font:inherit;cursor:pointer;border-radius:var(--r-md);padding:14px 6px 12px;
+  background:linear-gradient(180deg,rgba(143,214,255,.12),rgba(43,123,255,.06));display:grid;justify-items:center;gap:4px;transition:transform .15s,background .2s}
+.size:active{transform:scale(.95)}
+.size:hover{background:linear-gradient(180deg,rgba(143,214,255,.2),rgba(43,123,255,.12))}
+.size b{font-family:var(--font-data);font-size:17px;font-weight:500}
+.size span{font-size:11px;color:var(--mist)}
+.size svg{opacity:.85}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{appearance:none;border:none;font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padding:11px 18px;background:var(--tide);color:#fff;transition:filter .2s,transform .15s}
+.btn:active{transform:scale(.97)}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:rgba(255,255,255,.06);color:var(--ice);border:1px solid var(--line)}
+.btn.danger{background:rgba(255,125,147,.16);color:var(--bad);border:1px solid rgba(255,125,147,.35)}
+.btn.sm{padding:7px 12px;font-size:13px}
+input,select{font:inherit;color:var(--ice);background:rgba(3,16,42,.55);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--foam);outline-offset:2px}
+input[type=number]{width:100%}
+label.field{display:grid;gap:6px;font-size:13px;color:var(--mist)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.toggle{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer}
+.toggle input{width:20px;height:20px;accent-color:var(--tide)}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat{padding:12px 14px;border-radius:var(--r-md);background:rgba(3,16,42,.35);border:1px solid var(--line);min-width:0}
+.stat b{display:block;font-family:var(--font-data);font-size:19px;font-weight:500}
+.stat span{font-size:12px;color:var(--mist)}
+
+/* log */
+.log{display:grid;gap:6px;max-height:260px;overflow:auto;padding-right:4px}
+.log-item{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;padding:9px 12px;border-radius:var(--r-sm);background:rgba(3,16,42,.3)}
+.log-item .dot{width:10px;height:10px;border-radius:50%}
+.x{appearance:none;border:none;background:none;color:var(--mist);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:8px}
+.x:hover{color:var(--bad);background:rgba(255,125,147,.1)}
+.empty{padding:18px;text-align:center;color:var(--mist);border:1px dashed var(--line);border-radius:var(--r-md);font-size:14px}
+
+/* status pills */
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.pill.good{background:rgba(79,227,181,.14);color:var(--good)}
+.pill.warn{background:rgba(255,204,102,.14);color:var(--warn)}
+.pill.bad{background:rgba(255,125,147,.14);color:var(--bad)}
+.pill.info{background:rgba(143,214,255,.12);color:var(--foam)}
+
+/* skin */
+.skin-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:26px;align-items:center}
+@media (max-width:640px){.skin-hero{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.ring{position:relative;width:200px;height:200px}
+.ring svg{transform:rotate(-90deg)}
+.ring-c{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring-c b{font-family:var(--font-display);font-size:46px;line-height:1}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px}
+.metric{display:grid;gap:10px;align-content:start}
+.metric-top{display:flex;justify-content:space-between;align-items:start;gap:10px}
+.metric .val{font-family:var(--font-data);font-size:28px;font-weight:500;line-height:1.1}
+.metric .val small{font-size:13px;color:var(--mist);margin-left:4px}
+.bar{height:8px;border-radius:99px;background:rgba(143,214,255,.12);overflow:hidden;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:99px;background:linear-gradient(90deg,#2b7bff,#8fd6ff)}
+.scale{display:flex;justify-content:space-between;font-family:var(--font-data);font-size:10px;color:var(--mist)}
+.drivers{display:grid;gap:10px}
+.driver{display:grid;grid-template-columns:minmax(0,1fr) 120px 44px;gap:12px;align-items:center;font-size:14px}
+@media (max-width:520px){.driver{grid-template-columns:minmax(0,1fr) 80px 40px}}
+.tips{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.tips li{padding:12px 14px;border-radius:var(--r-sm);background:rgba(3,16,42,.32);border-left:3px solid var(--foam);font-size:14px}
+.tips li.warn{border-left-color:var(--warn)} .tips li.bad{border-left-color:var(--bad)}
+
+/* nutrition */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.nutr{display:grid;gap:12px}
+.nutr-row{display:grid;grid-template-columns:110px minmax(0,1fr) 128px;gap:12px;align-items:center;font-size:14px}
+@media (max-width:520px){.nutr-row{grid-template-columns:84px minmax(0,1fr) 104px;font-size:12px}}
+.nutr-row .bar{height:10px}
+.nutr-row .bar i.low{background:linear-gradient(90deg,#ff7d93,#ffb0bd)}
+.nutr-row .bar i.mid{background:linear-gradient(90deg,#ffb84d,#ffe09a)}
+.nutr-row .bar i.ok{background:linear-gradient(90deg,#2b7bff,#4fe3b5)}
+.nutr-row .bar i.over{background:linear-gradient(90deg,#ff7d93,#ff4d6d)}
+.nutr-row .bar .tgt{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ice);opacity:.6}
+.meal{display:grid;gap:8px;align-content:start;padding:14px;border-radius:var(--r-md);background:rgba(3,16,42,.3);border:1px solid var(--line)}
+.meal-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.food{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;font-size:14px;padding:4px 0}
+.food .name{min-width:0}
+.food .name small{display:block;color:var(--mist);font-size:12px}
+.food.off .name{opacity:.45;text-decoration:line-through}
+.badge-nv{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bad);background:rgba(255,125,147,.14);padding:2px 7px;border-radius:6px;margin-left:6px;text-decoration:none;display:inline-block}
+.watch{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.watch .w{padding:14px;border-radius:var(--r-md);background:rgba(3,16,42,.32);border:1px solid var(--line);display:grid;gap:6px;align-content:start}
+
+/* menu editor */
+.days{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.days .chip{min-width:58px;justify-content:center}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.stepper button{appearance:none;border:none;background:rgba(255,255,255,.05);color:var(--ice);width:30px;height:30px;font-size:16px;cursor:pointer}
+.stepper span{min-width:38px;text-align:center;font-family:var(--font-data);font-size:13px}
+.lunch-tag{font-size:11px;color:var(--foam);border:1px solid var(--line);padding:2px 8px;border-radius:999px}
+
+/* floating dock */
+.dock{position:fixed;z-index:20;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  display:flex;gap:4px;padding:8px;border-radius:999px;background:rgba(10,38,86,.72);border:1px solid var(--line);
+  backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);box-shadow:0 18px 40px -12px rgba(0,0,0,.7);max-width:calc(100vw - 24px)}
+.dock button{appearance:none;border:none;background:none;color:var(--mist);font:inherit;font-size:11px;font-weight:600;cursor:pointer;
+  display:grid;justify-items:center;gap:3px;padding:8px 14px;border-radius:999px;transition:background .2s,color .2s;min-width:0}
+.dock button[aria-current="page"]{background:var(--tide);color:#fff}
+@media (max-width:420px){.dock button{padding:8px 9px}}
+
+/* sheet (food picker) */
+.sheet-wrap{position:fixed;inset:0;z-index:40;background:rgba(1,8,22,.6);display:grid;place-items:center;padding:16px;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.sheet{width:min(640px,100%);max-height:min(82vh,760px);display:flex;flex-direction:column;gap:12px;background:var(--panel-strong);animation:none}
+.sheet-list{overflow:auto;display:grid;gap:6px;padding-right:4px;min-height:120px}
+.pick{appearance:none;border:1px solid transparent;text-align:left;font:inherit;color:var(--ice);background:rgba(3,16,42,.4);border-radius:var(--r-sm);padding:10px 12px;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+.pick:hover{border-color:var(--line);background:rgba(43,123,255,.18)}
+.pick small{color:var(--mist);display:block;font-size:12px}
+details summary{cursor:pointer;color:var(--foam);font-weight:600;font-size:14px}
+
+.toast{position:fixed;z-index:50;left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));padding:10px 18px;border-radius:999px;
+  background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);font-size:14px;transition:opacity .3s}
+.note{font-size:12px;color:var(--mist);line-height:1.5}
+.chart svg{width:100%;height:auto;display:block}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+</style>
+
+<div class="ocean" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 2.5c3.6 4.4 6.5 8 6.5 11.5a6.5 6.5 0 0 1-13 0c0-3.5 2.9-7.1 6.5-11.5z" fill="#fff"/></svg></div>
+      <div>
+        <h1>Seep</h1>
+        <div class="muted small" id="todayLabel"></div>
+      </div>
+    </div>
+    <div class="goal-pill">
+      <span class="muted small">Goal</span><b id="goalPill">–</b>
+      <span class="muted small">Skin</span><b id="skinPill">–</b>
+    </div>
+  </header>
+
+  <!-- TODAY -->
+  <section class="view" id="view-today">
+    <div class="grid-today">
+      <div class="panel stage" style="--d:-2s">
+        <div class="stage-head">
+          <div>
+            <div class="eyebrow">Today's glass</div>
+            <div class="big-ml num" id="mlNow">0<small>ml</small></div>
+            <div class="muted small" id="mlOf"></div>
+          </div>
+          <div style="text-align:right">
+            <div class="eyebrow">Progress</div>
+            <div class="big-ml num" id="pctNow" style="font-size:clamp(24px,3.4vw,34px)">0%</div>
+          </div>
+        </div>
+        <div class="stage-canvas" id="glass" aria-label="3D glass showing today's water intake"></div>
+        <div class="stage-foot">
+          <span class="muted small" id="stageHint">Drag to turn the glass. Tap it to pour.</span>
+          <span class="pill info" id="streakPill"></span>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="panel" style="--d:-5s">
+          <div class="section-head"><h2>Pour a drink</h2><span class="muted small" id="pourHint"></span></div>
+          <div class="chips" id="drinkChips" role="group" aria-label="Drink type"></div>
+          <div class="sizes" id="sizes" style="margin-top:14px"></div>
+          <div class="row" style="margin-top:12px">
+            <input id="customMl" type="number" inputmode="numeric" min="10" max="2000" step="10" placeholder="Custom ml" style="flex:1;min-width:120px">
+            <button class="btn" id="customAdd">Pour</button>
+          </div>
+        </div>
+
+        <div class="panel" style="--d:-1s">
+          <div class="stats">
+            <div class="stat"><b id="sRemain">–</b><span>left to drink</span></div>
+            <div class="stat"><b id="sPace">–</b><span>suggested pace</span></div>
+            <div class="stat"><b id="sCaff">–</b><span>caffeine today</span></div>
+          </div>
+          <p class="note" id="foodWaterNote" style="margin:12px 0 0"></p>
+        </div>
+
+        <div class="panel" style="--d:-7s">
+          <div class="section-head"><h2>Today's log</h2><span class="muted small" id="logCount"></span></div>
+          <div class="log" id="log"></div>
+        </div>
+
+        <div class="panel chart" style="--d:-3s">
+          <div class="section-head"><h2>Last 7 days</h2><span class="muted small">effective ml vs goal</span></div>
+          <div id="weekChart"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SKIN -->
+  <section class="view" id="view-skin" hidden>
+    <div class="panel" style="--d:-2s">
+      <div class="skin-hero">
+        <div class="ring" id="skinRing"></div>
+        <div style="display:grid;gap:10px">
+          <div class="eyebrow">Skin hydration index</div>
+          <h2 id="skinHeadline" style="font-size:clamp(20px,2.6vw,26px)"></h2>
+          <p class="muted" id="skinSummary" style="margin:0;max-width:60ch"></p>
+          <p class="note" style="margin:0">Estimates from your water log, sleep, indoor air and today's plate. They track trends; they are not a skin test or medical advice.</p>
+        </div>
+      </div>
+    </div>
+    <div class="metrics" id="skinMetrics"></div>
+    <div class="two">
+      <div class="panel" style="--d:-4s">
+        <div class="section-head"><h2>What's driving it</h2></div>
+        <div class="drivers" id="drivers"></div>
+      </div>
+      <div class="panel" style="--d:-6s">
+        <div class="section-head"><h2>Today's conditions</h2></div>
+        <div class="form-grid">
+          <label class="field">Sleep last night (hours)<input id="envSleep" type="number" min="0" max="14" step="0.5"></label>
+          <label class="field">AC / heater hours<input id="envAc" type="number" min="0" max="24" step="1"></label>
+          <label class="field">Air today
+            <select id="envAir"><option value="dry">Dry</option><option value="normal">Normal</option><option value="humid">Humid</option></select>
+          </label>
+          <label class="field">Climate
+            <select id="envClimate"><option value="cool">Cool</option><option value="mild">Mild</option><option value="hot">Hot</option><option value="veryhot">Very hot</option></select>
+          </label>
+        </div>
+        <h3 style="margin:18px 0 10px">Care tips for today</h3>
+        <ul class="tips" id="skinTips"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- NUTRITION -->
+  <section class="view" id="view-food" hidden>
+    <div class="panel" style="--d:-1s">
+      <div class="section-head">
+        <div><div class="eyebrow">Vegan · muesli lunch</div><h2 id="plateTitle">Today's plate</h2></div>
+        <div class="row"><span class="pill info" id="kcalPill"></span><button class="btn sm" data-pick="extra">+ Add extra food</button></div>
+      </div>
+      <div class="menu-grid" id="plate"></div>
+      <p class="note" style="margin:12px 0 0">Uncheck anything you skipped. Items marked not vegan are left out automatically; tick them only if you ate them.</p>
+    </div>
+    <div class="two">
+      <div class="panel" style="--d:-4s">
+        <div class="section-head"><h2>Nutrient status</h2><div class="chips" id="nutrMode" role="group" aria-label="Period"></div></div>
+        <div class="nutr" id="nutrBars"></div>
+        <p class="note" style="margin:14px 0 0">Targets follow ICMR-NIN 2020 adult RDAs, adjusted for your weight and sex. Protein is set at 0.9 g/kg because plant protein digests a little less completely.</p>
+      </div>
+      <div class="stack">
+        <div class="panel" style="--d:-6s">
+          <div class="section-head"><h2>Vegan watchlist</h2></div>
+          <div class="watch" id="watch"></div>
+        </div>
+        <div class="panel" style="--d:-2s">
+          <div class="section-head"><h2>Fill the gaps</h2></div>
+          <ul class="tips" id="foodTips"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MENU -->
+  <section class="view" id="view-menu" hidden>
+    <div class="panel" style="--d:-2s">
+      <div class="section-head">
+        <div><div class="eyebrow">Hostel mess</div><h2>Weekly menu</h2></div>
+        <div class="row"><button class="btn ghost sm" id="resetMenu">Load sample menu</button></div>
+      </div>
+      <div class="days" id="dayTabs" role="group" aria-label="Day"></div>
+      <p class="note" id="menuNote" style="margin:10px 0 0"></p>
+    </div>
+    <div class="menu-grid" id="menuMeals"></div>
+  </section>
+
+  <!-- PROFILE -->
+  <section class="view" id="view-me" hidden>
+    <div class="panel" style="--d:-2s">
+      <div class="section-head"><h2>About you</h2><span class="muted small">Used for your water goal and nutrient targets</span></div>
+      <div class="form-grid">
+        <label class="field">Name<input id="pName" type="text" maxlength="30"></label>
+        <label class="field">Sex
+          <select id="pSex"><option value="f">Female</option><option value="m">Male</option></select>
+        </label>
+        <label class="field">Age<input id="pAge" type="number" min="12" max="90"></label>
+        <label class="field">Weight (kg)<input id="pWeight" type="number" min="30" max="200" step="0.5"></label>
+        <label class="field">Height (cm)<input id="pHeight" type="number" min="120" max="220"></label>
+        <label class="field">Activity
+          <select id="pActivity"><option value="sed">Mostly sitting</option><option value="light">Light (walks, cycling to class)</option><option value="mod">Moderate (workouts 3–4×/week)</option><option value="high">Intense / sports daily</option></select>
+        </label>
+        <label class="field">Midday sun (min/day)<input id="pSun" type="number" min="0" max="240"></label>
+        <label class="field">Daily goal override (ml)<input id="pGoal" type="number" min="0" max="6000" step="50" placeholder="Auto"></label>
+      </div>
+      <div class="row" style="margin-top:18px;gap:22px">
+        <label class="toggle"><input type="checkbox" id="pB12"> I take a B12 supplement</label>
+        <label class="toggle"><input type="checkbox" id="pD3"> I take vitamin D3 (vegan)</label>
+        <label class="toggle"><input type="checkbox" id="pSound"> Water sounds</label>
+      </div>
+    </div>
+    <div class="panel" style="--d:-5s">
+      <div class="section-head"><h2>How your goal is worked out</h2></div>
+      <div class="drivers" id="goalBreakdown"></div>
+    </div>
+    <div class="panel" style="--d:-3s">
+      <div class="section-head"><h2>Your data</h2></div>
+      <p class="muted small" style="margin:0 0 12px">Everything is stored on this device only.</p>
+      <div class="row">
+        <button class="btn ghost sm" id="exportBtn">Copy backup</button>
+        <button class="btn danger sm" id="wipeBtn">Clear today's log</button>
+      </div>
+      <textarea id="backupBox" hidden readonly style="width:100%;margin-top:12px;height:90px;font:12px var(--font-data);color:var(--ice);background:rgba(3,16,42,.55);border:1px solid var(--line);border-radius:12px;padding:10px"></textarea>
+    </div>
+  </section>
+</div>
+
+<nav class="dock" aria-label="Sections">
+  <button data-view="today" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c3.4 4.2 6 7.6 6 10.8a6 6 0 0 1-12 0C6 10.6 8.6 7.2 12 3z"/></svg>Water</button>
+  <button data-view="skin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M9 10h.01M15 10h.01M9 15c1.7 1.3 4.3 1.3 6 0"/></svg>Skin</button>
+  <button data-view="food"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z"/><path d="M5 19l7-7"/></svg>Nutrients</button>
+  <button data-view="menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Mess menu</button>
+  <button data-view="me"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Me</button>
+</nav>
+
+<div class="sheet-wrap" id="sheet" hidden>
+  <div class="panel sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="section-head" style="margin:0"><h2 id="sheetTitle">Add food</h2><button class="x" id="sheetClose" aria-label="Close">×</button></div>
+    <input id="pickSearch" type="search" placeholder="Search dal, roti, poha, chia…" autocomplete="off">
+    <div class="chips" id="pickCats"></div>
+    <div class="sheet-list" id="pickList"></div>
+    <details id="customFood">
+      <summary>Item not listed? Create it</summary>
+      <div class="form-grid" style="margin-top:12px">
+        <label class="field">Name<input id="cfName" type="text" maxlength="40" placeholder="e.g. Baingan bharta"></label>
+        <label class="field">Serving<input id="cfServ" type="text" maxlength="24" placeholder="1 bowl"></label>
+        <label class="field">kcal<input id="cfCal" type="number" min="0"></label>
+        <label class="field">Protein g<input id="cfP" type="number" min="0" step="0.1"></label>
+        <label class="field">Iron mg<input id="cfFe" type="number" min="0" step="0.1"></label>
+        <label class="field">Calcium mg<input id="cfCa" type="number" min="0"></label>
+        <label class="field">Vitamin C mg<input id="cfVc" type="number" min="0"></label>
+        <label class="field">Sodium mg<input id="cfNa" type="number" min="0"></label>
+      </div>
+      <div class="row" style="margin-top:12px;justify-content:space-between">
+        <label class="toggle"><input type="checkbox" id="cfVegan" checked> Vegan</label>
+        <button class="btn sm" id="cfSave">Save and add</button>
+      </div>
+    </details>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ---------- data ---------- */
+// per serving: kcal, protein g, carbs g, fat g, fibre g, iron mg, calcium mg, zinc mg, vit C mg, B12 mcg, ALA omega-3 g, sodium mg, potassium mg, water ml
+const F=['cal','p','c','f','fib','fe','ca','zn','vc','b12','ala','na','kp','w'];
+const FOOD_ROWS=[
+ // id, name, serving, category, vegan, ...nutrients
+ ['roti','Roti / chapati','1 piece (40 g)','staple',1, 120,3.5,20,3,3,1.2,10,0.6,0,0,0.02,120,90,12],
+ ['rice','Steamed rice','1 cup (150 g)','rice',1, 195,4,43,0.4,0.6,0.3,15,0.7,0,0,0.01,2,55,100],
+ ['jeera','Jeera rice','1 cup','rice',1, 230,4,43,5,1,0.6,20,0.7,0,0,0.03,250,70,95],
+ ['pulao','Veg pulao','1 cup','rice',1, 250,5,40,7,3,1,30,0.8,8,0,0.05,380,200,90],
+ ['biryani','Veg biryani','1 plate','rice',1, 300,6,45,10,3,1.4,40,1,6,0,0.05,500,250,90],
+ ['lemonrice','Lemon rice','1 cup','rice',1, 240,4,42,6,1,0.6,15,0.7,10,0,0.03,350,80,90],
+ ['khichdi','Moong khichdi','1 bowl','rice',1, 220,8,36,4,4,1.8,35,1.2,2,0,0.04,350,300,150],
+ ['toor','Toor dal','1 bowl (150 g)','dal',1, 170,9,25,4,5,2.2,40,1.2,2,0,0.05,350,380,110],
+ ['moong','Moong dal','1 bowl','dal',1, 150,9,22,3,5,1.8,35,1.1,2,0,0.04,320,400,115],
+ ['masoor','Masoor dal','1 bowl','dal',1, 165,10,24,3,5,2.6,25,1.3,2,0,0.05,330,370,110],
+ ['rajma','Rajma','1 bowl','dal',1, 210,11,30,5,9,3.2,60,1.4,3,0,0.15,420,550,100],
+ ['chole','Chole','1 bowl','dal',1, 240,11,34,7,9,3.5,70,1.8,3,0,0.08,450,450,95],
+ ['kalachana','Kala chana','1 bowl','dal',1, 180,9,28,3,8,3,60,1.5,2,0,0.05,300,400,80],
+ ['sambar','Sambar','1 bowl','dal',1, 130,6,18,4,5,1.8,50,0.9,8,0,0.04,450,350,140],
+ ['rasam','Rasam','1 bowl','dal',1, 60,2,8,2,1.5,0.8,20,0.3,10,0,0.02,420,250,170],
+ ['soya','Soya chunk curry','1 bowl','dal',1, 200,18,14,8,5,4,120,1.8,2,0,0.3,400,600,100],
+ ['tofu','Tofu bhurji','1 bowl','dal',1, 180,14,6,11,2,2.5,350,1.5,5,0,0.5,350,250,90],
+ ['aloo','Aloo sabzi','1 bowl','sabzi',1, 160,2.5,22,7,3,0.9,20,0.4,12,0,0.05,330,480,90],
+ ['mixveg','Mixed veg','1 bowl','sabzi',1, 120,3,12,7,4,1.2,50,0.5,18,0,0.06,320,350,110],
+ ['bhindi','Bhindi masala','1 bowl','sabzi',1, 110,2.5,10,7,4,0.8,80,0.6,15,0,0.05,280,300,90],
+ ['palak','Aloo palak','1 bowl','sabzi',1, 130,4,12,7,4,3,120,0.7,20,0,0.12,300,520,110],
+ ['cabbage','Cabbage sabzi','1 bowl','sabzi',1, 90,2,9,5,3,0.6,45,0.3,30,0,0.04,280,220,110],
+ ['gobi','Aloo gobi','1 bowl','sabzi',1, 140,3,15,7,4,0.9,35,0.4,35,0,0.05,320,400,100],
+ ['baingan','Baingan bharta','1 bowl','sabzi',1, 120,2.5,12,7,5,0.7,25,0.3,5,0,0.05,300,330,120],
+ ['salad','Salad (cucumber, tomato, onion)','1 plate','sabzi',1, 30,1,6,0.2,2,0.4,25,0.2,15,0,0.01,10,250,150],
+ ['sprouts','Sprouts chaat','1 bowl','snack',1, 100,7,15,1,4,1.5,30,0.9,12,0,0.05,120,300,90],
+ ['poha','Poha','1 plate','breakfast',1, 250,5,40,7,2,3.5,20,0.6,6,0,0.05,300,150,60],
+ ['upma','Upma','1 plate','breakfast',1, 230,6,32,8,2,1.2,20,0.5,2,0,0.05,350,120,90],
+ ['idli','Idli','2 pieces','breakfast',1, 150,5,30,0.8,2,0.8,20,0.5,0,0,0.01,250,80,90],
+ ['dosa','Plain dosa','1 dosa','breakfast',1, 170,4,28,5,1.5,0.9,15,0.5,0,0,0.02,300,90,40],
+ ['chutney','Coconut chutney','2 tbsp','breakfast',1, 70,1,3,6,2,0.4,5,0.2,0.5,0,0,90,90,20],
+ ['paratha','Aloo paratha (oil)','1 piece','breakfast',1, 290,6,40,11,4,1.8,30,0.9,8,0,0.04,350,350,40],
+ ['bread','Bread','2 slices','breakfast',1, 150,5,28,2,1.5,1.6,60,0.5,0,0,0.02,280,70,20],
+ ['pb','Peanut butter','1 tbsp','breakfast',1, 95,4,3,8,1,0.3,7,0.5,0,0,0,70,105,0],
+ ['samosa','Samosa','1 piece','snack',1, 260,4,30,14,2.5,1.2,20,0.4,4,0,0.08,400,200,15],
+ ['banana','Banana','1 medium','fruit',1, 105,1.3,27,0.4,3,0.3,6,0.2,10,0,0.03,1,420,90],
+ ['apple','Apple','1 medium','fruit',1, 95,0.5,25,0.3,4,0.2,11,0.1,8,0,0.02,2,195,145],
+ ['orange','Orange','1 medium','fruit',1, 62,1.2,15,0.2,3,0.1,52,0.1,70,0,0.01,0,240,120],
+ ['guava','Guava','1 medium','fruit',1, 68,2.6,14,1,5.4,0.3,18,0.2,200,0,0.1,2,420,80],
+ ['papaya','Papaya','1 cup','fruit',1, 60,0.7,15,0.4,2.5,0.4,30,0.1,88,0,0.04,11,260,125],
+ ['muesli','Muesli','60 g','lunch',1, 220,6,40,4,5,2.4,30,1.5,0,0,0.05,100,250,3],
+ ['soymilk','Soy milk, fortified','200 ml','milk',1, 90,7,6,4,1,1,240,0.6,0,0.8,0.1,90,250,185],
+ ['oatmilk','Oat milk, fortified','200 ml','milk',1, 100,2,16,3,1.6,0.3,240,0.2,0,0.76,0.02,90,180,180],
+ ['almondmilk','Almond milk, fortified','200 ml','milk',1, 30,1,1,2.5,0.5,0.3,240,0.1,0,0.76,0,140,70,190],
+ ['chia','Chia seeds','1 tbsp (12 g)','seeds',1, 58,2,5,3.7,4,0.9,76,0.5,0,0,2.1,2,49,1],
+ ['flax','Ground flaxseed','1 tbsp (7 g)','seeds',1, 37,1.3,2,3,1.9,0.4,18,0.3,0,0,1.6,2,57,0],
+ ['walnut','Walnuts','5 halves (10 g)','seeds',1, 65,1.5,1.4,6.5,0.7,0.3,10,0.3,0,0,0.9,0,44,0],
+ ['almond','Almonds','10 nuts (12 g)','seeds',1, 70,2.5,2.6,6,1.5,0.4,32,0.4,0,0,0,0,85,0],
+ ['pumpkin','Pumpkin seeds','1 tbsp (10 g)','seeds',1, 56,3,1,5,0.6,0.9,5,0.8,0,0,0.01,1,80,0],
+ ['raisin','Raisins','1 tbsp','seeds',1, 40,0.4,11,0,0.5,0.3,7,0,0.3,0,0,2,100,2],
+ ['dates','Dates','2 pieces','fruit',1, 130,0.9,36,0.1,3.2,0.4,30,0.2,0,0,0,1,330,10],
+ ['paneer','Paneer butter masala','1 bowl','dal',0, 340,12,12,27,2,0.8,300,1.5,5,0.4,0.2,550,250,80],
+ ['curd','Curd / dahi','1 bowl','dal',0, 100,5,7,5,0,0.1,180,0.6,1,0.5,0.02,60,230,140],
+ ['kadhi','Kadhi pakora','1 bowl','dal',0, 190,6,16,11,1.5,0.9,150,0.6,2,0.3,0.05,500,280,140],
+ ['milktea','Milk tea','1 cup','snack',0, 90,3,12,3,0,0.1,110,0.4,0,0.3,0,40,150,140],
+ ['naan','Butter naan','1 piece','staple',0, 260,7,40,8,1.5,2,60,0.6,0,0.1,0.03,420,90,30],
+];
+const FOOD={};
+FOOD_ROWS.forEach(r=>{const o={id:r[0],name:r[1],serving:r[2],cat:r[3],vegan:!!r[4]};F.forEach((k,i)=>o[k]=r[5+i]);FOOD[r[0]]=o;});
+const CATS=[['all','All'],['staple','Roti & bread'],['rice','Rice'],['dal','Dal & curry'],['sabzi','Sabzi'],['breakfast','Breakfast'],['snack','Snacks'],['fruit','Fruit'],['seeds','Nuts & seeds'],['milk','Plant milk'],['lunch','Lunch'],['custom','My items']];
+
+// hydration factor: share of the drink that counts toward hydration; caffeine mg per 250 ml
+const DRINKS=[
+ {id:'water',name:'Water',f:1,caf:0,col:'#6cc8ff'},
+ {id:'lemon',name:'Lemon water',f:1,caf:0,col:'#d9f27a'},
+ {id:'coconut',name:'Coconut water',f:1.05,caf:0,col:'#e9f4f0'},
+ {id:'herbal',name:'Herbal tea',f:1,caf:0,col:'#9be3a5'},
+ {id:'green',name:'Green tea',f:.95,caf:28,col:'#b6d86a'},
+ {id:'black',name:'Black tea',f:.9,caf:47,col:'#c98d5b'},
+ {id:'coffee',name:'Black coffee',f:.85,caf:95,col:'#8a5a3c'},
+ {id:'plantmilk',name:'Plant milk',f:1,caf:0,col:'#f2ead8'},
+ {id:'soup',name:'Soup / rasam',f:.9,caf:0,col:'#f0a35c'},
+ {id:'ors',name:'Electrolytes',f:1.1,caf:0,col:'#b7a6ff'},
+];
+const DRINK=Object.fromEntries(DRINKS.map(d=>[d.id,d]));
+const SIZES=[[150,'small cup'],[250,'glass'],[350,'mug'],[500,'bottle']];
+
+const DAYS=['mon','tue','wed','thu','fri','sat','sun'];
+const DAY_NAME={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};
+const MEALS=[['breakfast','Breakfast'],['lunch','Lunch'],['snacks','Evening snacks'],['dinner','Dinner']];
+const it=(id,s)=>({id,s:s||1});
+function sampleMenu(){return {
+ mon:{breakfast:[it('poha'),it('banana')],snacks:[it('sprouts')],dinner:[it('roti',3),it('toor'),it('aloo'),it('rice'),it('salad')]},
+ tue:{breakfast:[it('idli'),it('sambar'),it('chutney')],snacks:[it('samosa')],dinner:[it('roti',3),it('rajma'),it('jeera'),it('salad')]},
+ wed:{breakfast:[it('upma'),it('banana')],snacks:[it('kalachana')],dinner:[it('roti',3),it('moong'),it('bhindi'),it('rice')]},
+ thu:{breakfast:[it('paratha',2)],snacks:[it('sprouts')],dinner:[it('roti',3),it('chole'),it('rice'),it('cabbage')]},
+ fri:{breakfast:[it('bread'),it('pb',2)],snacks:[it('apple')],dinner:[it('pulao'),it('toor'),it('mixveg'),it('roti',2)]},
+ sat:{breakfast:[it('dosa',2),it('sambar'),it('chutney')],snacks:[it('samosa')],dinner:[it('khichdi'),it('palak'),it('salad')]},
+ sun:{breakfast:[it('poha'),it('orange')],snacks:[it('kalachana')],dinner:[it('biryani'),it('paneer'),it('roti',2)]},
+};}
+const sampleLunch=()=>[it('muesli'),it('soymilk'),it('banana'),it('chia'),it('walnut')];
+
+/* ---------- state ---------- */
+const KEY='seep.v1';
+const DEFAULT={
+ profile:{name:'',sex:'f',age:20,weight:55,height:162,activity:'light',sun:15,goal:'',b12:false,d3:false,sound:true},
+ env:{sleep:7,ac:4,air:'normal',climate:'hot'},
+ logs:{}, menu:sampleMenu(), lunch:sampleLunch(), plate:{}, custom:{}, menuIsSample:true
+};
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){S=null}
+if(!S||typeof S!=='object')S=JSON.parse(JSON.stringify(DEFAULT));
+for(const k in DEFAULT){if(S[k]===undefined)S[k]=JSON.parse(JSON.stringify(DEFAULT[k]))}
+S.profile=Object.assign({},DEFAULT.profile,S.profile);S.env=Object.assign({},DEFAULT.env,S.env);
+Object.values(S.custom||{}).forEach(c=>FOOD[c.id]=c);
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+let ui={view:'today',drink:'water',menuDay:dayKey(new Date()),nutrMode:'today',pickTarget:null,pickCat:'all'};
+try{const v=localStorage.getItem('seep.view');if(v)ui.view=v}catch(e){}
+if(location.hash&&['today','skin','food','menu','me'].includes(location.hash.slice(1)))ui.view=location.hash.slice(1);
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const pad=n=>String(n).padStart(2,'0');
+function dateKey(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function dayKey(d){return ['sun','mon','tue','wed','thu','fri','sat'][d.getDay()]}
+function fmtMl(ml){return ml>=1000?parseFloat((ml/1000).toFixed(2))+' L':Math.round(ml)+' ml'}
+const today=()=>dateKey(new Date());
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;t.style.opacity=1;clearTimeout(toast._t);toast._t=setTimeout(()=>{t.style.opacity=0;setTimeout(()=>t.hidden=true,300)},1800)}
+
+/* ---------- hydration model ---------- */
+function goalBreakdown(){
+ const p=S.profile,e=S.env,rows=[];
+ rows.push(['Body weight × 35 ml',Math.round(p.weight*35)]);
+ const act={sed:0,light:250,mod:500,high:800}[p.activity]||0; if(act)rows.push(['Activity',act]);
+ const clim={cool:0,mild:150,hot:450,veryhot:700}[e.climate]||0; if(clim)rows.push(['Climate',clim]);
+ const ac=Math.min(300,Math.max(0,e.ac-3)*40); if(ac)rows.push(['Dry AC air ('+e.ac+' h)',ac]);
+ if(e.air==='dry')rows.push(['Dry air today',150]);
+ const auto=Math.round(rows.reduce((s,r)=>s+r[1],0)/50)*50;
+ return {rows,auto,goal:(+p.goal>0?+p.goal:auto)};
+}
+const goal=()=>goalBreakdown().goal;
+function dayHydration(k){
+ const L=S.logs[k]||[];let raw=0,eff=0,caf=0;const hours=new Set();
+ L.forEach(x=>{const d=DRINK[x.d]||DRINK.water;raw+=x.ml;eff+=x.ml*d.f;caf+=d.caf*x.ml/250;hours.add(Math.floor(new Date(x.t).getHours()/2))});
+ return {raw,eff:Math.round(eff),caf:Math.round(caf),windows:hours.size,entries:L};
+}
+
+/* ---------- plate & nutrients ---------- */
+function plateItems(k,dk){
+ const m=S.menu[dk]||{},ov=S.plate[k]||{},out=[];
+ MEALS.forEach(([meal])=>{
+  const list=meal==='lunch'?S.lunch:(m[meal]||[]);
+  list.forEach((x,i)=>{const f=FOOD[x.id];if(!f)return;const key=meal+':'+i+':'+x.id;
+   const on=ov[key]!==undefined?ov[key]:f.vegan;out.push({key,meal,f,s:x.s,on})});
+ });
+ (ov.extras||[]).forEach((x,i)=>{const f=FOOD[x.id];if(!f)return;const key='extra:'+i+':'+x.id;out.push({key,meal:'extra',f,s:x.s,on:ov[key]!==undefined?ov[key]:true,extraIdx:i})});
+ return out;
+}
+function sumNutr(items){const t={};F.forEach(k=>t[k]=0);items.forEach(x=>{if(!x.on)return;F.forEach(k=>t[k]+=(x.f[k]||0)*x.s)});return t}
+function targets(){
+ const p=S.profile,m=p.sex==='m';
+ const bmr=10*p.weight+6.25*p.height-5*p.age+(m?5:-161);
+ const af={sed:1.2,light:1.375,mod:1.55,high:1.725}[p.activity]||1.375;
+ return {cal:Math.round(bmr*af/10)*10,p:Math.round(p.weight*.9),fib:30,fe:m?19:29,ca:1000,zn:m?17:13.2,vc:m?80:65,b12:2.4,ala:m?1.6:1.1,kp:3500,na:2000};
+}
+const NUTR=[
+ ['cal','Energy','kcal'],['p','Protein','g'],['fib','Fibre','g'],['fe','Iron','mg'],['ca','Calcium','mg'],['zn','Zinc','mg'],
+ ['vc','Vitamin C','mg'],['b12','Vitamin B12','mcg'],['ala','Omega-3 ALA','g'],['kp','Potassium','mg'],['na','Sodium','mg']
+];
+function nutrStatus(k,v,t){
+ if(k==='na')return v<=t?'ok':v<=t*1.15?'mid':'over';
+ if(k==='cal'){const r=v/t;return r<.7?'low':r<.88||r>1.2?'mid':'ok'}
+ const r=v/t;return r<.5?'low':r<.85?'mid':'ok';
+}
+function todayNutr(){const k=today();const n=sumNutr(plateItems(k,dayKey(new Date())));if(S.profile.b12)n.b12Supp=true;return n}
+
+/* ---------- skin model ---------- */
+function skinModel(){
+ const k=today(),h=dayHydration(k),g=goal(),e=S.env;
+ const H=clamp(h.eff/g,0,1.3),H1=Math.min(H,1);
+ // consistency over the last 7 days (days with any entry, today always counted)
+ let sum=0,n=0;for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);const dk=dateKey(d);const hd=dayHydration(dk);if(i===0||hd.raw>0){sum+=Math.min(hd.eff/g,1);n++}}
+ const C=n?sum/n:H1;
+ const pacing=Math.min(h.windows/6,1);
+ const env=clamp(1-(e.air==='dry'?.35:e.air==='humid'?-.05:0)-Math.min(e.ac/10,.4),0,1);
+ const sleepF=clamp(e.sleep>=7&&e.sleep<=9?1:1-Math.abs(e.sleep-8)*.18,0,1);
+ const N=todayNutr(),T=targets();
+ const r=key=>clamp((N[key]||0)/T[key],0,1);
+ const vc=r('vc'),zn=r('zn'),ala=r('ala'),prot=r('p');
+ const caffPen=Math.min(8,Math.max(0,h.caf-200)/20),naPen=Math.min(8,Math.max(0,N.na-2000)/150);
+ const shi=Math.round(clamp(100*(.42*H1+.28*C+.12*pacing+.10*env+.08*sleepF)-caffPen-naPen,0,100));
+ const au=Math.round(18+shi*.55);
+ const tewl=+(7+(1-H1)*9+(1-env)*8+(1-ala)*4+(1-sleepF)*4+(1-zn)*2).toFixed(1);
+ const elastic=Math.round(100*(.45*C+.25*vc+.2*prot+.1*H1));
+ const barrier=Math.round(100*clamp(.3*ala+.2*zn+.2*sleepF+.3*(1-(tewl-7)/27),0,1));
+ const radiance=Math.round(100*(.4*H1+.3*vc+.3*sleepF));
+ const puff=Math.round(clamp(clamp((N.na-1500)/1500,0,1)*55+(1-H1)*30+(1-sleepF)*15,0,100));
+ return {shi,au,tewl,elastic,barrier,radiance,puff,H,H1,C,pacing,env,sleepF,vc,zn,ala,prot,caf:h.caf,na:N.na,eff:h.eff,goal:g};
+}
+const lvl=(v,good,ok)=>v>=good?'good':v>=ok?'warn':'bad';
+
+/* ---------- 3D glass ---------- */
+const Glass=(function(){
+ let ok=false,dropGeo,dropMat,renderer,scene,camera,floatG,spinG,waterBody,surface,surfMat,bodyMat,rimMat,glow,drops=[],bubbles=[],clock;
+ const H=3.2,BASE=.26,RIB=.88,RIT=1.08,ROB=.95,ROT=1.15,MAXY=BASE+.9*(H-BASE);
+ const rIn=y=>RIB+(RIT-RIB)*(y-BASE)/(H-BASE);
+ let shown=0,goalMl=2500,disp=0,curH=-1,yaw=-.4,yawV=0,tilt=.18,marks=[],el,labelsEl=[];
+ let onTap=null,audio=null;
+ function plop(){
+  if(!S.profile.sound)return;
+  try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime;
+   o.type='sine';o.frequency.setValueAtTime(900+Math.random()*300,t);o.frequency.exponentialRampToValueAtTime(260,t+.12);
+   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.12,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+.18);
+   o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.2)}catch(e){}
+ }
+ function envMap(){
+  const pm=new THREE.PMREMGenerator(renderer),es=new THREE.Scene();
+  const sky=new THREE.Mesh(new THREE.SphereGeometry(20,32,16),new THREE.ShaderMaterial({side:THREE.BackSide,
+   vertexShader:'varying vec3 p;void main(){p=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+   fragmentShader:'varying vec3 p;void main(){float h=normalize(p).y;vec3 c=mix(vec3(.01,.05,.16),vec3(.15,.4,.85),smoothstep(-.3,.9,h));gl_FragColor=vec4(c,1.);}'}));
+  es.add(sky);
+  [[-6,4,4],[6,2,-3],[0,8,0]].forEach(([x,y,z],i)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(i===2?10:3,i===2?10:12),new THREE.MeshBasicMaterial({color:i===2?0x9fd8ff:0xffffff,side:THREE.DoubleSide}));m.position.set(x,y,z);m.lookAt(0,1,0);es.add(m)});
+  const t=pm.fromScene(es,.03).texture;pm.dispose();return t;
+ }
+ function init(container){
+  el=container;
+  try{
+   if(!window.THREE)throw 0;
+   renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+   renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+   container.appendChild(renderer.domElement);
+  }catch(e){container.innerHTML='<div class="fallback-glass" style="margin-top:150px"><span id="fbWater" style="height:0"></span></div>';return}
+  ok=true;clock=new THREE.Clock();
+  scene=new THREE.Scene();scene.environment=envMap();
+  {const bc=document.createElement('canvas');bc.width=4;bc.height=256;const bx=bc.getContext('2d');const bg=bx.createLinearGradient(0,0,0,256);
+   bg.addColorStop(0,'#0d3477');bg.addColorStop(.62,'#0a2a63');bg.addColorStop(1,'#051738');bx.fillStyle=bg;bx.fillRect(0,0,4,256);
+   const bt=new THREE.CanvasTexture(bc);bt.encoding=THREE.sRGBEncoding;scene.background=bt;}
+  camera=new THREE.PerspectiveCamera(32,1,.1,100);camera.position.set(0,2.6,9.2);camera.lookAt(0,1.55,0);
+  scene.add(new THREE.AmbientLight(0x6fa8ff,.5));
+  const dl=new THREE.DirectionalLight(0xffffff,1.2);dl.position.set(-3,6,4);scene.add(dl);
+  const pl=new THREE.PointLight(0x3c8dff,2.2,12);pl.position.set(2.5,1,-2);scene.add(pl);
+  floatG=new THREE.Group();spinG=new THREE.Group();floatG.add(spinG);scene.add(floatG);
+
+  // glass shell (lathe profile: outer wall, rounded rim, inner wall, thick base)
+  const pts=[[0,0],[ROB-.06,0],[ROB,.05],[ROT,H],[ROT-.025,H+.025],[ROT-.055,H],[RIT,H-.03],[RIB,BASE+.04],[RIB-.05,BASE],[0,BASE]].map(p=>new THREE.Vector2(p[0],p[1]));
+  const gGeo=new THREE.LatheGeometry(pts,96);
+  const gMat=new THREE.MeshPhysicalMaterial({color:0xe6f6ff,metalness:0,roughness:.04,transparent:true,opacity:.55,clearcoat:1,clearcoatRoughness:.05,envMapIntensity:2.4,side:THREE.DoubleSide,depthWrite:false,reflectivity:1,blending:THREE.AdditiveBlending});
+  const shell=new THREE.Mesh(gGeo,gMat);shell.renderOrder=5;spinG.add(shell);
+  rimMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,uniforms:{uGlow:{value:0}},
+   vertexShader:'varying vec3 vN;varying vec3 vW;void main(){vN=normalize(mat3(modelMatrix)*normal);vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+   fragmentShader:'uniform float uGlow;varying vec3 vN;varying vec3 vW;void main(){vec3 V=normalize(cameraPosition-vW);float fr=pow(1.-abs(dot(normalize(vN),V)),3.);vec3 c=mix(vec3(.7,.88,1.),vec3(.45,1.,.85),uGlow);gl_FragColor=vec4(c*fr*(1.1+uGlow*.8),fr);}'});
+  const rim=new THREE.Mesh(gGeo,rimMat);rim.renderOrder=6;spinG.add(rim);
+
+  // water body
+  bodyMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:{value:0},uLevelH:{value:.01},uDeep:{value:new THREE.Color(0x0838b8)},uShallow:{value:new THREE.Color(0x3a98ff)}},
+   vertexShader:'varying vec3 vN;varying vec3 vW;varying float vH;void main(){vH=position.y;vN=normalize(mat3(modelMatrix)*normal);vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+   fragmentShader:'uniform float uTime,uLevelH;uniform vec3 uDeep,uShallow;varying vec3 vN;varying vec3 vW;varying float vH;void main(){float f=clamp(vH/max(uLevelH,.001),0.,1.);vec3 col=mix(uDeep,uShallow,pow(f,.8));vec3 V=normalize(cameraPosition-vW);float fr=pow(1.-abs(dot(normalize(vN),V)),2.);float ca=sin(vW.x*8.+uTime*1.3)*sin(vW.z*8.-uTime*1.1)*sin(vW.y*6.+uTime*.9);col+=smoothstep(.45,1.,ca)*.2*vec3(.55,.8,1.);col+=fr*vec3(.35,.65,1.)*.5;gl_FragColor=vec4(col,.8+fr*.15);}'});
+  waterBody=new THREE.Mesh(new THREE.BufferGeometry(),bodyMat);waterBody.renderOrder=1;spinG.add(waterBody);
+
+  // water surface with ripples
+  const sGeo=new THREE.RingGeometry(.001,1,72,14);sGeo.rotateX(-Math.PI/2);
+  surfMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,extensions:{derivatives:true},side:THREE.DoubleSide,
+   uniforms:{uTime:{value:0},uR:{value:RIB},uRT:{value:-99},uRA:{value:0},uRP:{value:new THREE.Vector2()},uShallow:{value:new THREE.Color(0x58b2ff)}},
+   vertexShader:'uniform float uTime,uR,uRT,uRA;uniform vec2 uRP;varying vec3 vW;varying float vD;void main(){vec3 p=position;p.xz*=uR;float r=length(p.xz);float h=sin(r*10.-uTime*2.2)*.007+sin(p.x*6.+uTime*1.7)*.005;float dt=uTime-uRT;float d=length(p.xz-uRP);if(dt>0.){h+=uRA*exp(-dt*1.4)*exp(-d*.9)*sin(d*20.-dt*10.)*smoothstep(dt*2.4+.1,dt*2.4-.4,d);}h+=smoothstep(uR*.82,uR,r)*.03;p.y+=h;vD=h;vec4 w=modelMatrix*vec4(p,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+   fragmentShader:'uniform vec3 uShallow;varying vec3 vW;varying float vD;void main(){vec3 n=normalize(cross(dFdx(vW),dFdy(vW)));if(n.y<0.)n=-n;vec3 V=normalize(cameraPosition-vW);vec3 L=normalize(vec3(-.4,1.,.6));float sp=pow(max(dot(reflect(-L,n),V),0.),70.);float fr=pow(1.-max(dot(n,V),0.),3.);vec3 c=mix(uShallow,vec3(.8,.92,1.),fr*.5)+sp*1.3+vD*3.;gl_FragColor=vec4(c,.86);}'});
+  surface=new THREE.Mesh(sGeo,surfMat);surface.renderOrder=2;spinG.add(surface);
+
+  // measuring marks (fixed to the float group, not the spin)
+  [.25,.5,.75,1].forEach(f=>{const y=BASE+f*(MAXY-BASE),r=rIn(y)+(ROT-RIT)+.015,arc=[];for(let i=0;i<=24;i++){const a=-.55+i*(1.1/24);arc.push(new THREE.Vector3(Math.sin(a)*r,y,Math.cos(a)*r))}
+   const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints(arc),new THREE.LineBasicMaterial({color:0xbfe6ff,transparent:true,opacity:f===1?.75:.35}));ln.renderOrder=7;floatG.add(ln);
+   marks.push({f,v:new THREE.Vector3(r+.05,y,0)})});
+  labelsEl=marks.map(m=>{const d=document.createElement('div');d.className='mark';el.parentNode.appendChild(d);return d});
+
+  // floor glow
+  const cv=document.createElement('canvas');cv.width=cv.height=128;const cx=cv.getContext('2d');const gr=cx.createRadialGradient(64,64,0,64,64,64);gr.addColorStop(0,'rgba(90,180,255,1)');gr.addColorStop(1,'rgba(90,180,255,0)');cx.fillStyle=gr;cx.fillRect(0,0,128,128);
+  glow=new THREE.Mesh(new THREE.PlaneGeometry(4.2,4.2),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.3}));
+  glow.rotation.x=-Math.PI/2;glow.position.y=-.02;floatG.add(glow);
+
+  // bubbles
+  const bGeo=new THREE.SphereGeometry(.025,8,6),bMat=new THREE.MeshBasicMaterial({color:0xcff0ff,transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false});
+  for(let i=0;i<26;i++){const b=new THREE.Mesh(bGeo,bMat);b.renderOrder=3;resetBubble(b,true);spinG.add(b);bubbles.push(b)}
+
+  // falling drops: self-lit so they read as water in any lighting
+  dropGeo=new THREE.SphereGeometry(.07,16,12);
+  dropMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,
+   vertexShader:'varying vec3 vN;varying vec3 vW;void main(){vN=normalize(mat3(modelMatrix)*normal);vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+   fragmentShader:'varying vec3 vN;varying vec3 vW;void main(){vec3 V=normalize(cameraPosition-vW);vec3 n=normalize(vN);float fr=pow(1.-max(dot(n,V),0.),2.);float sp=pow(max(dot(reflect(-normalize(vec3(-.4,1.,.6)),n),V),0.),40.);vec3 c=mix(vec3(.23,.6,1.),vec3(.85,.95,1.),fr)+sp;gl_FragColor=vec4(c,.75+fr*.25);}'});
+  // interaction
+  let down=null;
+  container.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now(),lx:e.clientX};container.setPointerCapture(e.pointerId);container.style.cursor='grabbing'});
+  container.addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-down.lx;down.lx=e.clientX;yawV=dx*.006;yaw+=dx*.008});
+  const up=e=>{if(!down)return;const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y);if(moved<8&&performance.now()-down.t<350&&onTap)onTap();down=null;container.style.cursor='grab'};
+  container.addEventListener('pointerup',up);container.addEventListener('pointercancel',()=>{down=null});
+
+  new ResizeObserver(resize).observe(container);resize();
+  renderer.setAnimationLoop(frame);
+ }
+ function resetBubble(b,initial){b.userData={x:(Math.random()*2-1)*.6,z:(Math.random()*2-1)*.6,v:.15+Math.random()*.35,ph:Math.random()*6};b.position.set(b.userData.x,BASE+.02+(initial?Math.random()*2:0),b.userData.z)}
+ function resize(){if(!ok)return;const w=el.clientWidth,h=el.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;
+  camera.fov=w/h<.75?40:32;camera.position.z=w/h<.75?10.5:9.2;camera.updateProjectionMatrix()}
+ function buildWater(level){
+  const top=BASE+.005+level*(MAXY-BASE),h=Math.max(top-BASE,.004);
+  const g=new THREE.CylinderGeometry(rIn(top)-.012,RIB-.012,h,64,1,false);g.translate(0,h/2,0);
+  waterBody.geometry.dispose();waterBody.geometry=g;waterBody.position.y=BASE;bodyMat.uniforms.uLevelH.value=h;
+  surface.position.y=top;surfMat.uniforms.uR.value=rIn(top)-.012;surface.visible=level>.004;waterBody.visible=level>.004;
+  return top;
+ }
+ function spawnDrops(ml){
+  const n=clamp(Math.round(ml/30),4,18),chunk=ml/n;
+  for(let i=0;i<n;i++){
+   const m=new THREE.Mesh(dropGeo,dropMat);
+   m.scale.set(1,1.35,1);const a=Math.random()*6.28,r=Math.random()*.35;
+   m.position.set(Math.cos(a)*r,H+1.2+i*.2,Math.sin(a)*r);m.userData={v:0,chunk};m.renderOrder=4;spinG.add(m);drops.push(m);
+  }
+ }
+ let lastT=0,labelTick=0;
+ function frame(){
+  const t=clock.getElapsedTime(),dt=Math.min(t-lastT,.05);lastT=t;
+  // drag inertia + idle sway
+  yaw+=yawV;yawV*=.92;spinG.rotation.y=yaw+Math.sin(t*.25)*.12;
+  floatG.position.y=Math.sin(t*.9)*.06;floatG.rotation.z=Math.sin(t*.6)*.025;floatG.rotation.x=tilt*.2+Math.sin(t*.5)*.02;
+  // level eases toward the water that has actually landed
+  const target=clamp(shown/goalMl,0,1);disp+=(target-disp)*Math.min(1,dt*2.2);
+  if(Math.abs(disp-curH)>.0015){buildWater(disp);curH=disp}
+  const top=BASE+.005+disp*(MAXY-BASE);
+  // drops
+  for(let i=drops.length-1;i>=0;i--){const d=drops[i];d.userData.v+=9.8*dt*.8;d.position.y-=d.userData.v*dt;
+   if(d.position.y<=top+.02){surfMat.uniforms.uRT.value=t;surfMat.uniforms.uRA.value=.09;surfMat.uniforms.uRP.value.set(d.position.x,d.position.z);
+    shown+=d.userData.chunk;spinG.remove(d);drops.splice(i,1);plop()}}
+  // bubbles
+  bubbles.forEach(b=>{const u=b.userData;b.position.y+=u.v*dt;b.position.x=u.x+Math.sin(t*2+u.ph)*.03;
+   if(b.position.y>top-.03)resetBubble(b,false);b.visible=disp>.04;const lim=rIn(b.position.y)-.08;const rr=Math.hypot(b.position.x,b.position.z);if(rr>lim){b.position.x*=lim/rr;b.position.z*=lim/rr}});
+  bodyMat.uniforms.uTime.value=t;surfMat.uniforms.uTime.value=t;
+  const met=shown>=goalMl?1:0;rimMat.uniforms.uGlow.value+=(met-rimMat.uniforms.uGlow.value)*.05;
+  glow.material.opacity=.18+disp*.45+rimMat.uniforms.uGlow.value*.2;
+  renderer.render(scene,camera);
+  if(t-labelTick>.1){labelTick=t;placeLabels()}
+ }
+ function placeLabels(){
+  floatG.updateMatrixWorld();const w=el.clientWidth,h=el.clientHeight;
+  marks.forEach((m,i)=>{const v=m.v.clone().applyMatrix4(floatG.matrixWorld).project(camera);const L=labelsEl[i];
+   L.style.left=((v.x+1)/2*w)+'px';L.style.top=((1-v.y)/2*h)+'px';L.textContent=Math.round(m.f*100)+'%'+(w<520?'':' · '+fmtMl(Math.round(goalMl*m.f/10)*10))});
+ }
+ return {
+  init,
+  set(ml,g){goalMl=g;const pending=drops.reduce((s,d)=>s+d.userData.chunk,0);shown=Math.max(0,ml-pending);
+   if(!ok){const fb=document.getElementById('fbWater');if(fb)fb.style.height=clamp(ml/g,0,1)*100+'%'}},
+  pour(ml){if(!ok)return;spawnDrops(ml)},
+  onTap(fn){onTap=fn},
+  get ok(){return ok}
+ };
+})();
+
+/* ---------- actions ---------- */
+function addDrink(ml,id){
+ ml=Math.round(+ml);if(!(ml>0)||ml>3000){toast('Enter an amount between 10 and 3000 ml');return}
+ const k=today();(S.logs[k]=S.logs[k]||[]).push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),t:Date.now(),d:id||ui.drink,ml});
+ save();Glass.pour(ml*(DRINK[id||ui.drink]||DRINK.water).f);renderAll();
+ const h=dayHydration(k);if(h.eff>=goal()&&h.eff-ml*(DRINK[id||ui.drink].f)<goal())toast('Goal reached. Your glass is full.');else toast('+'+ml+' ml '+DRINK[id||ui.drink].name.toLowerCase());
+}
+function removeDrink(id){const k=today();S.logs[k]=(S.logs[k]||[]).filter(x=>x.id!==id);save();renderAll()}
+
+/* ---------- render: header & today ---------- */
+function renderHeader(){
+ const d=new Date(),n=S.profile.name;
+ $('#todayLabel').textContent=(n?('Hi '+n+' · '):'')+d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
+ $('#goalPill').textContent=fmtMl(goal());$('#skinPill').textContent=skinModel().shi+'/100';
+}
+function renderToday(){
+ const k=today(),h=dayHydration(k),g=goal(),pct=Math.round(h.eff/g*100);
+ $('#mlNow').innerHTML=Math.round(h.eff)+'<small>ml</small>';
+ $('#mlOf').textContent='of '+fmtMl(g)+' effective water';
+ $('#pctNow').textContent=pct+'%';
+ Glass.set(h.eff,g);
+ // streak
+ let st=0;for(let i=0;i<60;i++){const d=new Date();d.setDate(d.getDate()-i);const e=dayHydration(dateKey(d)).eff;if(e>=g)st++;else if(i>0)break}
+ $('#streakPill').textContent=st?st+'-day goal streak':'Start a streak today';
+ // drinks
+ $('#drinkChips').innerHTML=DRINKS.map(d=>`<button class="chip" data-drink="${d.id}" aria-pressed="${d.id===ui.drink}"><span class="dot" style="background:${d.col}"></span>${d.name}</button>`).join('');
+ const dk=DRINK[ui.drink];
+ $('#pourHint').textContent=dk.f===1?'counts fully':dk.f>1?'+'+Math.round((dk.f-1)*100)+'% (electrolytes)':Math.round(dk.f*100)+'% counts'+(dk.caf?' · caffeine':'');
+ $('#sizes').innerHTML=SIZES.map(([ml,l])=>`<button class="size" data-ml="${ml}"><svg width="${14+ml/40}" height="${18+ml/30}" viewBox="0 0 20 26"><path d="M2 2h16l-2 21a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" fill="none" stroke="#8fd6ff" stroke-width="1.6"/><path d="M3.2 ${26-ml/25}h13.6l-1.2 ${ml/25-3}a2 2 0 0 1-2 2H6.4a2 2 0 0 1-2-2z" fill="#2b7bff" opacity=".8"/></svg><b>${ml}</b><span>${l}</span></button>`).join('');
+ // stats
+ const remain=Math.max(0,g-h.eff);$('#sRemain').textContent=remain?fmtMl(remain):'Done';
+ const now=new Date(),end=new Date();end.setHours(22,0,0,0);const hrs=Math.max(.5,(end-now)/36e5);
+ $('#sPace').textContent=remain?(now.getHours()>=22?fmtMl(Math.min(remain,300))+' now':Math.round(remain/hrs/10)*10+' ml/h'):'Sip freely';
+ $('#sCaff').textContent=h.caf+' mg';
+ const fw=Math.round(sumNutr(plateItems(k,dayKey(now))).w);
+ $('#foodWaterNote').textContent=`Your mess food and muesli lunch add about ${fw} ml of water on top of what you drink. Sipping across the day helps more than large amounts at once: you've had water in ${h.windows} of the day's 2-hour windows.`;
+ // log
+ const L=[...h.entries].sort((a,b)=>b.t-a.t);
+ $('#logCount').textContent=L.length?L.length+' drinks · '+fmtMl(h.raw)+' poured':'';
+ $('#log').innerHTML=L.length?L.map(x=>{const d=DRINK[x.d]||DRINK.water;return `<div class="log-item"><span class="dot" style="background:${d.col}"></span><span>${d.name}</span><span class="num muted small">${new Date(x.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} · ${x.ml} ml</span><button class="x" data-del="${x.id}" aria-label="Remove">×</button></div>`}).join(''):'<div class="empty">Nothing poured yet. Tap a size above, or tap the glass itself.</div>';
+ renderWeek();
+}
+function renderWeek(){
+ const g=goal(),days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push({d,e:dayHydration(dateKey(d)).eff})}
+ const W=420,Hh=150,pb=24,max=Math.max(g*1.25,...days.map(x=>x.e)),y=v=>Hh-pb-(v/max)*(Hh-pb-10),bw=36,gap=(W-20-bw*7)/6;
+ let s=`<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Water per day for the last 7 days"><defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fd6ff"/><stop offset="1" stop-color="#2b7bff"/></linearGradient></defs>`;
+ days.forEach((x,i)=>{const X=10+i*(bw+gap),Y=y(x.e),met=x.e>=g;
+  s+=`<rect x="${X}" y="${y(max)}" width="${bw}" height="${Hh-pb-y(max)}" rx="10" fill="rgba(143,214,255,.06)"/>`;
+  if(x.e>0)s+=`<rect x="${X}" y="${Y}" width="${bw}" height="${Hh-pb-Y}" rx="10" fill="${met?'#4fe3b5':'url(#wg)'}" opacity="${i===6?1:.8}"/>`;
+  s+=`<text x="${X+bw/2}" y="${Hh-6}" text-anchor="middle" font-size="11" fill="#9dbfe3" font-family="Figtree">${i===6?'Today':x.d.toLocaleDateString(undefined,{weekday:'short'})}</text>`;
+  if(x.e>0)s+=`<text x="${X+bw/2}" y="${Y-5}" text-anchor="middle" font-size="10" fill="#eaf6ff" font-family="IBM Plex Mono">${(x.e/1000).toFixed(1)}</text>`;
+ });
+ s+=`<line x1="4" x2="${W-4}" y1="${y(g)}" y2="${y(g)}" stroke="#eaf6ff" stroke-dasharray="4 5" opacity=".5"/><text x="${W-6}" y="${y(g)-5}" text-anchor="end" font-size="10" fill="#9dbfe3" font-family="IBM Plex Mono">goal ${(g/1000).toFixed(1)} L</text></svg>`;
+ $('#weekChart').innerHTML=s;
+}
+
+/* ---------- render: skin ---------- */
+function ring(v,col){const r=88,c=2*Math.PI*r;return `<svg width="200" height="200" viewBox="0 0 200 200"><circle cx="100" cy="100" r="${r}" fill="none" stroke="rgba(143,214,255,.12)" stroke-width="14"/><circle cx="100" cy="100" r="${r}" fill="none" stroke="${col}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${c*v/100} ${c}"/></svg>`}
+function renderSkin(){
+ const m=skinModel(),band=lvl(m.shi,75,50);
+ const col={good:'#4fe3b5',warn:'#ffcc66',bad:'#ff7d93'}[band];
+ $('#skinRing').innerHTML=ring(m.shi,col)+`<div class="ring-c"><div><b class="num">${m.shi}</b><div class="muted small">out of 100</div></div></div>`;
+ $('#skinHeadline').textContent=band==='good'?'Skin is well hydrated':band==='warn'?'Skin is holding up, could use more water':'Skin is likely running dry';
+ $('#skinSummary').textContent=`You've reached ${Math.round(m.H*100)}% of today's goal and averaged ${Math.round(m.C*100)}% over recent days. Steady intake over several days shows in skin more than a single big day does.`;
+ const au=m.au<30?['Very dry','bad']:m.au<40?['Dry','warn']:['Well moisturised','good'];
+ const tw=m.tewl<10?['Very healthy','good']:m.tewl<15?['Healthy','good']:m.tewl<25?['Normal','warn']:m.tewl<30?['Strained','bad']:['Critical','bad'];
+ const cards=[
+  {t:'Surface moisture',v:m.au,u:'AU',p:au,bar:m.au/80*100,scale:['0','30 dry','40','80'],d:'Estimated on the Corneometer scale. Above 40 AU counts as sufficiently moisturised.'},
+  {t:'Water loss (TEWL)',v:m.tewl,u:'g/m²/h',p:tw,bar:100-clamp((m.tewl-5)/30*100,0,100),scale:['35','25','15','5'],d:'Trans-epidermal water loss: water escaping through the skin. Lower means a tighter barrier.'},
+  {t:'Elasticity',v:m.elastic,u:'/100',p:[m.elastic>=70?'Springy':m.elastic>=45?'Fair':'Low',lvl(m.elastic,70,45)],bar:m.elastic,d:'Built over days by steady water, vitamin C for collagen and enough protein.'},
+  {t:'Barrier strength',v:m.barrier,u:'/100',p:[m.barrier>=70?'Strong':m.barrier>=45?'Fair':'Weak',lvl(m.barrier,70,45)],bar:m.barrier,d:'Omega-3 fats and zinc build the lipid layer; sleep lets it repair.'},
+  {t:'Radiance',v:m.radiance,u:'/100',p:[m.radiance>=70?'Glowing':m.radiance>=45?'Okay':'Dull',lvl(m.radiance,70,45)],bar:m.radiance,d:'Hydration, vitamin C and sleep drive how bright skin looks.'},
+  {t:'Puffiness risk',v:m.puff,u:'/100',p:[m.puff<30?'Low':m.puff<55?'Medium':'High',m.puff<30?'good':m.puff<55?'warn':'bad'],bar:m.puff,risk:1,d:'Salty mess food plus low water makes the body hold fluid, often around the eyes.'},
+ ];
+ $('#skinMetrics').innerHTML=cards.map((c,i)=>`<div class="panel metric" style="--d:-${i*1.3}s"><div class="metric-top"><div><div class="eyebrow">${c.t}</div><div class="val">${c.v}<small>${c.u}</small></div></div><span class="pill ${c.p[1]}">${c.p[0]}</span></div><div class="bar"><i style="width:${clamp(c.bar,2,100)}%;${c.risk?'background:linear-gradient(90deg,#ffcc66,#ff7d93)':''}"></i></div>${c.scale?`<div class="scale">${c.scale.map(x=>`<span>${x}</span>`).join('')}</div>`:''}<div class="note">${c.d}</div></div>`).join('');
+ const drv=[['Water today',m.H1],['Consistency (7 days)',m.C],['Sipping spread',m.pacing],['Indoor air',m.env],['Sleep',m.sleepF],['Vitamin C',m.vc],['Omega-3',m.ala],['Zinc',m.zn],['Protein',m.prot]];
+ $('#drivers').innerHTML=drv.map(([n,v])=>{const p=Math.round(v*100);return `<div class="driver"><span>${n}</span><div class="bar"><i style="width:${Math.max(p,2)}%;${p<50?'background:linear-gradient(90deg,#ff7d93,#ffb0bd)':p<80?'background:linear-gradient(90deg,#ffb84d,#ffe09a)':''}"></i></div><span class="num small" style="text-align:right">${p}%</span></div>`}).join('')+
+  (m.caf>200?`<div class="note">Caffeine ${m.caf} mg is above 200 mg, which lowers the score a little.</div>`:'')+(m.na>2000?`<div class="note">Sodium from food is ${Math.round(m.na)} mg, over the 2000 mg limit, which adds to puffiness.</div>`:'');
+ const tips=[];
+ if(m.H1<.6)tips.push(['bad',`You still need ${fmtMl(Math.max(0,m.goal-m.eff))}. Keep a 500 ml bottle at your desk and finish it before lunch.`]);
+ else if(m.H1<1)tips.push(['warn',`${fmtMl(Math.max(0,m.goal-m.eff))} to go. A glass after each class gets you there.`]);
+ if(m.pacing<.5)tips.push(['warn','Spread drinks out. Skin absorbs steady intake better than one big bottle at night.']);
+ if(m.env<.7)tips.push(['warn','AC air pulls water from skin. Apply a moisturiser with glycerin or hyaluronic acid on slightly damp skin.']);
+ if(m.ala<.7)tips.push(['warn','Low omega-3 today. Add 1 tbsp chia or ground flax to your muesli for a stronger barrier.']);
+ if(m.vc<.7)tips.push(['warn','Add a guava, orange or amla. Vitamin C supports collagen and helps you absorb iron from dal.']);
+ if(m.sleepF<.8)tips.push(['warn','Short sleep raises water loss. Aim for 7–9 hours tonight.']);
+ if(m.na>2300)tips.push(['bad','Mess food was salty today. Drink an extra glass and have a banana or coconut water for potassium.']);
+ if(m.caf>300)tips.push(['warn','Swap your next tea or coffee for herbal tea or lemon water.']);
+ if(!tips.length)tips.push(['good','Everything is in range. Keep sipping steadily and use sunscreen in the day.']);
+ $('#skinTips').innerHTML=tips.map(([c,t])=>`<li class="${c}">${t}</li>`).join('');
+ $('#envSleep').value=S.env.sleep;$('#envAc').value=S.env.ac;$('#envAir').value=S.env.air;$('#envClimate').value=S.env.climate;
+}
+
+/* ---------- render: nutrition ---------- */
+function weekAvg(){const t={};F.forEach(k=>t[k]=0);DAYS.forEach(dk=>{const n=sumNutr(plateItems('__week__',dk));F.forEach(k=>t[k]+=n[k]/7)});return t}
+function topFoods(key,n){return Object.values(FOOD).filter(f=>f.vegan&&f[key]>0).sort((a,b)=>b[key]-a[key]).slice(0,n).map(f=>f.name.toLowerCase())}
+function renderFood(){
+ const k=today(),dk=dayKey(new Date()),items=plateItems(k,dk),T=targets();
+ $('#plateTitle').textContent='Today\'s plate · '+new Date().toLocaleDateString(undefined,{weekday:'long'});
+ const groups=[...MEALS,['extra','Extras']];
+ $('#plate').innerHTML=groups.map(([m,label])=>{const list=items.filter(x=>x.meal===m);if(m==='extra'&&!list.length)return '';
+  const kc=Math.round(list.filter(x=>x.on).reduce((s,x)=>s+x.f.cal*x.s,0));
+  return `<div class="meal"><div class="meal-head"><h3>${label}</h3><span class="num muted small">${kc} kcal</span></div>${list.length?list.map(x=>`<label class="food ${x.on?'':'off'}"><input type="checkbox" data-eat="${esc(x.key)}" ${x.on?'checked':''} style="width:18px;height:18px;accent-color:#2b7bff"><span class="name">${esc(x.f.name)}${x.f.vegan?'':'<span class="badge-nv">Not vegan</span>'}<small>${x.s}× ${esc(x.f.serving)}</small></span>${x.meal==='extra'?`<button class="x" data-rmextra="${x.extraIdx}" aria-label="Remove">×</button>`:'<span></span>'}</label>`).join(''):'<div class="muted small">Nothing on the menu. Add items in Mess menu.</div>'}</div>`}).join('');
+ const N=ui.nutrMode==='today'?sumNutr(items):weekAvg();
+ $('#kcalPill').textContent=Math.round(N.cal)+' / '+T.cal+' kcal';
+ $('#nutrMode').innerHTML=[['today','Today'],['week','Menu week avg']].map(([v,l])=>`<button class="chip" data-nmode="${v}" aria-pressed="${ui.nutrMode===v}">${l}</button>`).join('');
+ const supp=S.profile.b12;
+ $('#nutrBars').innerHTML=NUTR.map(([key,label,u])=>{let v=N[key];const t=T[key];let st=nutrStatus(key,v,t);if(key==='b12'&&supp)st='ok';
+  const max=key==='na'?t*1.6:t*1.4,w=clamp(v/max*100,1,100),tp=t/max*100;
+  const fmt=x=>x>=100?Math.round(x):x>=10?x.toFixed(0):x.toFixed(1);
+  return `<div class="nutr-row"><span>${label}</span><div class="bar"><i class="${st==='ok'?'ok':st==='mid'?'mid':st==='over'?'over':'low'}" style="width:${w}%"></i><span class="tgt" style="left:${tp}%"></span></div><span class="num small" style="text-align:right">${fmt(v)}${key==='b12'&&supp?'+supp':''} / ${fmt(t)} ${u}</span></div>`}).join('');
+ // watchlist
+ const sun=S.profile.sun||0;
+ const W=[
+  {n:'Vitamin B12',s:supp?['Covered','good']:N.b12>=2.4?['From fortified milk','good']:['Low','bad'],d:supp?'Your supplement covers it. Keep taking it; plant foods have no reliable B12.':`Food gives ${N.b12.toFixed(1)} of 2.4 mcg. Vegans need a B12 supplement or fortified soy or oat milk every day.`},
+  {n:'Vitamin D',s:S.profile.d3?['Covered','good']:sun>=20?['From sun','good']:['Likely low','warn'],d:S.profile.d3?'Your D3 supplement covers it.':`${sun} min of midday sun a day. About 20 min on arms and face, or a vegan D3 supplement, is enough for most people.`},
+  {n:'Iron',s:N.fe>=T.fe*.85?['On track','good']:['Below target','warn'],d:`Plant iron absorbs better with vitamin C at the same meal. Skip tea for an hour after dal and roti.`},
+  {n:'Omega-3',s:N.ala>=T.ala?['On track','good']:['Below target','warn'],d:'Chia, flax and walnuts in your muesli are the easiest vegan sources of ALA.'},
+  {n:'Calcium',s:N.ca>=T.ca*.85?['On track','good']:['Below target','warn'],d:'Fortified plant milk, tofu and ragi are your best sources without dairy.'},
+  {n:'Iodine',s:['Check salt','info'],d:'Most Indian mess kitchens use iodised salt. Without dairy, it is your main source.'},
+ ];
+ $('#watch').innerHTML=W.map(w=>`<div class="w"><div class="metric-top"><h3>${w.n}</h3><span class="pill ${w.s[1]}">${w.s[0]}</span></div><div class="note">${w.d}</div></div>`).join('');
+ // gap tips
+ const tips=[];
+ NUTR.forEach(([key,label])=>{if(key==='cal'||key==='na'||(key==='b12'))return;const st=nutrStatus(key,N[key],T[key]);if(st==='low'||st==='mid')tips.push([st==='low'?'bad':'warn',`<b>${label}</b> at ${Math.round(N[key]/T[key]*100)}%. Good vegan picks: ${topFoods(key,3).join(', ')}.`])});
+ if(N.na>T.na*1.15)tips.push(['bad',`<b>Sodium</b> is ${Math.round(N.na)} mg. Skip extra salt and pickle; potassium from banana or coconut water helps balance it.`]);
+ const r=N.cal/T.cal;if(r<.8)tips.push(['warn',`<b>Energy</b> is ${Math.round(r*100)}% of your need. Add peanut butter, nuts or an extra roti.`]);
+ if(!tips.length)tips.push(['good','Your plate covers your targets. Nice balance.']);
+ $('#foodTips').innerHTML=tips.slice(0,6).map(([c,t])=>`<li class="${c}">${t}</li>`).join('');
+}
+
+/* ---------- render: menu ---------- */
+function renderMenu(){
+ $('#dayTabs').innerHTML=DAYS.map(d=>`<button class="chip" data-day="${d}" aria-pressed="${ui.menuDay===d}">${DAY_NAME[d]}${d===dayKey(new Date())?' •':''}</button>`).join('');
+ $('#menuNote').textContent=S.menuIsSample?'This is a sample North-Indian hostel menu. Edit it to match your mess.':'Your mess menu. Lunch is your muesli bowl every day.';
+ const day=S.menu[ui.menuDay]||(S.menu[ui.menuDay]={breakfast:[],snacks:[],dinner:[]});
+ $('#menuMeals').innerHTML=MEALS.map(([m,label],mi)=>{const list=m==='lunch'?S.lunch:(day[m]||[]);const kc=Math.round(list.reduce((s,x)=>s+(FOOD[x.id]?FOOD[x.id].cal*x.s:0),0));
+  return `<div class="panel meal" style="--d:-${mi*1.7}s"><div class="meal-head"><h3>${label}</h3><span class="row" style="gap:8px">${m==='lunch'?'<span class="lunch-tag">Every day</span>':''}<span class="num muted small">${kc} kcal</span></span></div>
+   ${list.map((x,i)=>{const f=FOOD[x.id];if(!f)return '';return `<div class="food"><span class="stepper"><button data-step="${m}:${i}:-1" aria-label="Less">−</button><span>${x.s}×</span><button data-step="${m}:${i}:1" aria-label="More">+</button></span><span class="name">${esc(f.name)}${f.vegan?'':'<span class="badge-nv">Not vegan</span>'}<small>${esc(f.serving)} · ${Math.round(f.cal*x.s)} kcal · ${(f.p*x.s).toFixed(1)} g protein</small></span><button class="x" data-rm="${m}:${i}" aria-label="Remove">×</button></div>`}).join('')||'<div class="muted small">No items yet.</div>'}
+   <button class="btn ghost sm" data-pick="${m}" style="justify-self:start">+ Add item</button></div>`}).join('');
+}
+
+/* ---------- render: profile ---------- */
+function renderMe(){
+ const p=S.profile;$('#pName').value=p.name;$('#pSex').value=p.sex;$('#pAge').value=p.age;$('#pWeight').value=p.weight;$('#pHeight').value=p.height;
+ $('#pActivity').value=p.activity;$('#pSun').value=p.sun;$('#pGoal').value=p.goal;$('#pB12').checked=p.b12;$('#pD3').checked=p.d3;$('#pSound').checked=p.sound;
+ const b=goalBreakdown();
+ $('#goalBreakdown').innerHTML=b.rows.map(([n,v])=>`<div class="driver" style="grid-template-columns:minmax(0,1fr) auto"><span>${n}</span><span class="num">+${v} ml</span></div>`).join('')+
+  `<div class="driver" style="grid-template-columns:minmax(0,1fr) auto;border-top:1px solid var(--line);padding-top:10px"><b>Daily goal${+p.goal>0?' (your override)':''}</b><b class="num">${fmtMl(b.goal)}</b></div><div class="note">Tea and coffee count at 85–95% because caffeine increases urine slightly. Coconut water and electrolyte drinks count a bit extra.</div>`;
+}
+
+/* ---------- picker ---------- */
+function openPicker(target){ui.pickTarget=target;$('#sheetTitle').textContent='Add to '+(target==='extra'?'today\'s extras':(MEALS.find(m=>m[0]===target)||['',''])[1].toLowerCase()+(target==='lunch'?' (every day)':' · '+DAY_NAME[ui.menuDay]));
+ $('#pickSearch').value='';$('#sheet').hidden=false;renderPicker();setTimeout(()=>$('#pickSearch').focus(),50)}
+function renderPicker(){
+ const q=$('#pickSearch').value.trim().toLowerCase();
+ $('#pickCats').innerHTML=CATS.map(([c,l])=>`<button class="chip" data-cat="${c}" aria-pressed="${ui.pickCat===c}">${l}</button>`).join('');
+ const list=Object.values(FOOD).filter(f=>(ui.pickCat==='all'||(ui.pickCat==='custom'?f.custom:f.cat===ui.pickCat))&&(!q||f.name.toLowerCase().includes(q)));
+ $('#pickList').innerHTML=list.length?list.map(f=>`<button class="pick" data-add="${esc(f.id)}"><span>${esc(f.name)}${f.vegan?'':'<span class="badge-nv">Not vegan</span>'}<small>${esc(f.serving)} · ${f.cal} kcal · ${f.p} g protein · ${f.fe} mg iron</small></span><span class="pill info">Add</span></button>`).join(''):'<div class="empty">No match. Create it below.</div>';
+}
+function addFood(id){
+ const t=ui.pickTarget;if(t==='extra'){const k=today();const ov=S.plate[k]=S.plate[k]||{};(ov.extras=ov.extras||[]).push(it(id))}
+ else if(t==='lunch')S.lunch.push(it(id));
+ else{const d=S.menu[ui.menuDay];(d[t]=d[t]||[]).push(it(id));S.menuIsSample=false}
+ save();$('#sheet').hidden=true;toast('Added '+FOOD[id].name);renderAll();
+}
+
+/* ---------- events ---------- */
+function setView(v){ui.view=v;try{localStorage.setItem('seep.view',v)}catch(e){}
+ document.querySelectorAll('.view').forEach(s=>s.hidden=s.id!=='view-'+v);
+ document.querySelectorAll('.dock button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===v?'page':'false'));
+ renderAll();window.scrollTo({top:0,behavior:'smooth'});
+}
+function renderAll(){renderHeader();if(ui.view==='today')renderToday();else Glass.set(dayHydration(today()).eff,goal());
+ if(ui.view==='skin')renderSkin();if(ui.view==='food')renderFood();if(ui.view==='menu')renderMenu();if(ui.view==='me')renderMe()}
+
+document.addEventListener('click',e=>{
+ const t=e.target.closest('button');if(!t)return;const ds=t.dataset;
+ if(ds.view)setView(ds.view);
+ else if(ds.drink){ui.drink=ds.drink;renderToday()}
+ else if(ds.ml)addDrink(+ds.ml);
+ else if(ds.del)removeDrink(ds.del);
+ else if(ds.nmode){ui.nutrMode=ds.nmode;renderFood()}
+ else if(ds.day){ui.menuDay=ds.day;renderMenu()}
+ else if(ds.pick)openPicker(ds.pick);
+ else if(ds.cat){ui.pickCat=ds.cat;renderPicker()}
+ else if(ds.add)addFood(ds.add);
+ else if(ds.rmextra!==undefined){const ov=S.plate[today()];if(ov&&ov.extras){ov.extras.splice(+ds.rmextra,1);Object.keys(ov).forEach(k=>{if(k.startsWith('extra:'))delete ov[k]})}save();renderFood()}
+ else if(ds.step){const [m,i,d]=ds.step.split(':');const list=m==='lunch'?S.lunch:S.menu[ui.menuDay][m];list[+i].s=clamp(list[+i].s+(+d)*.5,.5,6);if(m!=='lunch')S.menuIsSample=false;save();renderMenu()}
+ else if(ds.rm){const [m,i]=ds.rm.split(':');const list=m==='lunch'?S.lunch:S.menu[ui.menuDay][m];list.splice(+i,1);if(m!=='lunch')S.menuIsSample=false;save();renderMenu()}
+});
+document.addEventListener('change',e=>{
+ const t=e.target;
+ if(t.dataset&&t.dataset.eat){const k=today();const ov=S.plate[k]=S.plate[k]||{};ov[t.dataset.eat]=t.checked;save();renderFood();renderHeader()}
+});
+$('#customAdd').onclick=()=>{addDrink($('#customMl').value);$('#customMl').value=''};
+$('#customMl').addEventListener('keydown',e=>{if(e.key==='Enter')$('#customAdd').click()});
+$('#sheetClose').onclick=()=>$('#sheet').hidden=true;
+$('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')$('#sheet').hidden=true});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#sheet').hidden=true});
+$('#pickSearch').addEventListener('input',renderPicker);
+$('#cfSave').onclick=()=>{
+ const name=$('#cfName').value.trim();if(!name){toast('Give the item a name');return}
+ const id='c_'+Date.now().toString(36);const o={id,name,serving:$('#cfServ').value.trim()||'1 serving',cat:'custom',custom:true,vegan:$('#cfVegan').checked};
+ F.forEach(k=>o[k]=0);o.cal=+$('#cfCal').value||0;o.p=+$('#cfP').value||0;o.fe=+$('#cfFe').value||0;o.ca=+$('#cfCa').value||0;o.vc=+$('#cfVc').value||0;o.na=+$('#cfNa').value||0;o.w=50;
+ S.custom[id]=o;FOOD[id]=o;['cfName','cfServ','cfCal','cfP','cfFe','cfCa','cfVc','cfNa'].forEach(i=>$('#'+i).value='');addFood(id);
+};
+let resetArm=0;
+$('#resetMenu').onclick=e=>{if(Date.now()-resetArm>3000){resetArm=Date.now();e.target.textContent='Tap again to replace your menu';setTimeout(()=>e.target.textContent='Load sample menu',3000);return}
+ S.menu=sampleMenu();S.lunch=sampleLunch();S.menuIsSample=true;save();e.target.textContent='Load sample menu';renderMenu();toast('Sample menu loaded')};
+let wipeArm=0;
+$('#wipeBtn').onclick=e=>{if(Date.now()-wipeArm>3000){wipeArm=Date.now();e.target.textContent='Tap again to clear';setTimeout(()=>e.target.textContent='Clear today\'s log',3000);return}
+ delete S.logs[today()];save();e.target.textContent='Clear today\'s log';renderAll();toast('Today\'s log cleared')};
+$('#exportBtn').onclick=()=>{const box=$('#backupBox'),txt=JSON.stringify(S);box.hidden=false;box.value=txt;
+ const fallback=()=>{box.select();toast('Backup shown below. Select and copy it.')};
+ try{navigator.clipboard.writeText(txt).then(()=>toast('Backup copied'),fallback)}catch(err){fallback()}};
+// profile & env inputs
+const bind=(id,obj,key,num)=>{$('#'+id).addEventListener(num?'input':'change',e=>{const el=e.target;let v=el.type==='checkbox'?el.checked:el.value;if(num){if(v===''){if(key!=='goal')return}else{v=+v;if(isNaN(v))return}}S[obj][key]=v;save();
+ if(obj==='env'){renderSkin();renderHeader()}else{renderHeader();const gb=$('#goalBreakdown');if(gb)renderMe()}})};
+bind('pName','profile','name');bind('pSex','profile','sex');bind('pAge','profile','age',1);bind('pWeight','profile','weight',1);bind('pHeight','profile','height',1);
+bind('pActivity','profile','activity');bind('pSun','profile','sun',1);bind('pGoal','profile','goal',1);bind('pB12','profile','b12');bind('pD3','profile','d3');bind('pSound','profile','sound');
+bind('envSleep','env','sleep',1);bind('envAc','env','ac',1);bind('envAir','env','air');bind('envClimate','env','climate');
+$('#pName').addEventListener('input',e=>{S.profile.name=e.target.value;save();renderHeader()});
+
+/* ---------- boot ---------- */
+Glass.init($('#glass'));
+Glass.onTap(()=>addDrink(250));
+if(!Glass.ok)$('#stageHint').textContent='3D needs WebGL. Showing a simple glass instead.';
+const h0=dayHydration(today());Glass.set(h0.eff,goal());
+setView(ui.view);
+// roll over at midnight
+let lastDay=today();setInterval(()=>{if(today()!==lastDay){lastDay=today();renderAll()}},60000);
+if('serviceWorker' in navigator&&location.protocol==='https:'&&!/claude/.test(location.host)){try{navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}}
+})();
+</script>
