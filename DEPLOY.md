@@ -55,6 +55,18 @@ firebase deploy
 
 It opens full-screen with no browser bars, starts at the lock screen, and keeps working offline.
 
+### On your computer (desktop icon)
+
+Open your `.web.app` address and sign in, then:
+
+- **Windows, Chrome or Edge:** click **Install app** in AURA's top bar (or the ⊕ install icon at the right of the address bar), then **Install**. AURA gets a desktop shortcut, a Start-menu entry and its own window. Right-click its taskbar icon → **Pin to taskbar**. Edge also offers *Create desktop shortcut*, *Pin to taskbar* and *Start automatically when I sign in* right after installing.
+- **Mac, Chrome or Edge:** the same **Install app** button. AURA appears in **Applications** and **Launchpad**; drag it to the Dock, or right-click its Dock icon → **Options → Keep in Dock**.
+- **Mac, Safari (macOS Sonoma or later):** menu bar → **File → Add to Dock…** → **Add**.
+- **Linux, Chrome or Chromium:** **Install app**; it appears in your applications menu.
+- **Firefox** can't install sites as apps; use Chrome or Edge for this.
+
+Clicking the icon again brings the open AURA window forward instead of opening a second one. To remove it: open AURA, then ⋮ (top-right of its window) → **Uninstall AURA**. Your data stays in your account.
+
 ### Use your own icon
 
 Put a square PNG (1024 × 1024 is ideal) anywhere and run:

@@ -714,3 +714,8 @@ h4.sub { margin: 16px 0 6px; font: 600 0.7rem var(--font-mono); letter-spacing: 
 .bk b { font-size: 0.86rem; font-weight: 600; }
 .bk .pill { font-size: 0.62rem; margin-left: 4px; }
 .bk .btn { flex: none; }
+.install-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 11px; border: 1px solid rgba(255, 178, 122, 0.5); background: rgba(255, 178, 122, 0.1); color: var(--text); font: 600 0.78rem var(--font); cursor: pointer; white-space: nowrap; }
+.install-btn:hover { border-color: var(--accent); background: rgba(255, 178, 122, 0.18); }
+.install-btn svg { width: 17px; height: 17px; color: var(--accent); }
+.install-btn[hidden] { display: none; }
+@media (max-width: 860px) { .install-btn span { display: none; } .install-btn { padding: 0 8px; } }

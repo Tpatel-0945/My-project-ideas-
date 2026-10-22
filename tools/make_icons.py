@@ -5,7 +5,7 @@
 
 Writes into icons/: icon-192.png, icon-512.png, maskable-512.png (Android adaptive icon,
 artwork kept inside the safe zone), apple-touch-icon.png (iPhone/iPad home screen, 180 px)
-and favicon-32.png. Needs Pillow (pip install pillow). Use a square PNG of at least 512 px.
+favicon-32.png and favicon.ico (16-256 px, used for Windows desktop shortcuts). Needs Pillow (pip install pillow). Use a square PNG of at least 512 px.
 """
 import sys, os, math
 from PIL import Image, ImageDraw, ImageFilter
@@ -68,6 +68,7 @@ def main():
     fit(src, 512, scale=1.0 if photo else 0.78).save(os.path.join(OUT, 'maskable-512.png'))
     fit(src, 180).convert('RGB').save(os.path.join(OUT, 'apple-touch-icon.png'))  # iOS ignores transparency
     fit(src, 32).save(os.path.join(OUT, 'favicon-32.png'))
+    fit(src, 256).save(os.path.join(OUT, '..', 'favicon.ico'), sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
     print('Icons written to', os.path.normpath(OUT))
 
 

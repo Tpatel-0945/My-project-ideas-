@@ -3045,16 +3045,27 @@ The app's photo scores are colour-based estimates that change with lighting and 
 
   /* ================= installable app (PWA) ================= */
   let installEvt = null;
-  addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; if (route === '/me') render(); });
-  addEventListener('appinstalled', () => { installEvt = null; toast('AURA is on your home screen'); if (route === '/me') render(); });
+  const showInstallBtn = () => $('#installBtn')?.toggleAttribute('hidden', !installEvt || standalone());
+  addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; showInstallBtn(); if (route === '/me') render(); });
+  addEventListener('appinstalled', () => { installEvt = null; showInstallBtn(); toast(isMobile() ? 'AURA is on your home screen' : 'AURA is installed: find it on your desktop, Start menu or Dock'); if (route === '/me') render(); });
+  const isMobile = () => isIOS() || /android|mobi/i.test(navigator.userAgent);
+  const isMac = () => /macintosh|mac os x/i.test(navigator.userAgent) && !isIOS();
+  const isEdge = () => /edg\//i.test(navigator.userAgent);
+  const isSafari = () => /safari/i.test(navigator.userAgent) && !/chrome|chromium|crios|edg|opr|android/i.test(navigator.userAgent);
+  const isFirefox = () => /firefox|fxios/i.test(navigator.userAgent);
   const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   function installCard() {
-    if (standalone()) return `<div class="card install"><h3>▣ App</h3><p class="small">✓ You're using AURA as an installed app. It opens from your home screen, works offline and syncs when you're back online.</p></div>`;
+    if (standalone()) return `<div class="card install"><h3>▣ App</h3><p class="small">✓ You're using AURA as an installed app. It opens from its own icon, works offline and syncs when you're back online.</p>${isMobile() ? '' : '<p class="tiny muted" style="margin:0">Tip: right-click its icon in the taskbar or Dock and choose <b>Pin</b> / <b>Keep in Dock</b>.</p>'}</div>`;
+    const mobile = isMobile();
     const how = isIOS()
       ? `<ol class="small steps"><li>Open this site in <b>Safari</b>.</li><li>Tap <b>Share</b> <span class="kbd">⬆</span> at the bottom (top-right on iPad).</li><li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li></ol>`
-      : installEvt ? '' : `<ol class="small steps"><li>Open this site in <b>Chrome</b> (Android) or Chrome / Edge (computer).</li><li>Tap the menu <span class="kbd">⋮</span> → <b>Install app</b> (or <b>Add to Home screen</b>).</li></ol>`;
-    return `<div class="card install"><h3>▣ Install as an app</h3><div class="row" style="flex-wrap:nowrap;gap:14px"><img src="icons/icon-192.png" alt="" class="app-icon"><div><b>AURA</b><div class="small muted">Home-screen icon, full screen, works offline, opens straight to your lock screen.</div></div></div>
-      ${installEvt ? '<button class="btn primary mt" data-act="install">Install AURA</button>' : how}</div>`;
+      : mobile ? `<ol class="small steps"><li>Open this site in <b>Chrome</b>.</li><li>Tap the menu <span class="kbd">⋮</span> → <b>Install app</b> (or <b>Add to Home screen</b>).</li></ol>`
+      : isSafari() ? `<ol class="small steps"><li>In Safari's menu bar choose <b>File → Add to Dock…</b> (macOS Sonoma or later).</li><li>Click <b>Add</b>. AURA appears in your Dock and in Launchpad / Applications.</li></ol>`
+      : isFirefox() ? `<p class="small">Firefox can't install sites as apps. Open this address in <b>Chrome</b> or <b>Microsoft Edge</b> (already on every Windows PC) and install it from there.</p>`
+      : isEdge() ? `<ol class="small steps"><li>Click <b>⋯</b> (top-right) → <b>Apps</b> → <b>Install this site as an app</b>.</li><li>Click <b>Install</b>, then tick <b>Create desktop shortcut</b> and <b>Pin to taskbar</b> in the window that follows.</li></ol>`
+      : `<ol class="small steps"><li>Click the install icon <span class="kbd">⊕</span> at the right end of the address bar, or menu <span class="kbd">⋮</span> → <b>Cast, save and share</b> → <b>Install page as app</b>.</li><li>Click <b>Install</b>. ${isMac() ? 'AURA appears in your Applications folder and Launchpad; drag it to the Dock.' : 'A desktop shortcut and Start-menu entry are created; right-click the taskbar icon → <b>Pin to taskbar</b>.'}</li></ol>`;
+    return `<div class="card install"><h3>▣ Install as an app</h3><div class="row" style="flex-wrap:nowrap;gap:14px"><img src="icons/icon-192.png" alt="" class="app-icon"><div><b>AURA</b><div class="small muted">${mobile ? 'Home-screen icon, full screen, works offline, opens straight to your lock screen.' : 'Desktop icon and its own window, no browser bars, works offline, opens straight to your lock screen.'}</div></div></div>
+      ${installEvt ? `<button class="btn primary mt" data-act="install">${mobile ? 'Install AURA' : 'Install AURA on this computer'}</button>` : how}</div>`;
   }
   function registerSW() {
     if (!('serviceWorker' in navigator) || window.top !== window.self || !/^https:$|^http:$/.test(location.protocol) || (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname))) return;
@@ -3135,7 +3146,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
       case 'delScan': return askConfirm('Delete this scan photo?', () => { db.scans = db.scans.filter((x) => x.id !== d.id); cloudDeleteScans([d.id]); cmp = cmp.filter((x) => x !== d.id); if (current?.id === d.id) current = null; save(); render(); });
       case 'delAllScans': return askConfirm(`Delete all ${db.scans.length} scans and their photos${cloud.user ? ' on every device' : ''}?`, () => { cloudDeleteScans(db.scans.map((x) => x.id)); db.scans = []; cmp = []; current = null; save(); toast('All scans deleted'); render(); }, 'Delete all scans');
       case 'gLogin': return cloudGoogle();
-      case 'install': if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; render(); }); } return;
+      case 'install': if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; showInstallBtn(); render(); }); } else go('#/me'); return;
       case 'derma': derma.open = !derma.open; if (derma.open) return dermaOpen(); try { speechSynthesis.cancel(); } catch {} return dermaRender();
       case 'askDerma': return dermaOpen(d.q);
       case 'dSettings': derma.view = 'settings'; return dermaOpen();
