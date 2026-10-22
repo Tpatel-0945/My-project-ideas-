@@ -719,3 +719,9 @@ h4.sub { margin: 16px 0 6px; font: 600 0.7rem var(--font-mono); letter-spacing: 
 .install-btn svg { width: 17px; height: 17px; color: var(--accent); }
 .install-btn[hidden] { display: none; }
 @media (max-width: 860px) { .install-btn span { display: none; } .install-btn { padding: 0 8px; } }
+
+/* ================= logo ================= */
+.topbar .logo { display: inline-flex; align-items: center; padding: 4px 0; }
+.topbar .logo svg { height: 28px; width: auto; display: block; }
+.g-brand svg { height: 30px; width: auto; display: block; margin: 0 auto; }
+@media (max-width: 860px) { .topbar .logo svg { height: 24px; } }

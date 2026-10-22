@@ -2948,7 +2948,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
       html = `${top}<h2>${greet()}${db.profile.name ? ', ' + esc(db.profile.name) : ''}.</h2><p class="g-sub">${wait > 0 ? `Too many tries. Wait ${wait} s.` : lock.fails ? `Wrong PIN. ${Math.max(0, 5 - lock.fails)} tries left before a pause.` : 'Enter your PIN to unlock.'}</p>
         ${pad6(lock.cfg.len || 6, lock.entry)}${keypad(!!lock.cfg.bio && lock.bioOK)}<a href="#" class="small g-links" data-act="pinForgot">Forgot PIN?</a>`;
     }
-    box.innerHTML = `<div class="g-brand"><span class="mark" aria-hidden="true"></span>aura<em>monitor</em></div>${html}<p class="g-foot tiny">🔒 ${fbConfig() ? 'Secured by your account' : 'Private to this device'}${lock.cfg?.hash ? ' · PIN lock on' : ''}</p>`;
+    box.innerHTML = `<div class="g-brand">${($('.topbar .logo svg')?.outerHTML || 'AURA').replace(/hcolor/g, 'gate')}</div>${html}<p class="g-foot tiny">🔒 ${fbConfig() ? 'Secured by your account' : 'Private to this device'}${lock.cfg?.hash ? ' · PIN lock on' : ''}</p>`;
     lock.shake = false;
   }
   async function pinKey(v) {

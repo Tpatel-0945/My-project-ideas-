@@ -2,6 +2,7 @@
 
     python3 tools/make_icons.py path/to/your-icon.png     # use your own icon
     python3 tools/make_icons.py                            # draw the default AURA orb
+    python3 tools/make_icons.py icon.png --favicon brand/aura-mark-1024.png   # browser-tab icon from the logo
 
 Writes into icons/: icon-192.png, icon-512.png, maskable-512.png (Android adaptive icon,
 artwork kept inside the safe zone), apple-touch-icon.png (iPhone/iPad home screen, 180 px)
@@ -54,8 +55,10 @@ def fit(src, size, scale=1.0, bg=BG):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    if len(sys.argv) > 1:
-        src = Image.open(sys.argv[1]).convert('RGBA')
+    args = sys.argv[1:]; fav = None
+    if '--favicon' in args: i = args.index('--favicon'); fav = Image.open(args[i + 1]).convert('RGBA'); del args[i:i + 2]
+    if args:
+        src = Image.open(args[0]).convert('RGBA')
         w, h = src.size; m = min(w, h)
         src = src.crop(((w - m) // 2, (h - m) // 2, (w - m) // 2 + m, (h - m) // 2 + m))   # centre square
     else:
@@ -67,8 +70,9 @@ def main():
     photo = src.getchannel('A').getextrema()[0] == 255
     fit(src, 512, scale=1.0 if photo else 0.78).save(os.path.join(OUT, 'maskable-512.png'))
     fit(src, 180).convert('RGB').save(os.path.join(OUT, 'apple-touch-icon.png'))  # iOS ignores transparency
-    fit(src, 32).save(os.path.join(OUT, 'favicon-32.png'))
-    fit(src, 256).save(os.path.join(OUT, '..', 'favicon.ico'), sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    tab = fav or src; clear = (0, 0, 0, 0) if fav else BG
+    fit(tab, 32, bg=clear).save(os.path.join(OUT, 'favicon-32.png'))
+    fit(tab, 256, bg=clear).save(os.path.join(OUT, '..', 'favicon.ico'), sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
     print('Icons written to', os.path.normpath(OUT))
 
 
