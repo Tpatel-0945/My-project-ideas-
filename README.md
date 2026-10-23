@@ -6,6 +6,12 @@ The interface sits in a real-time 3D space scene (three.js): stars, a ringed pla
 
 Open `index.html` through a local web server (for example `python3 -m http.server`), or deploy it (steps below).
 
+## Your data only
+
+AURA never fills in numbers for you. A new day's check-in starts empty ("not set"), meals are recorded only when you mark them eaten or skipped, and a skin or hair score appears only once enough measures are logged (3 skin / 2 hair; a photo scan fills them in). Your profile (sex, age, height, weight, skin type) is empty until you enter it, so no calorie or protein target is shown until then. Under-18s get the IOM 2005 growth-stage energy formula, teen protein and water values, the 8–10 h sleep range and no weight-loss targets. Placeholder numbers saved by older versions on days you never filled in are cleared automatically.
+
+**Skin type** comes from a 2-minute test on the Routine page built on the American Academy of Dermatology's at-home checks (wash-and-wait, blotting sheet) plus daily behaviour, with sensitivity asked separately; a face scan can only suggest a type until you take the test. Your routine is then built from your type, sensitivity, concerns (from the test and your latest scan) and age, with the reason for each step, and the scan's fix plans swap cleanser, moisturiser, sunscreen and active strengths to suit your skin. Derma is told the same profile and never assumes missing details.
+
 ## Pages
 
 - **Dashboard**: skin and hair scores on floating 3D panels that follow your pointer, 7-day trends, insights and alerts, today's routine, a 6-week calendar and a breakout face map.

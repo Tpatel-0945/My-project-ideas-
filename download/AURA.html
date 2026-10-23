@@ -218,7 +218,7 @@ input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border: 0; bord
 .face text { fill: #8b93c2; font-size: 8px; font-family: var(--font-mono); pointer-events: none; }
 
 /* ---------- Calendar heatmap ---------- */
-.heat { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.heat { display: grid; grid-template-columns: repeat(7, minmax(0, 46px)); gap: 5px; justify-content: start; }
 .heat .d { aspect-ratio: 1; border-radius: 6px; background: rgba(255, 255, 255, 0.04); border: 1px solid transparent; cursor: pointer; font-size: 0.62rem; color: rgba(255, 255, 255, 0.6);
   display: grid; place-items: center; font-family: var(--font-mono); transition: transform 0.15s; padding: 0; }
 .heat .d:hover { border-color: #fff; transform: scale(1.15); z-index: 2; position: relative; }
@@ -731,6 +731,39 @@ h4.sub { margin: 16px 0 6px; font: 600 0.7rem var(--font-mono); letter-spacing: 
 .g-brand svg { height: 30px; width: auto; display: block; margin: 0 auto; }
 @media (max-width: 860px) { .topbar .logo svg { height: 24px; } }
 
+/* ================= honest check-ins: unset values ================= */
+.slider.unset input[type=range] { opacity: 0.38; filter: grayscale(1); }
+.slider.unset .val { color: var(--muted); font-style: italic; font-weight: 400; }
+.slider .clr { margin-left: 8px; padding: 0 6px; border: 0; background: none; color: var(--muted); font: 0.7rem var(--font-mono); cursor: pointer; }
+.slider .clr:hover { color: var(--accent); }
+.meals { display: grid; gap: 8px; }
+.meal { display: flex; align-items: center; gap: 8px; }
+.meal span { flex: 1; font-size: 0.9rem; }
+.chip.on.warn { background: rgba(255, 203, 107, 0.18); border-color: var(--warn); color: var(--warn); }
+
+/* ================= skin profile ================= */
+.skin-card { margin-bottom: 18px; }
+.skin-type { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.skin-type b { font-family: var(--font-display); font-weight: 500; font-size: 1.5rem; color: var(--skin); }
+.step-edit .why, .tiny.why { color: var(--muted); font-style: italic; }
+.card.fix .tailored { position: absolute; top: 14px; right: 14px; font-size: 0.64rem; }
+.card.fix { position: relative; }
+.quiz { display: grid; gap: 14px; max-height: min(62vh, 560px); overflow-y: auto; padding-right: 4px; }
+.quiz-q { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 0; }
+.quiz-q legend { font-size: 0.9rem; font-weight: 600; padding: 0 4px; line-height: 1.4; }
+.quiz .opt { display: flex; gap: 10px; align-items: flex-start; padding: 7px 4px; font-size: 0.88rem; text-transform: none; letter-spacing: 0; color: var(--text); cursor: pointer; border-radius: 8px; }
+.quiz .opt:hover { background: rgba(255, 255, 255, 0.04); }
+.quiz .opt input { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+.empty-targets b { font-family: var(--font-display); font-weight: 500; }
+td.num { white-space: nowrap; }
+@media (max-width: 700px) {
+  table.stack-sm thead { display: none; }
+  table.stack-sm, table.stack-sm tbody, table.stack-sm tr, table.stack-sm td { display: block; width: 100%; }
+  table.stack-sm tr { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  table.stack-sm td { padding: 2px 0; border: 0; white-space: normal; }
+  table.stack-sm td[data-l]::before { content: attr(data-l); display: block; margin-top: 6px; font: 600 0.6rem var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+}
+
 </style>
 
   <div class="aurora"></div>
@@ -874,17 +907,19 @@ const App = (() => {
   ];
   const DEMO_V = 2;
   const fresh = () => ({
-    v: 2, scanWipe: 1, logs: {}, scans: [], routine: structuredClone(DEFAULT_ROUTINE), reminders: structuredClone(DEFAULT_REM), demo: false,
-    profile: { name: '', skinType: 'Combination', hairType: 'Wavy', sex: 'female', age: 25, weight: 60, height: 162, activity: 'light', goal: 'maintain', diet: 'any', lunch: 'muesli' },
+    v: 2, scanWipe: 1, logs: {}, scans: [], routine: { am: [], pm: [] }, reminders: structuredClone(DEFAULT_REM), demo: false,
+    // nothing about you is assumed: these stay empty until you enter them (or a scan suggests your skin type)
+    profile: { name: '', skinType: '', hairType: '', sex: '', age: null, weight: null, height: null, activity: '', goal: 'maintain', diet: 'any', lunch: 'muesli' },
     sleep: { alarm: '07:00', alarmOn: true, days: [0, 1, 2, 3, 4, 5, 6], need: 8, sessions: [], active: null },
     plate: { items: { paneer: 1, sabzi: 1, salad: 1, millet: 1, chaas: 1 } },
     bowl: { items: { muesliNS: 1, greek: 1, chia: 1, pumpkin: 1, berries: 1 } },
     chat: [],
   });
+  // A new day starts EMPTY: null means "not logged", so nothing is ever made up. Only what you enter (or a scan measures) is stored.
   const newLog = () => ({
-    skin: { oil: 3, dry: 2, red: 1, sens: 1, breakouts: 0, zones: [], pustules: null, blackheads: null, spots: null, lines: null, even: null },
-    hair: { fall: 70, itch: 1, flakes: 1, oil: 3, frizz: 3, wash: false },
-    life: { sleep: 7, water: 0, stress: 4, sun: 30, junk: false, period: false, workout: false, hot: false, protein: null, meals: { b: true, l: true, d: true } },
+    skin: { oil: null, dry: null, red: null, sens: null, breakouts: null, zones: [], pustules: null, blackheads: null, spots: null, lines: null, even: null },
+    hair: { fall: null, itch: null, flakes: null, oil: null, frizz: null, wash: false },
+    life: { sleep: null, water: null, stress: null, sun: null, junk: false, period: false, workout: false, hot: false, protein: null, meals: { b: null, l: null, d: null } },
     done: { am: [], pm: [] }, flags: [], note: '',
   });
 
@@ -892,8 +927,13 @@ const App = (() => {
   const save = (localOnly) => { db.metaAt = Date.now(); const ok = persistDb(); if (!localOnly) cloudPush(); dailyCheck(); return ok; };
 
   /* ================= scoring ================= */
-  const skinScore = (l) => { const s = l?.skin; if (!s) return null; return Math.round(clamp(100 - Math.min(35, s.breakouts * 3.5) - s.red * 2 - s.sens * 1.5 - s.oil * 1.3 - s.dry * 1.5)); };
-  const hairScore = (l) => { const h = l?.hair; if (!h) return null; return Math.round(clamp(100 - Math.min(40, Math.max(0, h.fall - 40) / 160 * 40) - h.itch * 1.5 - h.flakes * 2 - h.oil - h.frizz)); };
+  // Scores use only the measures you logged: penalties are scaled to the measures present, so a missing value is never guessed.
+  const SKIN_PEN = [['breakouts', (v) => Math.min(35, v * 3.5), 35], ['red', (v) => v * 2, 20], ['sens', (v) => v * 1.5, 15], ['oil', (v) => v * 1.3, 13], ['dry', (v) => v * 1.5, 15]];
+  const HAIR_PEN = [['fall', (v) => Math.min(40, Math.max(0, v - 40) / 160 * 40), 40], ['itch', (v) => v * 1.5, 15], ['flakes', (v) => v * 2, 20], ['oil', (v) => v, 10], ['frizz', (v) => v, 10]];
+  // a score needs enough measures to mean something: 3 of the 5 skin measures, 2 of the 5 hair measures
+  const penScore = (o, P, need) => { if (!o) return null; let pen = 0, max = 0, all = 0, n = 0; for (const [k, f, m] of P) { all += m; if (o[k] == null) continue; pen += f(o[k]); max += m; n++; } return n >= need ? Math.round(clamp(100 - (all * pen) / max)) : null; };
+  const skinScore = (l) => penScore(l?.skin, SKIN_PEN, 3);
+  const hairScore = (l) => penScore(l?.hair, HAIR_PEN, 2);
   const doneShare = (l, when) => { const steps = db.routine[when]; if (!l || !steps.length) return null; return steps.filter((s) => l.done[when].includes(s.id)).length / steps.length; };
   const adherence = (l) => { if (!l) return null; const tot = db.routine.am.length + db.routine.pm.length; if (!tot) return null; return (db.routine.am.filter((s) => l.done.am.includes(s.id)).length + db.routine.pm.filter((s) => l.done.pm.includes(s.id)).length) / tot; };
 
@@ -922,23 +962,40 @@ const App = (() => {
     while (db.logs[d]) { n++; d = addDays(d, -1); }
     return n;
   }
-  const meals = (l) => l?.life?.meals || { b: true, l: true, d: true };
+  const meals = (l) => l?.life?.meals || { b: null, l: null, d: null };   // true = eaten, false = skipped, null = not logged
+  const nn = (fn) => (l) => { const v = fn(l); return v == null ? null : v; };
 
-  /* Daily targets from published reference values:
-     energy = Mifflin-St Jeor BMR x activity; protein g/kg (ICMR-NIN 2020 RDA 0.83 g/kg, more when active or losing weight);
-     fat 30% of energy and carbs the remainder (IOM ranges: fat 20-35%, carbs 45-65%); ICMR-NIN 2024 suggests cereals stay near 45%;
-     fibre 14 g per 1000 kcal (IOM);
-     water from drinks = ~80% of EFSA adequate total intake (women 2.0 L, men 2.5 L), +0.5 L for a workout or a hot day. */
+  /* Daily targets, calculated only from YOUR details (nothing is assumed; until age, sex, height and weight are set, no energy or protein
+     target is shown). Sources:
+     - adults (18+): energy = Mifflin-St Jeor BMR x activity factor; protein 1.0 g/kg (ICMR-NIN 2020 RDA 0.83 g/kg, more when active or losing);
+     - under 18: energy = IOM 2005 Estimated Energy Requirement for ages 9-18 (includes growth); protein = IOM RDA 0.95 g/kg (9-13), 0.85 g/kg (14-18);
+       no weight-loss calorie cut is applied for under-18s;
+     - fat 30% of energy, carbs the rest (IOM ranges 20-35% / 45-65%); fibre 14 g per 1000 kcal (IOM);
+     - water from drinks = 80% of EFSA 2010 adequate total intake (9-13 y: boys 2.1 L, girls 1.9 L; 14+: men 2.5 L, women 2.0 L), +0.5 L for a workout or a hot day. */
   function targets(p = db.profile, l = db.logs[today()]) {
-    const male = p.sex === 'male', w = +p.weight || 60, h = +p.height || 162, a = +p.age || 25;
-    const bmr = 10 * w + 6.25 * h - 5 * a + (male ? 5 : -161);
-    const act = { sedentary: 1.2, light: 1.375, moderate: 1.55, very: 1.725 }[p.activity] || 1.375;
-    const tdee = bmr * act, kcal = p.goal === 'lose' ? Math.max(bmr * 1.1, tdee * 0.85) : tdee;
-    const pk = p.goal === 'lose' ? 1.2 : p.activity === 'very' ? 1.4 : p.activity === 'moderate' ? 1.2 : 1.0;
-    const protein = w * pk, fat = (kcal * 0.3) / 9, carbs = Math.max(0, kcal - protein * 4 - fat * 9) / 4, fiber = (kcal / 1000) * 14;
-    const waterBase = male ? 2.0 : 1.6, extra = (l?.life?.workout ? 0.5 : 0) + (l?.life?.hot ? 0.5 : 0), water = waterBase + extra;
-    return { bmr, tdee, kcal, pk, protein, carbs, fat, fiber, waterBase, extra, water, glasses: Math.ceil(water / 0.25) };
+    const a = +p.age || null, w = +p.weight || null, h = +p.height || null, male = p.sex === 'male', sexKnown = p.sex === 'male' || p.sex === 'female';
+    const known = !!(sexKnown && a && w && h), teen = !!(a && a < 18), act = p.activity || 'light';
+    const t = { known, teen, bmr: null, tdee: null, kcal: null, pk: null, protein: null, carbs: null, fat: null, fiber: null };
+    if (known) {
+      t.bmr = 10 * w + 6.25 * h - 5 * a + (male ? 5 : -161);
+      if (teen) {
+        const PA = (male ? { sedentary: 1.0, light: 1.13, moderate: 1.26, very: 1.42 } : { sedentary: 1.0, light: 1.16, moderate: 1.31, very: 1.56 })[act];
+        t.tdee = male ? 88.5 - 61.9 * a + PA * (26.7 * w + 903 * (h / 100)) + 25 : 135.3 - 30.8 * a + PA * (10 * w + 934 * (h / 100)) + 25;
+        t.kcal = t.tdee; t.pk = a <= 13 ? 0.95 : 0.85;
+      } else {
+        t.tdee = t.bmr * ({ sedentary: 1.2, light: 1.375, moderate: 1.55, very: 1.725 }[act] || 1.375);
+        t.kcal = p.goal === 'lose' ? Math.max(t.bmr * 1.1, t.tdee * 0.85) : t.tdee;
+        t.pk = p.goal === 'lose' ? 1.2 : act === 'very' ? 1.4 : act === 'moderate' ? 1.2 : 1.0;
+      }
+      t.protein = w * t.pk; t.fat = (t.kcal * 0.3) / 9; t.carbs = Math.max(0, t.kcal - t.protein * 4 - t.fat * 9) / 4; t.fiber = (t.kcal / 1000) * 14;
+    }
+    const total = a && a < 14 ? (male ? 2.1 : p.sex === 'female' ? 1.9 : 2.0) : male ? 2.5 : 2.0;   // sex unknown: the lower adult value, shown as a general guide
+    t.waterGeneral = !sexKnown || !a;
+    t.waterBase = Math.round(total * 0.8 * 10) / 10; t.extra = (l?.life?.workout ? 0.5 : 0) + (l?.life?.hot ? 0.5 : 0); t.water = t.waterBase + t.extra; t.glasses = Math.ceil(t.water / 0.25);
+    return t;
   }
+  // AASM consensus: teenagers 13-18 need 8-10 h, adults 7 h or more (7-9 h)
+  const sleepAdvice = () => { const a = +db.profile.age || null; return a && a < 18 ? { need: 9, text: 'Teenagers need 8–10 hours (American Academy of Sleep Medicine)' } : { need: 8, text: 'Adults need 7 hours or more (AASM / Sleep Research Society)' }; };
   const lastLogDate = () => Object.keys(db.logs).sort().at(-1) || null;
 
   /* ================= insights engine ================= */
@@ -949,15 +1006,15 @@ const App = (() => {
     ['rash', 'A rash with swelling, blisters or fever'],
   ];
   const FACTORS = [
-    { id: 'sleep', label: 'Short sleep (under 6.5 h)', test: (l) => l.life.sleep < 6.5 },
-    { id: 'stress', label: 'High stress (7+)', test: (l) => l.life.stress >= 7 },
+    { id: 'sleep', label: 'Short sleep (under 6.5 h)', test: (l) => (l.life.sleep == null ? null : l.life.sleep < 6.5) },
+    { id: 'stress', label: 'High stress (7+)', test: (l) => (l.life.stress == null ? null : l.life.stress >= 7) },
     { id: 'junk', label: 'Junk or sugary food', test: (l) => l.life.junk },
     { id: 'period', label: 'Period days', test: (l) => l.life.period },
-    { id: 'sun', label: 'Over 1 hour in the sun', test: (l) => l.life.sun > 60 },
-    { id: 'water', label: 'Under 6 glasses of water', test: (l) => l.life.water < 6 },
+    { id: 'sun', label: 'Over 1 hour in the sun', test: (l) => (l.life.sun == null ? null : l.life.sun > 60) },
+    { id: 'water', label: 'Under 6 glasses of water', test: (l) => (l.life.water == null ? null : l.life.water < 6) },
     { id: 'pm', label: 'Skipped night routine', test: (l) => (doneShare(l, 'pm') ?? 1) < 0.5 },
-    { id: 'lunch', label: 'Skipped lunch', test: (l) => !meals(l).l },
-    { id: 'protein', label: 'Low protein (under 60% of target)', test: (l) => (l.life.protein == null ? null : l.life.protein < targets().protein * 0.6) },
+    { id: 'lunch', label: 'Skipped lunch', test: (l) => (meals(l).l == null ? null : meals(l).l === false) },
+    { id: 'protein', label: 'Low protein (under 60% of target)', test: (l) => (l.life.protein == null || !targets().known ? null : l.life.protein < targets().protein * 0.6) },
   ];
   const TARGETS = [['breakouts', 'breakouts'], ['fall', 'hair fall'], ['red', 'redness']];
 
@@ -996,16 +1053,18 @@ const App = (() => {
       p: `${round(c.with, 1)} vs ${round(c.without, 1)} on other days (${c.nWith} vs ${c.nWithout} days logged). A pattern, not proof.`,
     }));
     const tg = targets(), sl7 = avgOver('sleep', 7);
-    if (sl7 != null && sl7 < 7) out.push({ lv: 'warn', ic: '☾', t: `Averaging ${round(sl7, 1)} h of sleep this week`, p: `Adults need 7 hours or more (AASM/SRS). For your ${esc(db.sleep.alarm)} alarm, aim for bed by ${bedFor(db.sleep.need)}. <a href="#/sleep">Sleep →</a>` });
+    if (sl7 != null && sl7 < (sleepAdvice().need === 9 ? 8 : 7)) out.push({ lv: 'warn', ic: '☾', t: `Averaging ${round(sl7, 1)} h of sleep this week`, p: `${sleepAdvice().text}. For your ${esc(db.sleep.alarm)} alarm, aim for bed by ${bedFor(db.sleep.need)}. <a href="#/sleep">Sleep →</a>` });
     const w7 = avgOver('water', 7);
     if (w7 != null && w7 < tg.glasses * 0.7) out.push({ lv: 'info', ic: '💧', t: `Water averaging ${round(w7, 1)} of ${tg.glasses} glasses`, p: 'Small, regular glasses through the day are easier than catching up at night. <a href="#/fuel">Hydration →</a>' });
     const pr7 = avg(lastDays(7).map((d) => db.logs[d]?.life.protein ?? null));
-    if (pr7 != null && pr7 < tg.protein * 0.7) out.push({ lv: 'warn', ic: '◍', t: `Protein averaging ${Math.round(pr7)} g, target ${Math.round(tg.protein)} g`, p: 'Hair is built from protein. Low intake and crash dieting can trigger shedding 2–3 months later. <a href="#/fuel">Food ideas →</a>' });
-    const sk7 = lastDays(7).filter((d) => db.logs[d] && !meals(db.logs[d]).l).length;
+    if (pr7 != null && tg.known && pr7 < tg.protein * 0.7) out.push({ lv: 'warn', ic: '◍', t: `Protein averaging ${Math.round(pr7)} g, target ${Math.round(tg.protein)} g`, p: 'Hair is built from protein. Low intake and crash dieting can trigger shedding 2–3 months later. <a href="#/fuel">Food ideas →</a>' });
+    const sk7 = lastDays(7).filter((d) => meals(db.logs[d]).l === false).length;
     if (sk7 >= 4) out.push({ lv: 'info', ic: '◍', t: `Lunch skipped ${sk7} of the last 7 days`, p: 'That is fine only if breakfast and dinner cover your protein and iron. A lower-carb lunch is a safer middle ground. <a href="#/fuel">Plate builder →</a>' });
     const ad = avg(lastDays(7).map((d) => adherence(db.logs[d])));
     if (ad != null && ad >= 0.85) out.push({ lv: 'good', ic: '☰', t: `Routine done ${Math.round(ad * 100)}% this week`, p: 'Consistency is what makes actives work.' });
     else if (ad != null && ad < 0.5) out.push({ lv: 'warn', ic: '☰', t: `Routine done only ${Math.round(ad * 100)}% this week`, p: 'Try a shorter routine you can keep. Three steps done daily beat seven done sometimes.' });
+    if (!SKIN_TYPES[db.profile.skinType]) out.unshift({ lv: 'info', ic: '◐', t: 'Find your skin type', p: 'A 2-minute test so your routine, fix plans and Derma\'s advice fit your skin instead of a generic one. <a href="#/routine">Take the test →</a>' });
+    else if (db.profile.skinTypeAuto) out.push({ lv: 'info', ic: '◐', t: `Scan suggests ${db.profile.skinType.toLowerCase()} skin`, p: 'Photos vary with lighting. Confirm with the 2-minute test. <a href="#/routine">Take the test →</a>' });
     if (!db.logs[today()]) out.unshift({ lv: 'info', ic: '✚', t: 'No check-in yet today', p: 'It takes about 60 seconds. <a href="#/log">Log today →</a>' });
     return out;
   }
@@ -1110,6 +1169,7 @@ const App = (() => {
   }
   function seedDemo(d) {
     const r = rng(7), end = today();
+    if (!d.routine.am.length && !d.routine.pm.length) d.routine = structuredClone(DEFAULT_ROUTINE);
     for (let i = 44; i >= 0; i--) {
       if (i > 0 && r() < 0.08) continue;
       const date = addDays(end, -i), t = 44 - i;
@@ -1210,7 +1270,7 @@ const App = (() => {
       const n = newLog();
       l.skin = { ...n.skin, ...(obj(l.skin) ? l.skin : {}) }; l.hair = { ...n.hair, ...(obj(l.hair) ? l.hair : {}) }; l.life = { ...n.life, ...(obj(l.life) ? l.life : {}) };
       if (!arr(l.skin.zones)) l.skin.zones = [];
-      if (!obj(l.life.meals)) l.life.meals = { b: true, l: true, d: true };
+      if (!obj(l.life.meals)) l.life.meals = { b: null, l: null, d: null };
       l.done = obj(l.done) ? { am: arr(l.done.am) ? l.done.am : [], pm: arr(l.done.pm) ? l.done.pm : [] } : n.done;
       if (!arr(l.flags)) l.flags = [];
       if (typeof l.note !== 'string') l.note = '';
@@ -1263,6 +1323,24 @@ const App = (() => {
     else { d = f; if (saved) { Object.assign(d, { routine: saved.routine || d.routine, reminders: saved.reminders || d.reminders, profile: { ...d.profile, ...saved.profile } }); seedDemo(d); } }   // new visitors start with their own, empty data
     if (saved && saved.scanWipe !== 1) { d.scans = []; d.scanWipe = 1; }   // one-time clear of all earlier scans (requested)
     dbHealth.fixes = repair(d);
+    if (!d.cleanV) {
+      const same = (o, ref) => o && Object.entries(ref).every(([k, v]) => o[k] === v);
+      let n = 0;
+      for (const l of Object.values(d.logs)) {
+        if (!d.demo && !l.auto?.skin && same(l.skin, { oil: 3, dry: 2, red: 1, sens: 1, breakouts: 0 }) && !l.skin.zones.length) { Object.assign(l.skin, { oil: null, dry: null, red: null, sens: null, breakouts: null }); n++; }
+        if (!d.demo && !l.auto?.hair && same(l.hair, { fall: 70, itch: 1, flakes: 1, oil: 3, frizz: 3 })) { Object.assign(l.hair, { fall: null, itch: null, flakes: null, oil: null, frizz: null }); n++; }
+        if (!d.demo && same(l.life, { sleep: 7, stress: 4, sun: 30 })) { Object.assign(l.life, { sleep: null, stress: null, sun: null }); n++; }
+        if (!d.demo && l.life.meals && l.life.meals.b === true && l.life.meals.l === true && l.life.meals.d === true && !l.life.protein) l.life.meals = { b: null, l: null, d: null };
+      }
+      d.cleanV = 1; if (n) dbHealth.notes.push(`Removed placeholder numbers from ${n} part${n === 1 ? '' : 's'} of earlier check-ins that you never filled in, so your trends show only what you entered.`);
+    }
+    if ((d.cleanV || 0) < 2) {   // the old version pre-filled a made-up profile; clear it if it was never changed
+      const pr = d.profile, wasDefault = pr.sex === 'female' && +pr.age === 25 && +pr.weight === 60 && +pr.height === 162;
+      if (wasDefault && !d.demo) { Object.assign(pr, { sex: '', age: null, weight: null, height: null }); if (pr.activity === 'light') pr.activity = ''; if (pr.hairType === 'Wavy') pr.hairType = ''; dbHealth.notes.push('Cleared the example age, sex, height and weight the old version filled in. Enter your own under Fuel → About you to get your real targets.'); }
+      if (pr.skinType === 'Combination' && !pr.skinTypeManual && !pr.skinTypeAuto) pr.skinType = '';
+      if (pr.skinType === 'Sensitive') { pr.skinType = ''; pr.sensitive = 'yes'; pr.skinTypeManual = false; }
+      d.cleanV = 2;
+    }
     return d;
   }
 
@@ -1581,7 +1659,8 @@ const App = (() => {
   }
 
   const delta = (cur, prev, lowerBetter = false, suffix = ' vs last week') => {
-    if (cur == null || prev == null) return `<span class="delta flat">—${suffix}</span>`;
+    if (cur == null) return '<span class="delta flat">no data yet</span>';
+    if (prev == null) return `<span class="delta flat">nothing to compare${suffix.replace(' vs ', ' with ')}</span>`;
     const d = cur - prev, good = lowerBetter ? d < 0 : d > 0;
     if (Math.abs(d) < 0.5) return `<span class="delta flat">● steady${suffix}</span>`;
     return `<span class="delta ${good ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'} ${Math.abs(round(d, 1))}${suffix}</span>`;
@@ -1667,6 +1746,7 @@ const App = (() => {
 
   function routineChecklist(date) {
     const l = db.logs[date];
+    if (!db.routine.am.length && !db.routine.pm.length) return `<p class="small muted">No routine yet. <a href="#/routine">Build one for your skin type →</a></p>`;
     return ['am', 'pm'].map((w) => `<div class="tiny muted" style="margin:12px 0 6px;letter-spacing:.15em">${w === 'am' ? '☀ MORNING' : '☾ NIGHT'}</div><div class="stack" style="gap:6px">${db.routine[w].map((s) => {
       const on = l?.done[w].includes(s.id);
       return `<button class="check ${on ? 'on' : ''}" data-act="done" data-date="${date}" data-w="${w}" data-id="${s.id}" aria-pressed="${!!on}"><span class="box">${on ? '✓' : ''}</span><span class="t">${esc(s.name)}</span>${s.kind === 'hair' ? '<span class="pill hair" style="margin-left:auto">hair</span>' : ''}</button>`;
@@ -1681,11 +1761,12 @@ const App = (() => {
   const ensureLog = (date = logDate) => { const l = (db.logs[date] ||= newLog()); l.u = Date.now(); return l; };
 
   function slider(path, label, min, max, step, color, ends, unit = '') {
-    const v = getPath(draft(), path);
-    return `<div class="slider"><div class="row"><label for="in-${path}">${label}</label><span class="val" data-out="${path}">${v}${unit}</span></div>
+    const raw = getPath(draft(), path), unset = raw == null, v = unset ? (min + max) / 2 : raw;
+    return `<div class="slider ${unset ? 'unset' : ''}"><div class="row"><label for="in-${path}">${label}</label><span class="val" data-out="${path}">${unset ? 'not set' : v + unit}</span>${unset ? '' : `<button class="clr" data-act="clear" data-path="${path}" aria-label="Clear ${label}">clear</button>`}</div>
       <input type="range" id="in-${path}" data-bind="${path}" data-unit="${unit}" min="${min}" max="${max}" step="${step}" value="${v}" style="--c:${color};--p:${((v - min) / (max - min)) * 100}">
       ${ends ? `<div class="scale-ends"><span>${ends[0]}</span><span>${ends[1]}</span></div>` : ''}</div>`;
   }
+  const lunchLabel = () => (db.profile.lunch === 'muesli' ? 'Lunch (muesli bowl)' : 'Lunch');
   const toggle = (path, label) => `<button class="toggle ${getPath(draft(), path) ? 'on' : ''}" data-act="flip" data-path="${path}" aria-pressed="${!!getPath(draft(), path)}">${getPath(draft(), path) ? '✓' : '○'} ${label}</button>`;
 
   pages.log = (date) => {
@@ -1701,10 +1782,10 @@ const App = (() => {
     ${l.filled ? `<div class="card filled" style="margin-bottom:18px"><div class="row between"><h3 style="margin:0">⚡ Filled in from your photo scan</h3><a class="small" href="#/scan">Scan again →</a></div><div class="filled-grid">${Object.values(l.filled).flat().map(([k, v]) => `<div><span class="tiny muted">${esc(k)}</span><b class="num">${esc(v)}</b></div>`).join('')}</div><p class="tiny muted" style="margin:8px 0 0">Adjust anything below if it looks off. Dryness and sensitivity are estimates from the photo.</p></div>` : ''}
     ${l.flags.length ? `<div class="insight bad" style="margin-bottom:18px"><div class="ic">⚕</div><div><b>Please see a dermatologist soon</b><p>You ticked a warning sign. These need an in-person check; this tracker can't assess them. For swelling of the face or trouble breathing, call 112.</p></div></div>` : ''}
     <div class="card" style="margin-bottom:18px"><div class="score-live">
-      <div class="metric"><span class="tiny muted">SKIN SCORE</span><span class="v num" id="liveSkin" style="color:var(--skin)">${skinScore(l)}</span></div>
-      <div class="metric"><span class="tiny muted">HAIR SCORE</span><span class="v num" id="liveHair" style="color:var(--hair)">${hairScore(l)}</span></div>
+      <div class="metric"><span class="tiny muted">SKIN SCORE</span><span class="v num" id="liveSkin" style="color:var(--skin)">${skinScore(l) ?? '—'}</span></div>
+      <div class="metric"><span class="tiny muted">HAIR SCORE</span><span class="v num" id="liveHair" style="color:var(--hair)">${hairScore(l) ?? '—'}</span></div>
       <div class="metric"><span class="tiny muted">ROUTINE</span><span class="v num" id="liveRoutine">${Math.round((adherence(l) || 0) * 100)}%</span></div>
-      <p class="small muted" style="margin:0;flex:1;min-width:200px;align-self:center">Scores update as you move the sliders. Everything saves automatically.</p></div></div>
+      <p class="small muted" style="margin:0;flex:1;min-width:200px;align-self:center">Only what you set is saved; anything left "not set" stays empty and is never guessed. A score appears once 3 skin or 2 hair measures are set (a photo scan fills them in).</p></div></div>
 
     <div class="grid g2">
       <div class="card"><h3><span style="color:var(--skin)">◐</span> Skin</h3>
@@ -1713,14 +1794,14 @@ const App = (() => {
         ${slider('skin.red', 'Redness', 0, 10, 1, '#8fded0', ['None', 'Very red'])}
         ${slider('skin.sens', 'Stinging / sensitivity', 0, 10, 1, '#8fded0', ['None', 'Burning'])}
         <label>New or active breakouts</label>
-        <div class="stepper"><button data-act="step" data-path="skin.breakouts" data-d="-1" aria-label="Fewer breakouts">−</button><span class="n num">${l.skin.breakouts}</span><button data-act="step" data-path="skin.breakouts" data-d="1" aria-label="More breakouts">+</button></div>
+        <div class="row" style="flex-wrap:nowrap"><div class="stepper"><button data-act="step" data-path="skin.breakouts" data-d="-1" aria-label="Fewer breakouts">−</button><span class="n num">${l.skin.breakouts ?? '—'}</span><button data-act="step" data-path="skin.breakouts" data-d="1" aria-label="More breakouts">+</button></div><button class="chip ${l.skin.breakouts === 0 ? 'on' : ''}" data-act="set" data-path="skin.breakouts" data-v="0">None today</button></div>
         <label class="mt">Where? Tap the zones</label>
         ${faceMap({ selected: l.skin.zones, edit: true })}
       </div>
 
       <div class="card"><h3><span style="color:var(--hair)">⌇</span> Hair & scalp</h3>
         <label>Hair fall today (hairs)</label>
-        <div class="stepper"><button data-act="step" data-path="hair.fall" data-d="-10" aria-label="Minus 10 hairs">−</button><span class="n num">${l.hair.fall}</span><button data-act="step" data-path="hair.fall" data-d="10" aria-label="Plus 10 hairs">+</button></div>
+        <div class="stepper"><button data-act="step" data-path="hair.fall" data-d="-10" aria-label="Minus 10 hairs">−</button><span class="n num">${l.hair.fall ?? '—'}</span><button data-act="step" data-path="hair.fall" data-d="10" aria-label="Plus 10 hairs">+</button></div>
         <div class="chips" style="margin-top:10px">${[['Under 50', 35], ['50–100', 75], ['100–150', 125], ['150–250', 200], ['250+', 280]].map(([t, v]) => `<button class="chip hair ${l.hair.fall === v ? 'on' : ''}" data-act="set" data-path="hair.fall" data-v="${v}">${t}</button>`).join('')}</div>
         <p class="tiny muted" style="margin-top:8px">Count hairs on your comb, shower drain and pillow. 50–100 a day is normal; wash days run higher.</p>
         ${slider('hair.itch', 'Scalp itch', 0, 10, 1, '#b8a6ff', ['None', 'Constant'])}
@@ -1740,13 +1821,13 @@ const App = (() => {
 
       <div class="card"><h3><span style="color:#ffd27a">◍</span> Food & water</h3>
         <label>Meals eaten</label>
-        <div class="row">${toggle('life.meals.b', 'Breakfast')}${toggle('life.meals.l', 'Lunch')}${toggle('life.meals.d', 'Dinner')}</div>
-        <label class="mt">Protein today (approx. grams) · target ${Math.round(tg.protein)} g</label>
+        <div class="meals">${[['b', 'Breakfast'], ['l', lunchLabel()], ['d', 'Dinner']].map(([k, n]) => { const v = l.life.meals?.[k]; return `<div class="meal"><span>${n}</span><button class="chip ${v === true ? 'on' : ''}" data-act="meal" data-k="${k}" data-v="1">Ate</button><button class="chip ${v === false ? 'on warn' : ''}" data-act="meal" data-k="${k}" data-v="0">Skipped</button></div>`; }).join('')}</div>
+        <label class="mt">Protein today (approx. grams) · ${tg.known ? `target ${Math.round(tg.protein)} g` : '<a href="#/fuel">add your details</a> to see your target'}</label>
         <div class="stepper"><button data-act="step" data-path="life.protein" data-d="-5" aria-label="Minus 5 grams">−</button><span class="n num">${l.life.protein ?? '—'}</span><button data-act="step" data-path="life.protein" data-d="5" aria-label="Plus 5 grams">+</button></div>
         <p class="tiny muted" style="margin-top:6px">Rough guide: 1 katori dal ≈ 7 g · 2 eggs ≈ 13 g · 100 g paneer ≈ 18 g · 1 cup curd ≈ 7 g · 100 g chicken ≈ 31 g</p>
         <label class="mt">Water (glasses of 250 ml) · target ${tg.glasses}</label>
         <div class="water">${Array.from({ length: Math.max(12, tg.glasses + 2) }, (_, i) => `<button class="${i < l.life.water ? 'on' : ''}" data-act="water" data-v="${i + 1}" aria-label="${i + 1} glasses"></button>`).join('')}</div>
-        <p class="tiny muted" style="margin:4px 0 0"><span class="num">${l.life.water}</span> of ${tg.glasses} glasses (${round(l.life.water * 0.25, 2)} of ${round(tg.water, 1)} L)</p>
+        <p class="tiny muted" style="margin:4px 0 0"><span class="num">${l.life.water ?? 0}</span> of ${tg.glasses} glasses (${round((l.life.water ?? 0) * 0.25, 2)} of ${round(tg.water, 1)} L)</p>
       </div>
 
       <div class="card"><h3>☰ Routine</h3>${routineChecklist(logDate)}</div>
@@ -1767,7 +1848,7 @@ const App = (() => {
   }
   function liveUpdate() {
     const l = draft(), set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
-    set('#liveSkin', skinScore(l)); set('#liveHair', hairScore(l)); set('#liveRoutine', Math.round((adherence(l) || 0) * 100) + '%');
+    set('#liveSkin', skinScore(l) ?? '—'); set('#liveHair', hairScore(l) ?? '—'); set('#liveRoutine', Math.round((adherence(l) || 0) * 100) + '%');
   }
 
   /* ---------- photo scan: auto-detect, 3D relief model, findings & fix plan ---------- */
@@ -1964,8 +2045,8 @@ const App = (() => {
       if (sc.wrinkles != null) put('skin.lines', sc.wrinkles, 'Lines score', `${sc.wrinkles}/100`);
       if (sc.evenness != null) put('skin.even', sc.evenness, 'Tone evenness', `${sc.evenness}/100`);
       if (!db.profile.skinTypeManual) {
-        const t = sc.shine >= 45 && (cur.est?.dry ?? 0) <= 3 ? 'Oily' : (cur.est?.sens ?? 0) >= 7 ? 'Sensitive' : (cur.est?.dry ?? 0) >= 6 ? 'Dry' : sc.shine >= 22 ? 'Combination' : 'Normal';
-        db.profile.skinType = t; db.profile.skinTypeAuto = true; filled.push(['Skin type', t + ' (suggested)']);
+        const t = sc.shine >= 45 && (cur.est?.dry ?? 0) <= 3 ? 'Oily' : (cur.est?.dry ?? 0) >= 6 ? 'Dry' : sc.shine >= 22 ? 'Combination' : 'Normal';
+        db.profile.skinType = t; db.profile.skinTypeAuto = true; db.profile.skinTypeHow = 'suggested by your scan on ' + fmtShort(today()) + '; take the test to confirm'; filled.push(['Skin type', t + ' (suggested; confirm with the test)']);
       }
     } else {
       put('hair.flakes', Math.round(clamp(cur.scores.flakes / 10, 0, 10)), 'Flakes', `${Math.round(clamp(cur.scores.flakes / 10, 0, 10))}/10`);
@@ -2638,7 +2719,7 @@ const App = (() => {
         <p class="tiny muted" style="margin:10px 0 0">Expression lines show more when you smile or frown, and side lighting exaggerates them. For tracking, use a neutral face and even, front-facing light each time. Spot sizes in mm are estimated from the average distance between pupils (about 63 mm).</p></div>` : ''}
 
       <div class="section"><span class="eyebrow">How to fix it</span><h2 style="margin-bottom:14px">${cur.issues.length ? 'Your plan' : 'Keep doing what you are doing'}</h2>
-        ${cur.issues.length ? `<div class="grid g2">${cur.issues.map((k) => { const f = FIXES[k]; return `<div class="card fix" style="--c:${f.color}">
+        ${cur.issues.length ? `<div class="grid g2">${cur.issues.map((k) => { const f = fixFor(k); return `<div class="card fix" style="--c:${f.color}">${f.tailored ? `<span class="pill skin tailored">fitted to ${skinLabel()}</span>` : k !== 'thin' && k !== 'flakes' ? '<a class="pill tailored" href="#/routine">find your skin type to tailor this</a>' : ''}
           <h3 style="color:${f.color}">● ${f.title}</h3><p class="small">${f.why}</p>
           <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
             ${f.am.length ? `<div><div class="tiny muted" style="letter-spacing:.15em">☀ MORNING</div><ol class="small steps">${f.am.map((s) => `<li>${s}</li>`).join('')}</ol></div>` : ''}
@@ -2715,12 +2796,139 @@ const App = (() => {
   function addPlanToRoutine() {
     if (!current) return;
     let added = 0;
-    current.issues.forEach((k) => ['am', 'pm'].forEach((w) => FIXES[k][w].forEach((s) => {
+    current.issues.forEach((k) => ['am', 'pm'].forEach((w) => fixFor(k)[w].forEach((s) => {
       const short = s.split(',')[0].split(' (')[0];
       if (db.routine[w].some((x) => x.name.toLowerCase() === short.toLowerCase())) return;
       db.routine[w].push({ id: uid(), name: short, kind: k === 'thin' || k === 'flakes' ? 'hair' : 'skin' }); added++;
     })));
     save(); toast(added ? `${added} step${added > 1 ? 's' : ''} added to your routine` : 'Your routine already has these steps');
+  }
+
+  /* ---------- your skin profile: type, sensitivity, concerns ----------
+     Skin type follows the American Academy of Dermatology's at-home tests ("wash and wait" and blotting sheet) plus how
+     your skin behaves through the day; sensitivity is a separate yes/no, as in dermatology practice. Every routine step,
+     fix plan and Derma answer below is chosen from YOUR type, sensitivity, concerns and age, never filled in at random. */
+  const SKIN_TYPES = {
+    Oily: { cleanser: 'Gel or foaming cleanser', moist: 'Oil-free gel moisturiser (non-comedogenic)', moistPM: 'Light oil-free gel moisturiser', spf: 'Gel or fluid sunscreen SPF 50 PA++++ (matte, non-comedogenic)', exfol: 'Salicylic acid (BHA) 2%, 2–3 nights a week', note: 'Oily skin makes more sebum all over: light, oil-free textures and BHA keep pores clear without stripping.' },
+    Combination: { cleanser: 'Gentle gel cleanser', moist: 'Light lotion (gel on the T-zone if it gets shiny)', moistPM: 'Light lotion, a little more on drier cheeks', spf: 'Lightweight fluid sunscreen SPF 50 PA++++', exfol: 'Salicylic acid 2% on the forehead and nose, 2 nights a week', note: 'Combination skin is oily on the T-zone and normal or dry on the cheeks: treat the zones differently rather than the whole face the same.' },
+    Normal: { cleanser: 'Gentle cleanser', moist: 'Lightweight lotion', moistPM: 'Lotion or light cream', spf: 'Broad-spectrum sunscreen SPF 50 PA++++', exfol: 'A mild exfoliant (lactic acid 5% or BHA) once a week, optional', note: 'Normal skin is balanced: a simple routine with daily sunscreen is enough unless you have a specific concern.' },
+    Dry: { cleanser: 'Cream or non-foaming cleanser (a water rinse is enough in the morning)', moist: 'Cream moisturiser with ceramides and glycerin, on damp skin', moistPM: 'Richer ceramide cream', spf: 'Moisturising cream sunscreen SPF 50 PA++++', exfol: 'Lactic acid 5% or a PHA once a week at most', note: 'Dry skin makes less oil and loses water faster: creamy cleansers, ceramides and fewer acids protect the barrier.' },
+  };
+  const SENS = { cleanser: 'Fragrance-free, soap-free gentle cleanser', spf: 'Mineral sunscreen (zinc oxide / titanium dioxide) SPF 50, fragrance-free', note: 'Sensitive skin: fragrance-free products, one new product at a time, patch test for 2–3 days, and start actives slowly.' };
+  const CONCERNS = [['acne', 'Pimples / acne'], ['spots', 'Dark spots or marks'], ['lines', 'Fine lines'], ['red', 'Redness'], ['dry', 'Dry or flaky patches'], ['oil', 'Shine / oiliness']];
+  function skinProfile() {
+    const p = db.profile, type = SKIN_TYPES[p.skinType] ? p.skinType : null, sens = p.sensitive === 'yes';
+    const base = type ? SKIN_TYPES[type] : { cleanser: 'Gentle cleanser', moist: 'Moisturiser', moistPM: 'Moisturiser', spf: 'Broad-spectrum sunscreen SPF 50 PA++++', exfol: null, note: '' };
+    const s = { ...base, type, sens, age: +p.age || null, teen: !!(+p.age && +p.age < 18) };
+    const ff = (t) => 'Fragrance-free ' + t[0].toLowerCase() + t.slice(1);
+    if (sens) Object.assign(s, { cleanser: SENS.cleanser, spf: SENS.spf, moist: ff(base.moist), moistPM: ff(base.moistPM), exfol: null });
+    // concerns: what you told the skin type finder, plus what your latest face scan actually found
+    const scan = [...db.scans].reverse().find((x) => x.kind === 'skin'), fromScan = new Set();
+    (scan?.issues || []).forEach((k) => fromScan.add(k === 'red' ? 'red' : k));
+    if (scan?.scores?.wrinkles >= 45) fromScan.add('lines');
+    s.concerns = [...new Set([...(p.concerns || []), ...fromScan])].filter((c) => CONCERNS.some((x) => x[0] === c));
+    s.fromScan = fromScan;
+    return s;
+  }
+  const skinLabel = (sp = skinProfile()) => sp.type ? `${sp.type.toLowerCase()}${sp.sens ? ', sensitive' : ''} skin` : 'your skin';
+
+  // a routine built from your skin profile; each step says why it is there
+  function buildRoutine(sp = skinProfile()) {
+    const c = new Set(sp.concerns), am = [], pm = [], st = (name, why) => ({ id: uid(), name, why, kind: 'skin', auto: true });
+    am.push(st(sp.cleanser, sp.type === 'Dry' ? 'Dry skin keeps more of its own oil with a creamy cleanser.' : sp.sens ? 'No fragrance or soap, so it does not sting.' : 'Removes overnight oil without stripping.'));
+    if (c.has('spots') && !sp.sens) am.push(st('Vitamin C serum (10–20% L-ascorbic acid, or a gentler derivative)', 'Antioxidant that fades marks and boosts sunscreen protection.'));
+    else if (c.has('spots') || c.has('acne') || c.has('oil') || c.has('red')) am.push(st('Niacinamide 4–5% serum', c.has('spots') ? 'Gentle option for marks on sensitive skin.' : c.has('oil') || c.has('acne') ? 'Reduces shine and calms breakouts (Draelos 2006).' : 'Supports the barrier and reduces redness.'));
+    if (c.has('dry') || sp.type === 'Dry') am.push(st('Hyaluronic acid serum on damp skin', 'Draws water into the skin before you seal it in with moisturiser.'));
+    am.push(st(sp.moist, sp.type === 'Oily' ? 'Oily skin still needs water; oil-free gel adds it without clogging.' : 'Keeps the barrier healthy so actives are tolerated.'));
+    am.push(st(sp.spf, 'Daily SPF prevents marks darkening and slows skin ageing (Hughes 2013). Last step; reapply every 2–3 h outdoors.'));
+    pm.push(st(sp.type === 'Dry' ? sp.cleanser.replace(' (a water rinse is enough in the morning)', '') : sp.cleanser, 'Removes sunscreen, sweat and pollution.'));
+    if (c.has('red') && !c.has('acne')) pm.push(st('No acids or retinoids until redness settles (1–2 weeks)', 'An irritated barrier needs a break before actives.'));
+    else if (c.has('acne')) {
+      const slow = sp.sens || sp.type === 'Dry';
+      pm.push(st(`Adapalene 0.1% gel, pea-sized for the whole face, ${slow ? 'every third night, over moisturiser' : '3 nights a week, building to nightly'}${sp.teen ? ' (check with a dermatologist or parent first)' : ''}`, 'First-line acne treatment in the AAD 2024 guideline; it also prevents marks.'));
+      pm.push(st(`Benzoyl peroxide 2.5% on active spots${slow ? ' only' : ''}, on nights without adapalene`, 'Kills acne bacteria; 2.5% works as well as stronger and irritates less.'));
+    } else if (c.has('spots')) pm.push(st('Azelaic acid 10–20%', 'Fades marks and is gentle enough for sensitive skin.'));
+    else if (c.has('lines') && sp.age && sp.age >= 25) pm.push(st(`Retinol 0.25–0.5%, ${sp.sens ? 'once a week to start' : '2–3 nights a week to start'}`, 'Retinoids are the best-studied treatment for fine lines. Not in pregnancy.'));
+    else if ((c.has('oil') || sp.type === 'Oily' || sp.type === 'Combination') && sp.exfol) pm.push(st(sp.exfol, 'Clears inside pores where oil builds up.'));
+    pm.push(st(sp.moistPM, 'Night is when the barrier repairs; seal it in.'));
+    return { am, pm };
+  }
+  // fix plans keep their treatment steps but swap cleanser / moisturiser / sunscreen for ones that suit your skin type
+  function fixFor(k) {
+    const f = FIXES[k], sp = skinProfile();
+    if (!f || k === 'thin' || k === 'flakes' || !sp.type && !sp.sens) return { ...f, tailored: false };
+    const swap = (stepList, night) => stepList.map((s) => {
+      if (k === 'red') return s;   // the redness plan is already barrier-first
+      if (/^(gentle |gel |rinse|cleanser)/i.test(s) || /cleanser$/i.test(s)) return sp.cleanser;
+      if (/sunscreen/i.test(s)) return sp.spf + (k === 'spots' ? ', two finger-lengths, reapplied every 2–3 h outdoors' : '');
+      if (/moisturi[sz]er/i.test(s) && !/ceramide or centella/i.test(s)) return night ? sp.moistPM : sp.moist;
+      if (sp.sens && /salicylic acid 2%/i.test(s)) return 'Skip salicylic acid while your skin is sensitive; niacinamide instead';
+      if (sp.sens && /adapalene/i.test(s)) return 'Adapalene 0.1% gel every third night over moisturiser (or azelaic acid 15–20% if it stings)';
+      if (sp.teen && /retinol/i.test(s)) return 'Skip retinol: at your age lines are mostly from dryness and expressions; moisturiser and SPF are enough';
+      return s;
+    });
+    return { ...f, am: [...new Set(swap(f.am, false))], pm: [...new Set(swap(f.pm, true))], tailored: true };
+  }
+
+  // the skin type finder (AAD at-home tests + daily behaviour); sensitivity and concerns asked separately
+  const SKIN_QUIZ = [
+    { id: 'wash', w: 2, q: 'Wash your face with a mild cleanser, pat dry and put nothing on it. After 30 minutes, how does it look and feel?', src: 'AAD "wash and wait" test', o: [['Dry', 'Tight, maybe flaky or rough'], ['Normal', 'Comfortable, not shiny'], ['Combination', 'Shiny on the forehead and nose only'], ['Oily', 'Shiny on the cheeks too']] },
+    { id: 'blot', w: 2, q: 'Around midday, press blotting paper (or a thin tissue) on your forehead, nose, cheeks and chin. What does it pick up?', src: 'AAD blotting-sheet test', o: [['Dry|Normal', 'Little or no oil anywhere'], ['Combination', 'Oil from the forehead and nose only'], ['Oily', 'Oil from most areas'], ['', 'I haven\'t tried this yet']] },
+    { id: 'eve', w: 1, q: 'By evening, without touching it up, your face is…', o: [['Dry', 'Dull or tight'], ['Normal', 'About the same as in the morning'], ['Combination', 'Shiny forehead and nose, normal cheeks'], ['Oily', 'Shiny all over']] },
+    { id: 'pores', w: 1, q: 'Your pores are…', o: [['Dry', 'Barely visible'], ['Normal', 'Visible only up close'], ['Combination', 'Large on the nose and forehead'], ['Oily', 'Large across the nose, forehead and cheeks']] },
+  ];
+  function scoreQuiz(ans) {
+    const v = { Dry: 0, Normal: 0, Combination: 0, Oily: 0 };
+    SKIN_QUIZ.forEach((q) => { const a = ans[q.id]; if (!a) return; const parts = a.split('|'); parts.forEach((t) => { v[t] += q.w / parts.length; }); });
+    const ranked = Object.entries(v).sort((a, b) => b[1] - a[1] || (a[0] === ans.wash ? -1 : b[0] === ans.wash ? 1 : 0));
+    return { type: ranked[0][0], margin: ranked[0][1] - ranked[1][1], runnerUp: ranked[1][0] };
+  }
+  function skinQuiz() {
+    const p = db.profile, prev = p.skinQuiz?.answers || {};
+    const radios = (q) => `<fieldset class="quiz-q"><legend>${esc(q.q)}${q.src ? `<span class="tiny muted"> · ${q.src}</span>` : ''}</legend>${q.o.map(([v, l], i) => `<label class="opt"><input type="radio" name="${q.id}" value="${v}" ${prev[q.id] === v ? 'checked' : ''} ${i === 0 ? 'required' : ''}> ${esc(l)}</label>`).join('')}</fieldset>`;
+    dialog(`<h3>Find your skin type</h3><p class="small muted">About 2 minutes. The first two are the American Academy of Dermatology's at-home tests; if you can, do them today and answer from what you see.</p>
+      <form id="quizForm" class="quiz">${SKIN_QUIZ.map(radios).join('')}
+      <fieldset class="quiz-q"><legend>Do skincare products, sun, heat or weather often make your skin sting, burn, itch or go red?</legend>${[['no', 'Rarely or never'], ['mild', 'Sometimes, with some products'], ['yes', 'Often']].map(([v, l], i) => `<label class="opt"><input type="radio" name="sens" value="${v}" ${(p.sensitive || '') === v ? 'checked' : ''} ${i === 0 ? 'required' : ''}> ${l}</label>`).join('')}</fieldset>
+      <fieldset class="quiz-q"><legend>What would you like to improve? <span class="tiny muted">(choose any)</span></legend>${CONCERNS.map(([v, l]) => `<label class="opt"><input type="checkbox" name="concerns" value="${v}" ${(p.concerns || []).includes(v) ? 'checked' : ''}> ${l}</label>`).join('')}</fieldset></form>`,
+      [{ label: 'Cancel', cls: 'ghost' }, { label: 'See my skin type', cls: 'primary', fn: () => {
+        const f = $('#quizForm'), fd = new FormData(f), ans = {};
+        for (const q of [...SKIN_QUIZ.map((x) => x.id), 'sens']) { if (!fd.has(q)) { toast('Please answer every question'); f.querySelector(`[name="${q}"]`)?.closest('fieldset')?.scrollIntoView({ block: 'center' }); return false; } ans[q] = fd.get(q); }
+        const r = scoreQuiz(ans), concerns = fd.getAll('concerns');
+        Object.assign(db.profile, { skinType: r.type, skinTypeManual: true, skinTypeAuto: false, skinTypeHow: 'skin type finder, ' + fmtShort(today()), sensitive: ans.sens, concerns, skinQuiz: { answers: ans, at: Date.now() } });
+        save(); setTimeout(() => quizResult(r), 50);
+      } }]);
+  }
+  function quizResult(r) {
+    const sp = skinProfile(), scan = [...db.scans].reverse().find((x) => x.kind === 'skin');
+    const scanType = scan?.scores ? (scan.scores.shine >= 45 ? 'Oily' : scan.scores.shine >= 22 ? 'Combination' : null) : null;
+    dialog(`<h3>Your skin type: ${sp.type}${sp.sens ? ' and sensitive' : ''}</h3>
+      <p class="small">${esc(SKIN_TYPES[sp.type].note)}${sp.sens ? ' ' + esc(SENS.note) : ''}</p>
+      <p class="small muted">${r.margin >= 2 ? 'A clear result.' : `A close call between ${r.type.toLowerCase()} and ${r.runnerUp.toLowerCase()}: repeat the wash-and-wait test on another day to confirm.`}${scanType ? ` Your last face scan's shine reading points to ${scanType === sp.type ? 'the same type' : scanType.toLowerCase() + ' skin; photos vary with light, so your answers count for more'}.` : ''} Skin can change with season, hormones and age, so redo this every few months.</p>
+      ${sp.concerns.length ? `<p class="small">Focusing on: <b>${sp.concerns.map((c) => CONCERNS.find((x) => x[0] === c)[1].toLowerCase()).join(', ')}</b>${[...sp.fromScan].some((c) => !(db.profile.concerns || []).includes(c)) ? ' (including what your scan found)' : ''}.</p>` : ''}`,
+      [{ label: 'Done', cls: 'ghost', fn: () => { render(); } }, { label: 'Build my routine', cls: 'primary', fn: () => { routinePreview(); return false; } }]);
+  }
+  function routinePreview() {
+    const sp = skinProfile();
+    if (!sp.type) return skinQuiz();
+    const r = buildRoutine(sp), list = (w) => `<ol class="small steps">${r[w].map((s) => `<li><b>${esc(s.name)}</b><br><span class="tiny muted">${esc(s.why)}</span></li>`).join('')}</ol>`;
+    dialog(`<h3>Your routine for ${skinLabel(sp)}</h3><p class="small muted">Built from your skin type${sp.concerns.length ? ', your concerns' : ''}${sp.age ? ' and age' : ''}. Product types, not brands: pick any you like that matches. Start one new active at a time.</p>
+      <div class="tiny muted" style="letter-spacing:.15em;margin-top:10px">☀ MORNING</div>${list('am')}<div class="tiny muted" style="letter-spacing:.15em">☾ NIGHT</div>${list('pm')}
+      <p class="tiny muted">Your hair steps stay as they are.</p>`,
+      [{ label: 'Cancel', cls: 'ghost' }, { label: 'Use this routine', cls: 'primary', fn: () => {
+        const keep = (w) => db.routine[w].filter((s) => s.kind === 'hair');
+        db.routine = { am: [...r.am, ...keep('am')], pm: [...r.pm, ...keep('pm')] }; db.profile.routineFor = skinLabel(sp);
+        save(); toast('Routine updated for ' + skinLabel(sp)); if (route !== '/routine') go('#/routine'); else render();
+      } }]);
+  }
+  function skinCard() {
+    const sp = skinProfile(), p = db.profile;
+    return `<div class="card skin-card"><div class="row between"><h3>◐ Your skin profile</h3>${sp.type ? '<button class="btn sm ghost" data-act="skinQuiz">Redo the test</button>' : ''}</div>
+      ${sp.type ? `<div class="skin-type"><b>${sp.type}</b>${sp.sens ? '<span class="pill warn">sensitive</span>' : p.sensitive === 'mild' ? '<span class="pill">sometimes reactive</span>' : ''}<span class="tiny muted">${esc(p.skinTypeHow || (p.skinTypeAuto ? 'suggested by your scan; take the test to confirm' : 'chosen by you'))}</span></div>
+        <p class="small muted">${esc(SKIN_TYPES[sp.type].note)}</p>
+        ${sp.concerns.length ? `<div class="chips">${sp.concerns.map((c) => `<span class="chip on">${CONCERNS.find((x) => x[0] === c)[1]}${sp.fromScan.has(c) && !(p.concerns || []).includes(c) ? ' · from scan' : ''}</span>`).join('')}</div>` : '<p class="tiny muted">No concerns selected.</p>'}
+        <div class="row mt"><button class="btn sm primary" data-act="buildRoutine">${p.routineFor ? 'Rebuild routine for my skin' : 'Build my routine for this skin'}</button></div>`
+      : `<p class="small">Your skin type isn't determined yet, so AURA doesn't guess one. Take the 2-minute test (based on the American Academy of Dermatology's at-home checks) and your routine, fix plans and Derma's advice will fit your skin.</p>
+        <button class="btn primary" data-act="skinQuiz">Find my skin type</button>`}</div>`;
   }
 
   /* ---------- trends ---------- */
@@ -2756,14 +2964,16 @@ const App = (() => {
   /* ---------- routine ---------- */
   const CONFLICTS = [
     [/retin|adapalene|tretinoin/i, /glycolic|lactic|\baha\b|salicylic|\bbha\b|peel/i, 'A retinoid and an exfoliating acid in the same routine can irritate. Alternate nights.'],
-    [/retin|adapalene/i, /benzoyl|\bbpo\b/i, 'Benzoyl peroxide can break down retinol. Move BPO to the morning.'],
+    [/retinol|retinal|tretinoin/i, /benzoyl|\bbpo\b/i, 'Benzoyl peroxide can break down retinol and tretinoin. Use BPO in the morning or on other nights. (Adapalene is stable with BPO.)'],
     [/vitamin c|ascorbic/i, /benzoyl|\bbpo\b/i, 'Benzoyl peroxide oxidises vitamin C. Use them at different times of day.'],
   ];
   function routineWarnings() {
     const out = [];
+    if (!db.routine.am.length && !db.routine.pm.length) return out;
     for (const w of ['am', 'pm']) {
-      const names = db.routine[w].map((s) => s.name).join(' | ');
-      CONFLICTS.forEach(([a, b, msg]) => { if (a.test(names) && b.test(names)) out.push(`${w === 'am' ? 'Morning' : 'Night'}: ${msg}`); });
+      // steps already marked for different nights don't clash
+      const names = db.routine[w].map((s) => s.name).join(' | '), alt = /without|alternate|other nights|different night/i, bNames = db.routine[w].filter((s) => !alt.test(s.name)).map((s) => s.name).join(' | ');
+      CONFLICTS.forEach(([a, b, msg]) => { if (a.test(names) && b.test(bNames)) out.push(`${w === 'am' ? 'Morning' : 'Night'}: ${msg}`); });
     }
     const amSkin = db.routine.am.filter((s) => s.kind === 'skin');
     if (!/sunscreen|spf/i.test(amSkin.map((s) => s.name).join(' '))) out.push('No sunscreen in your morning routine. It protects every other step you do.');
@@ -2778,8 +2988,9 @@ const App = (() => {
     const ls60 = lastDays(60).map((d) => db.logs[d]).filter(Boolean);
     const dn = ls60.filter((l) => (doneShare(l, 'pm') ?? 0) >= 0.8), sk = ls60.filter((l) => (doneShare(l, 'pm') ?? 0) < 0.5);
     const sa = avg(dn.map(skinScore)), sb = avg(sk.map(skinScore));
-    return `${demoBanner()}<div class="page-head"><span class="eyebrow">Routine</span><h1>Your <span class="grad-text">routine</span></h1><p>Tick steps as you do them. The monitor tracks how consistent you are and whether it shows in your scores.</p></div>
-    <div class="grid g3">
+    return `${demoBanner()}<div class="page-head"><span class="eyebrow">Routine</span><h1>Your <span class="grad-text">routine</span></h1><p>Built for ${skinLabel()}. Tick steps as you do them; the monitor tracks how consistent you are and whether it shows in your scores.</p></div>
+    ${skinCard()}
+    <div class="grid g3 section">
       <div class="card tilt metric"><h3>Routine streak</h3><div class="v num">${rs}<small> days at 75%+</small></div></div>
       <div class="card tilt metric"><h3>This week</h3><div class="v num">${Math.round((avg(lastDays(7).map((d) => adherence(db.logs[d]))) || 0) * 100)}<small>%</small></div></div>
       <div class="card tilt metric"><h3>Skin score: night routine done vs skipped</h3>${sa == null || sb == null || sk.length < 3 ? '<p class="small muted" style="margin:0">Needs a few skipped and completed nights to compare.</p>' : `<div class="v num">${Math.round(sa)} <small>vs</small> ${Math.round(sb)}</div><span class="delta ${sa > sb ? 'up' : 'down'}">${sa > sb ? '▲' : '▼'} ${Math.abs(Math.round(sa - sb))} points on nights you did it</span>`}</div>
@@ -2788,7 +2999,7 @@ const App = (() => {
       <div class="card"><div class="row between"><h3>Today</h3><a class="small" href="#/log">Full check-in →</a></div>${routineChecklist(today())}</div>
       <div class="card"><h3>Edit steps</h3>
         ${['am', 'pm'].map((w) => `<div class="tiny muted" style="margin:12px 0 6px;letter-spacing:.15em">${w === 'am' ? '☀ MORNING' : '☾ NIGHT'}</div>
-          ${db.routine[w].map((s, i) => `<div class="step-edit"><span class="small">${esc(s.name)} ${s.kind === 'hair' ? '<span class="pill hair">hair</span>' : ''}<br><span class="tiny muted">done on ${Math.round(stepRate(w, s.id) * 100)}% of logged days</span></span>
+          ${db.routine[w].map((s, i) => `<div class="step-edit"><span class="small">${esc(s.name)} ${s.kind === 'hair' ? '<span class="pill hair">hair</span>' : ''}${s.why ? `<br><span class="tiny why">${esc(s.why)}</span>` : ''}<br><span class="tiny muted">done on ${Math.round(stepRate(w, s.id) * 100)}% of logged days</span></span>
             <button data-act="mv" data-w="${w}" data-i="${i}" data-d="-1" aria-label="Move up">↑</button><button data-act="mv" data-w="${w}" data-i="${i}" data-d="1" aria-label="Move down">↓</button><button data-act="rmStep" data-w="${w}" data-id="${s.id}" aria-label="Remove">✕</button></div>`).join('')}`).join('')}
         <form class="stack mt" data-form="addStep">
           <input type="text" id="stepName" name="name" placeholder="e.g. Azelaic acid 10%" required>
@@ -2871,12 +3082,12 @@ const App = (() => {
     tiffin: ['Quick desk tiffin', { greek: 1, chana: 1, guava: 1, sprouts: 1 }],
   };
   const NUTRIENTS = [
-    ['Protein', (t) => `${Math.round(t.protein)} g/day (${t.pk} g per kg)`, 'Hair is made mostly of keratin, a protein. Very low intake and crash diets can trigger shedding 2–3 months later.', 'Dal, rajma, chana, paneer, curd, eggs, fish, chicken, soya'],
-    ['Iron', (t, p) => (p.sex === 'male' ? '19 mg' : '29 mg'), 'Low iron stores (ferritin) are linked with hair shedding, especially in women. Plant iron absorbs better with vitamin C; keep tea and coffee an hour away from meals.', 'Rajma, chana, dal, leafy greens, eggs, fish, meat, with amla, guava or lemon'],
-    ['Zinc', (t, p) => (p.sex === 'male' ? '17 mg' : '13.2 mg'), 'Needed for hair growth and skin repair. Low zinc is linked with hair loss and slow wound healing.', 'Pumpkin seeds, chickpeas, cashews, dairy, eggs, meat'],
+    ['Protein', (t) => (t.known ? `${Math.round(t.protein)} g/day (${t.pk} g per kg)` : 'add your details'), 'Hair is made mostly of keratin, a protein. Very low intake and crash diets can trigger shedding 2–3 months later.', 'Dal, rajma, chana, paneer, curd, eggs, fish, chicken, soya'],
+    ['Iron', (t, p) => (p.sex === 'male' ? '19 mg' : p.sex === 'female' ? '29 mg' : 'men 19 mg · women 29 mg'), 'Low iron stores (ferritin) are linked with hair shedding, especially in women. Plant iron absorbs better with vitamin C; keep tea and coffee an hour away from meals.', 'Rajma, chana, dal, leafy greens, eggs, fish, meat, with amla, guava or lemon'],
+    ['Zinc', (t, p) => (p.sex === 'male' ? '17 mg' : p.sex === 'female' ? '13.2 mg' : 'men 17 mg · women 13.2 mg'), 'Needed for hair growth and skin repair. Low zinc is linked with hair loss and slow wound healing.', 'Pumpkin seeds, chickpeas, cashews, dairy, eggs, meat'],
     ['Vitamin D', () => '600 IU (15 µg)', 'Deficiency is very common in India and is associated with hair loss. Get tested before taking high-dose supplements.', 'Midday sun on arms and legs, fatty fish, egg yolk, fortified milk'],
     ['Vitamin B12', () => '2.5 µg', 'Deficiency causes fatigue and can affect hair. Vegetarians and vegans are at higher risk.', 'Milk, curd, paneer, eggs, fish, meat; a supplement if vegan'],
-    ['Vitamin C', (t, p) => (p.sex === 'male' ? '80 mg' : '65 mg'), 'Needed to build collagen, and it helps you absorb plant iron.', 'Amla, guava, oranges, capsicum, tomato, lemon'],
+    ['Vitamin C', (t, p) => (p.sex === 'male' ? '80 mg' : p.sex === 'female' ? '65 mg' : 'men 80 mg · women 65 mg'), 'Needed to build collagen, and it helps you absorb plant iron.', 'Amla, guava, oranges, capsicum, tomato, lemon'],
     ['Omega-3', () => '≈250 mg EPA + DHA (EFSA)', 'May help dryness and inflammation. Evidence for skin is moderate.', 'Fish (mackerel, salmon, rohu), flaxseed, walnuts, chia'],
     ['Biotin', () => '40 µg', 'Deficiency is rare. Extra biotin does not grow hair if you are not deficient, and high doses can distort thyroid and other blood tests.', 'Eggs, nuts, seeds, pulses'],
   ];
@@ -2884,15 +3095,16 @@ const App = (() => {
   let lunchTab = null;
   let plateMode = 'low';
   const tbar = (label, v, target, unit, color, invert) => {
-    const pc = target ? v / target : 0, over = invert ? pc > 1.15 : pc < 0.8;
-    return `<div class="meter-row"><div class="row between small" style="flex-wrap:nowrap"><span>${label}</span><span class="num">${round(v, 0)} / ${Math.round(target)} ${unit}</span></div><div class="bar"><i style="width:${clamp(pc * 100, 0, 100)}%;--c:${over ? 'var(--warn)' : color}"></i></div></div>`;
+    const pc = target ? v / target : 0, over = target ? (invert ? pc > 1.15 : pc < 0.8) : false;
+    return `<div class="meter-row"><div class="row between small" style="flex-wrap:nowrap"><span>${label}</span><span class="num">${round(v, 0)}${target ? ' / ' + Math.round(target) : ''} ${unit}</span></div><div class="bar"><i style="width:${clamp(pc * 100, 0, 100)}%;--c:${over ? 'var(--warn)' : color}"></i></div></div>`;
   };
 
   pages.fuel = () => {
     const p = db.profile, t = targets(), tl = db.logs[today()], water = tl?.life.water ?? 0;
     const items = db.plate.items, tot = plateTotals(items);
     const tab = lunchTab || (p.lunch === 'muesli' ? 'bowl' : 'plate'), bowl = db.bowl?.items || {}, bt = plateTotals(bowl);
-    const bowlP = Math.max(25, t.protein * 0.3), bowlC = 45, bowlFib = 8, bowlK = t.kcal * 0.28;
+    // until your details are in, the bowl uses the general ~25 g protein-per-meal guide and shows no calorie target
+    const bowlP = t.known ? Math.max(20, t.protein * 0.3) : 25, bowlC = 45, bowlFib = 8, bowlK = t.known ? t.kcal * 0.28 : null;
     const hasBase = ['muesliNS', 'muesliSw', 'oats'].some((k) => bowl[k]), hasSeed = ['chia', 'flax', 'pumpkin', 'almonds', 'walnuts', 'pb'].some((k) => bowl[k]), hasFruit = ['berries', 'apple', 'papaya', 'pom', 'banana'].some((k) => bowl[k]);
     const bnotes = [];
     if (!bt.kcal) bnotes.push(['info', 'Add a muesli base, something to pour over it, seeds and a fruit.']);
@@ -2905,16 +3117,17 @@ const App = (() => {
       if (!hasFruit) bnotes.push(['info', 'Add berries, papaya or pomegranate: vitamin C for collagen, plus fibre.']);
       if (bt.fib >= bowlFib) bnotes.push(['good', `Fibre ${round(bt.fib, 1)} g. Good for steady blood sugar.`]);
     }
-    const lunchNow = p.lunch === 'muesli' ? bt : p.lunch === 'skip' ? { kcal: 0, p: 0, c: 0 } : { kcal: t.kcal * 0.3, p: t.protein * 0.3, c: t.carbs * 0.3 };
-    const rest = { k: Math.max(0, t.kcal - lunchNow.kcal), p: Math.max(0, t.protein - lunchNow.p) }, dk = p.diet === 'any' ? 'egg' : p.diet;
-    const bedT = bedFor(db.sleep.need || 8), dinnerBy = (() => { const [h, m] = bedT.split(':').map(Number); return fmt12(`${pad((h + 21) % 24)}:${pad(m)}`); })();
+    const lunchNow = !t.known ? bt : p.lunch === 'muesli' ? bt : p.lunch === 'skip' ? { kcal: 0, p: 0, c: 0 } : { kcal: t.kcal * 0.3, p: t.protein * 0.3, c: t.carbs * 0.3 };
+    const rest = t.known ? { k: Math.max(0, t.kcal - lunchNow.kcal), p: Math.max(0, t.protein - lunchNow.p) } : null, dk = p.diet === 'any' ? 'egg' : p.diet;
+    const bedT = bedFor(db.sleep.need || sleepAdvice().need), dinnerBy = (() => { const [h, m] = bedT.split(':').map(Number); return fmt12(`${pad((h + 21) % 24)}:${pad(m)}`); })();
     const dayPlan = [
       ['Breakfast', '7:30–9:00', 0.34, DAY_MEALS.b[dk]],
       [p.lunch === 'muesli' ? 'Lunch · your muesli bowl' : p.lunch === 'skip' ? 'Lunch (skipped)' : 'Lunch', '1:00–2:00', null, p.lunch === 'muesli' ? Object.entries(bowl).filter(([, q]) => q).map(([id, q]) => (q > 1 ? q + '× ' : '') + FOOD[id]?.name.toLowerCase()).join(' + ') || 'Build it below' : p.lunch === 'skip' ? 'If you skip, move 15–20 g protein into breakfast and the snack so the day still adds up' : 'A plate from the builder below'],
       ['Snack', '4:30–5:30', 0.2, DAY_MEALS.s[dk]],
       ['Dinner', `by ${dinnerBy}`, 0.46, DAY_MEALS.d[dk]],
     ];
-    const lunchC = plateMode === 'low' ? 30 : t.carbs * 0.3, lunchP = Math.max(25, t.protein * 0.3), lunchFib = Math.max(8, t.fiber * 0.3), lunchK = t.kcal * 0.3;
+    if (!t.known && plateMode === 'bal') plateMode = 'low';
+    const lunchC = plateMode === 'low' ? 30 : t.carbs * 0.3, lunchP = t.known ? Math.max(20, t.protein * 0.3) : 25, lunchFib = t.known ? Math.max(8, t.fiber * 0.3) : 8, lunchK = t.known ? t.kcal * 0.3 : null;
     const ratio = tot.fib ? tot.c / tot.fib : tot.c ? Infinity : 0;
     const notes = [];
     if (!tot.kcal) notes.push(['info', 'Add foods on the left to build a lunch.']);
@@ -2923,36 +3136,39 @@ const App = (() => {
       notes.push(tot.p < lunchP * 0.8 ? ['warn', `Protein ${Math.round(tot.p)} g. Aim for about ${Math.round(lunchP)} g: add curd, paneer, eggs, dal or soya.`] : ['good', `Protein ${Math.round(tot.p)} g. Good for hair and keeps you full.`]);
       notes.push(ratio > 10 ? ['warn', `Carb-to-fibre ratio ${ratio === Infinity ? 'very high' : ratio.toFixed(1) + ':1'}. Under 10:1 means mostly whole, slow carbs; add salad, veg, dal or a whole grain.`] : ['good', `Carb-to-fibre ratio ${ratio.toFixed(1)}:1, under 10:1, so mostly slow carbs.`]);
     }
-    const d30 = lastDays(30).map((d) => db.logs[d]).filter(Boolean), skip = d30.filter((l) => !meals(l).l), eat = d30.filter((l) => meals(l).l);
+    const d30 = lastDays(30).map((d) => db.logs[d]).filter(Boolean), skip = d30.filter((l) => meals(l).l === false), eat = d30.filter((l) => meals(l).l === true);
     const cmpRow = (label, k, unit, dp = 0) => { const a = avg(skip.map((l) => METRICS[k].get(l))), b = avg(eat.map((l) => METRICS[k].get(l))); return a == null || b == null ? '' : `<tr><td>${label}</td><td class="num">${round(a, dp)}${unit}</td><td class="num">${round(b, dp)}${unit}</td></tr>`; };
     const groups = [...new Set(FOODS.map((f) => f.group))];
     const C = 2 * Math.PI * 52;
     return `${demoBanner()}<div class="page-head"><span class="eyebrow">Fuel</span><h1>Food & water for <span class="grad-text">skin and hair</span></h1>
-      <p>Targets are calculated from your body and activity using published reference values (sources at the bottom). Update your details to personalise them.</p></div>
+      <p>Targets are calculated only from the details you enter, using published reference values (sources at the bottom). Nothing is assumed.</p></div>
     <div class="split">
       <div class="card"><h3>Your daily targets</h3>
-        <div class="tiles">
-          <div class="tile"><div class="k">Energy</div><div class="v num">${Math.round(t.kcal)}</div><div class="tiny muted">kcal · BMR ${Math.round(t.bmr)}${p.goal === 'lose' ? ' · gentle 15% deficit' : ''}</div></div>
+        ${t.known ? `<div class="tiles">
+          <div class="tile"><div class="k">Energy</div><div class="v num">${Math.round(t.kcal)}</div><div class="tiny muted">kcal · ${t.teen ? 'IOM growth-stage formula' : `BMR ${Math.round(t.bmr)}${p.goal === 'lose' ? ' · gentle 15% deficit' : ''}`}</div></div>
           <div class="tile"><div class="k">Protein</div><div class="v num" style="color:#ffd27a">${Math.round(t.protein)} g</div><div class="tiny muted">${t.pk} g per kg body weight</div></div>
           <div class="tile"><div class="k">Carbs</div><div class="v num">${Math.round(t.carbs)} g</div><div class="tiny muted">${Math.round((t.carbs * 4 / t.kcal) * 100)}% of energy (healthy range 45–65%). Keep rice, roti and other cereals near 45%; get the rest from pulses, veg, fruit and dairy</div></div>
           <div class="tile"><div class="k">Fat</div><div class="v num">${Math.round(t.fat)} g</div><div class="tiny muted">30% of energy (healthy range 20–35%)</div></div>
           <div class="tile"><div class="k">Fibre</div><div class="v num" style="color:var(--good)">${Math.round(t.fiber)} g</div><div class="tiny muted">14 g per 1000 kcal</div></div>
           <div class="tile"><div class="k">Water</div><div class="v num" style="color:#6bb8ff">${round(t.water, 1)} L</div><div class="tiny muted">${t.glasses} glasses from drinks today</div></div>
         </div>
-        <p class="tiny muted" style="margin:12px 0 0">These are population reference values, not a prescription. If you have diabetes, PCOS, kidney disease or are pregnant, ask a doctor or dietitian for your numbers.</p>
+        ${t.teen ? `<div class="insight info" style="margin-top:12px"><div class="ic">i</div><div><p style="color:var(--text);margin:0">You're under 18, so energy uses the growth-stage formula (IOM 2005) and protein the teen RDA. AURA never sets a weight-loss calorie target for under-18s; talk to a doctor before dieting.</p></div></div>` : ''}
+        <p class="tiny muted" style="margin:12px 0 0">These are population reference values, not a prescription. If you have diabetes, PCOS, kidney disease or are pregnant, ask a doctor or dietitian for your numbers.</p>`
+        : `<div class="empty-targets"><b>No targets yet</b><p class="small muted">Enter your sex, age, height and weight (and how active you are) and your energy, protein, carb, fat and fibre targets appear here. AURA shows nothing rather than guessing.</p>
+          <div class="tile" style="margin-top:12px"><div class="k">Water (general guide)</div><div class="v num" style="color:#6bb8ff">${round(t.water, 1)} L</div><div class="tiny muted">${t.glasses} glasses from drinks; the EFSA value for adults. It adjusts once you add your age and sex.</div></div></div>`}
       </div>
-      <form class="card" data-form="body"><h3>Personalise (optional)</h3><p class="tiny muted" style="margin-top:-4px">Sensible defaults are used until you change these.</p>
+      <form class="card" data-form="body"><h3>About you</h3><p class="tiny muted" style="margin-top:-4px">Used only to calculate your targets and stored with your data. Fields stay empty until you fill them.</p>
         <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
-          <div><label for="bSex">Sex</label><select id="bSex" name="sex"><option value="female" ${p.sex !== 'male' ? 'selected' : ''}>Female</option><option value="male" ${p.sex === 'male' ? 'selected' : ''}>Male</option></select></div>
-          <div><label for="bAge">Age</label><input type="number" id="bAge" name="age" min="14" max="90" value="${p.age}" required></div>
-          <div><label for="bW">Weight (kg)</label><input type="number" id="bW" name="weight" min="30" max="200" step="0.5" value="${p.weight}" required></div>
-          <div><label for="bH">Height (cm)</label><input type="number" id="bH" name="height" min="120" max="220" value="${p.height}" required></div>
-          <div><label for="bAct">Activity</label><select id="bAct" name="activity">${[['sedentary', 'Desk job, little exercise'], ['light', 'Light (1–3 workouts/week)'], ['moderate', 'Moderate (3–5/week)'], ['very', 'Very active (6–7/week)']].map(([v, l]) => `<option value="${v}" ${p.activity === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-          <div><label for="bGoal">Goal</label><select id="bGoal" name="goal"><option value="maintain" ${p.goal !== 'lose' ? 'selected' : ''}>Maintain weight</option><option value="lose" ${p.goal === 'lose' ? 'selected' : ''}>Lose slowly</option></select></div>
+          <div><label for="bSex">Sex</label><select id="bSex" name="sex" required><option value="" ${!p.sex ? 'selected' : ''} disabled>Choose…</option><option value="male" ${p.sex === 'male' ? 'selected' : ''}>Male</option><option value="female" ${p.sex === 'female' ? 'selected' : ''}>Female</option></select></div>
+          <div><label for="bAge">Age</label><input type="number" id="bAge" name="age" min="10" max="99" value="${p.age ?? ''}" placeholder="years" required></div>
+          <div><label for="bW">Weight (kg)</label><input type="number" id="bW" name="weight" min="20" max="250" step="0.5" value="${p.weight ?? ''}" placeholder="kg" required></div>
+          <div><label for="bH">Height (cm)</label><input type="number" id="bH" name="height" min="100" max="230" value="${p.height ?? ''}" placeholder="cm" required></div>
+          <div><label for="bAct">Activity</label><select id="bAct" name="activity" required><option value="" ${!p.activity ? 'selected' : ''} disabled>Choose…</option>${[['sedentary', 'Little exercise'], ['light', 'Light (1–3 workouts or sports/week)'], ['moderate', 'Moderate (3–5/week)'], ['very', 'Very active (6–7/week)']].map(([v, l]) => `<option value="${v}" ${p.activity === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+          <div><label for="bGoal">Goal</label><select id="bGoal" name="goal"><option value="maintain" ${p.goal !== 'lose' ? 'selected' : ''}>Maintain</option><option value="lose" ${p.goal === 'lose' ? 'selected' : ''} ${t.teen ? 'disabled' : ''}>Lose slowly${t.teen ? ' (18+ only)' : ''}</option></select></div>
           <div><label for="bDiet">Diet</label><select id="bDiet" name="diet">${[['any', 'No preference'], ['veg', 'Vegetarian'], ['egg', 'Eggetarian'], ['non', 'Non-vegetarian']].map(([v, l]) => `<option value="${v}" ${p.diet === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
           <div><label for="bLunch">At lunchtime I…</label><select id="bLunch" name="lunch">${[['muesli', 'Have muesli'], ['meal', 'Eat a full meal'], ['skip', 'Usually skip it']].map(([v, l]) => `<option value="${v}" ${p.lunch === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         </div>
-        <button class="btn primary sm mt">Update targets</button>
+        <button class="btn primary sm mt">${t.known ? 'Update targets' : 'Calculate my targets'}</button>
       </form>
     </div>
 
@@ -2965,7 +3181,7 @@ const App = (() => {
             <div class="row">${['workout', 'hot'].map((k) => `<button class="toggle ${tl?.life[k] ? 'on' : ''}" data-act="flip" data-path="life.${k}" data-today="1">${tl?.life[k] ? '✓' : '○'} ${k === 'hot' ? 'Hot / sweaty day +0.5 L' : 'Workout today +0.5 L'}</button>`).join('')}</div></div>
         </div>
         <ul class="clean small mt">
-          <li>EFSA sets adequate total water at <b>2.0 L/day for women and 2.5 L/day for men</b>. About 20% comes from food, so drinks need to supply roughly ${p.sex === 'male' ? '2.0' : '1.6'} L.</li>
+          <li>EFSA sets adequate total water at <b>2.0 L/day for women and 2.5 L/day for men</b>. About 20% comes from food, so drinks need to supply roughly ${p.sex ? round(t.waterBase, 1) + ' L for you' : '1.6–2.0 L'}${t.teen ? ' (EFSA values for your age)' : ''}.</li>
           <li>Sweat losses during exercise range from about 0.5 to 2 L per hour, and Indian summers add more. Drink extra on those days.</li>
           <li>Pale-yellow urine is a simple, reliable check. Tea, coffee, milk, buttermilk and coconut water all count.</li>
           <li>Drinking more than you need does not hydrate your skin further; evidence for that is weak. Moisturiser does that job.</li>
@@ -2987,9 +3203,9 @@ const App = (() => {
       </div>
     </div>
 
-    <div class="card section day-plan"><div class="row between"><h3>Your day, built around a muesli lunch</h3><span class="small muted">${Math.round(t.kcal)} kcal · ${Math.round(t.protein)} g protein · ${dk === 'veg' ? 'vegetarian' : dk === 'non' ? 'non-veg' : 'eggetarian'} examples</span></div>
-      <div class="timeline">${dayPlan.map(([m, when, f, ex]) => { const k = f == null ? lunchNow.kcal : rest.k * f, pr = f == null ? lunchNow.p : rest.p * f; return `<div class="tl-item ${f == null ? 'lunch' : ''}"><div class="tl-when num">${when}</div><div class="tl-dot"></div><div class="tl-body"><b>${m}</b><div class="tl-macros num">${Math.round(k)} kcal · ${Math.round(pr)} g protein</div><p class="small muted">${esc(ex)}</p></div></div>`; }).join('')}</div>
-      <p class="tiny muted" style="margin:10px 0 0">The rest of the day is sized to make up what the bowl doesn't cover. Dinner is timed about 3 hours before your ${fmt12(bedT)} bedtime (from your alarm on the Sleep page). Change the diet type and lunch habit in Personalise above.</p>
+    <div class="card section day-plan"><div class="row between"><h3>Your day, built around a muesli lunch</h3><span class="small muted">${t.known ? `${Math.round(t.kcal)} kcal · ${Math.round(t.protein)} g protein · ` : ''}${dk === 'veg' ? 'vegetarian' : dk === 'non' ? 'non-veg' : 'eggetarian'} examples</span></div>
+      <div class="timeline">${dayPlan.map(([m, when, f, ex]) => { const k = f == null ? lunchNow.kcal : rest ? rest.k * f : null, pr = f == null ? lunchNow.p : rest ? rest.p * f : null; return `<div class="tl-item ${f == null ? 'lunch' : ''}"><div class="tl-when num">${when}</div><div class="tl-dot"></div><div class="tl-body"><b>${m}</b>${k != null ? `<div class="tl-macros num">${Math.round(k)} kcal · ${Math.round(pr)} g protein</div>` : ''}<p class="small muted">${esc(ex)}</p></div></div>`; }).join('')}</div>
+      <p class="tiny muted" style="margin:10px 0 0">The rest of the day is sized to make up what the bowl doesn't cover. Dinner is timed about 3 hours before your ${fmt12(bedT)} bedtime (from your alarm on the Sleep page). ${t.known ? '' : '<b>Add your details above to size each meal for you.</b> '}Change the diet type and lunch habit in About you above.</p>
     </div>
 
     <div class="card section"><div class="row between"><h3>${tab === 'bowl' ? 'Muesli bowl builder · lunch' : 'Plate builder · lunch'}</h3><div class="chips"><button class="chip ${tab === 'bowl' ? 'on' : ''}" data-act="lunchTab" data-v="bowl">Muesli bowl</button><button class="chip ${tab === 'plate' ? 'on' : ''}" data-act="lunchTab" data-v="plate">Regular plate</button></div></div>
@@ -3010,7 +3226,7 @@ const App = (() => {
         </div>
       </div>
     </div>` : `
-<div class="chips" style="margin-bottom:10px"><button class="chip ${plateMode === 'low' ? 'on' : ''}" data-act="plateMode" data-v="low">Lower-carb (≤30 g)</button><button class="chip ${plateMode === 'bal' ? 'on' : ''}" data-act="plateMode" data-v="bal">Balanced (${Math.round(t.carbs * 0.3)} g)</button></div>
+<div class="chips" style="margin-bottom:10px"><button class="chip ${plateMode === 'low' ? 'on' : ''}" data-act="plateMode" data-v="low">Lower-carb (≤30 g)</button>${t.known ? `<button class="chip ${plateMode === 'bal' ? 'on' : ''}" data-act="plateMode" data-v="bal">Balanced (${Math.round(t.carbs * 0.3)} g)</button>` : ''}</div>
       <div class="chips" style="margin-bottom:14px"><span class="small muted" style="align-self:center">Start from:</span>${Object.entries(PLATES).map(([k, [n]]) => `<button class="chip" data-act="platePreset" data-v="${k}">${n}</button>`).join('')}<button class="chip" data-act="platePreset" data-v="">Clear</button></div>
       <div class="split">
         <div class="stack" style="gap:14px">${groups.map((g) => `<div><div class="tiny muted" style="letter-spacing:.15em;margin-bottom:6px">${g.toUpperCase()}</div><div class="foods">${FOODS.filter((f) => f.group === g).map((f) => {
@@ -3028,8 +3244,8 @@ const App = (() => {
     </div>`}
 
     <div class="card section"><h3>Nutrients that matter for skin & hair</h3>
-      <div class="table-wrap"><table><thead><tr><th>Nutrient</th><th>Your daily target</th><th>Why it matters</th><th>Indian food sources</th></tr></thead><tbody>
-        ${NUTRIENTS.map(([n, fn, why, src]) => `<tr><td><b>${n}</b></td><td class="num" style="white-space:nowrap">${fn(t, p)}</td><td class="small">${why}</td><td class="small muted">${src}</td></tr>`).join('')}
+      <div class="table-wrap"><table class="stack-sm"><thead><tr><th>Nutrient</th><th>Your daily target</th><th>Why it matters</th><th>Indian food sources</th></tr></thead><tbody>
+        ${NUTRIENTS.map(([n, fn, why, src]) => `<tr><td><b>${n}</b></td><td class="num" data-l="Daily target">${fn(t, p)}</td><td class="small" data-l="Why it matters">${why}</td><td class="small muted" data-l="Food sources">${src}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="tiny muted" style="margin:10px 0 0">Targets are ICMR-NIN 2020 RDAs for adults unless marked. Take supplements only for a confirmed deficiency: too much vitamin A or selenium can itself cause hair loss. If you are shedding a lot, ask your doctor for ferritin, vitamin D, B12 and thyroid (TSH) tests.</p>
     </div>
@@ -3135,7 +3351,8 @@ const App = (() => {
   function sleepBars(dates, vals, need) {
     const W = 720, H = 220, L = 32, R = 10, T = 12, B = 26, max = 11, n = dates.length, bw = (W - L - R) / n;
     const y = (v) => T + (1 - v / max) * (H - T - B);
-    let g = `<rect x="${L}" y="${y(9)}" width="${W - L - R}" height="${y(7) - y(9)}" fill="rgba(157,255,106,0.07)"/><text x="${W - R - 4}" y="${y(9) + 13}" text-anchor="end" style="fill:#9dff6a">7–9 h healthy range</text>`;
+    const [lo, hi] = sleepAdvice().need === 9 ? [8, 10] : [7, 9];   // AASM: teens 8-10 h, adults 7-9 h
+    let g = `<rect x="${L}" y="${y(hi)}" width="${W - L - R}" height="${y(lo) - y(hi)}" fill="rgba(157,255,106,0.07)"/><text x="${W - R - 4}" y="${y(hi) + 13}" text-anchor="end" style="fill:#9dff6a">${lo}–${hi} h healthy range</text>`;
     [0, 3, 6, 9].forEach((v) => (g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(130,150,255,0.12)"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v}h</text>`));
     g += `<line x1="${L}" x2="${W - R}" y1="${y(need)}" y2="${y(need)}" stroke="#b8a6ff" stroke-dasharray="4 4"/><text x="${L + 4}" y="${y(need) - 4}" style="fill:#b8a6ff">your goal ${need} h</text>`;
     dates.forEach((d, i) => {
@@ -3152,7 +3369,7 @@ const App = (() => {
     const starts = s.sessions.filter((x) => x.end > Date.now() - 14 * 864e5).map((x) => { const d = new Date(x.start); let m = d.getHours() * 60 + d.getMinutes(); if (m < 720) m += 1440; return m; });
     const mean = avg(starts), sd = starts.length > 2 ? Math.sqrt(avg(starts.map((m) => (m - mean) ** 2))) : null;
     const q = avg(d14.map(nightQuality));
-    const ls = lastDays(60).map((d) => db.logs[d]).filter(Boolean), good = ls.filter((l) => l.life.sleep >= 7), bad = ls.filter((l) => l.life.sleep < 6.5);
+    const ls = lastDays(60).map((d) => db.logs[d]).filter(Boolean), good = ls.filter((l) => l.life.sleep != null && l.life.sleep >= 7), bad = ls.filter((l) => l.life.sleep != null && l.life.sleep < 6.5);
     const cmp = (k) => [avg(good.map((l) => METRICS[k].get(l))), avg(bad.map((l) => METRICS[k].get(l)))];
     const [gs, bs] = cmp('skinScore'), [gf, bf] = cmp('fall');
     const now = new Date();
@@ -3183,7 +3400,7 @@ const App = (() => {
 
     <div class="card section"><h3>Bedtime calculator</h3>
       <p class="small muted">Sleep runs in cycles of roughly 90 minutes (anywhere from 70 to 120), so waking at the end of one can feel easier. Allowing about 15 minutes to fall asleep, for your <b>${s.alarm}</b> alarm go to bed at:</p>
-      <div class="grid g4">${[[6, 9], [5, 7.5], [4, 6]].map(([cy, h]) => `<div class="tile" style="${h >= 7 ? '' : 'opacity:.65'}"><div class="k">${cy} cycles · ${h} h</div><div class="v num" style="color:${h >= 7 ? 'var(--good)' : 'var(--bad)'}">${bedFor(h)}</div><div class="tiny muted">${h >= 7 ? 'Meets the 7+ hour guideline' : 'Too short for regular use'}</div></div>`).join('')}
+      <div class="grid g4">${(() => { const min = sleepAdvice().need === 9 ? 8 : 7; return [[6, 9], [5, 7.5], [4, 6]].map(([cy, h]) => `<div class="tile" style="${h >= min ? '' : 'opacity:.65'}"><div class="k">${cy} cycles · ${h} h</div><div class="v num" style="color:${h >= min ? 'var(--good)' : 'var(--bad)'}">${bedFor(h)}</div><div class="tiny muted">${h >= min ? `Meets the ${min}+ hour guideline` : min === 8 && h >= 7 ? 'Short for a teenager (8–10 h)' : 'Too short for regular use'}</div></div>`).join(''); })()}
         <div class="tile"><div class="k">Your goal · ${s.need} h</div><div class="v num" style="color:var(--hair)">${bedFor(s.need)}</div><div class="tiny muted">Lights out by this time</div></div></div>
     </div>
 
@@ -3207,7 +3424,7 @@ const App = (() => {
       <div class="card"><h3>Sleep, skin & hair</h3>
         ${gs != null && bs != null && good.length >= 3 && bad.length >= 3 ? `<div class="table-wrap"><table><thead><tr><th>Your average</th><th>After 7 h+</th><th>After under 6.5 h</th></tr></thead><tbody><tr><td>Skin score</td><td class="num">${Math.round(gs)}</td><td class="num">${Math.round(bs)}</td></tr><tr><td>Hair fall</td><td class="num">${Math.round(gf)}/day</td><td class="num">${Math.round(bf)}/day</td></tr></tbody></table></div>` : '<p class="small muted">After a couple of weeks of tracked nights, this compares your skin and hair after good and short sleep.</p>'}
         <ul class="clean small mt">
-          <li>Adults need <b>7 hours or more</b> on a regular basis (AASM & Sleep Research Society consensus, Watson et al., 2015).</li>
+          <li>${sleepAdvice().need === 9 ? 'Teenagers (13–18) need <b>8–10 hours</b> a night (American Academy of Sleep Medicine consensus, Paruthi et al., 2016).' : 'Adults need <b>7 hours or more</b> on a regular basis (AASM & Sleep Research Society consensus, Watson et al., 2015).'}${db.profile.age ? '' : ' Add your age under Fuel → About you for the right range.'}</li>
           <li>Keep the same wake time every day, weekends included, and get daylight soon after waking.</li>
           <li>Caffeine taken even 6 hours before bed cut sleep by about an hour (Drake et al., 2013). Make your last tea or coffee by ${bedFor(s.need + 6, 0)}.</li>
           <li>In a small study, poor sleepers showed more signs of skin ageing and slower skin-barrier recovery (Oyetakin-White et al., 2015).</li>
@@ -3238,8 +3455,9 @@ const App = (() => {
       <form class="card" data-form="profile"><h3>Profile</h3>
         <label for="pName">Name</label><input type="text" id="pName" name="name" value="${esc(p.name)}" placeholder="What should we call you?">
         <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px">
-          <div><label for="pSkin">Skin type${p.skinTypeAuto && !p.skinTypeManual ? ' <span class="pill skin">from scan</span>' : ''}</label><select id="pSkin" name="skinType">${['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive'].map((t) => `<option ${p.skinType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-          <div><label for="pHair">Hair type</label><select id="pHair" name="hairType">${['Straight', 'Wavy', 'Curly', 'Coily'].map((t) => `<option ${p.hairType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
+          <div><label for="pSkin">Skin type${p.skinTypeAuto && !p.skinTypeManual ? ' <span class="pill skin">from scan</span>' : ''}</label><select id="pSkin" name="skinType"><option value="" ${!p.skinType ? 'selected' : ''}>Not determined yet</option>${['Oily', 'Dry', 'Combination', 'Normal'].map((t) => `<option ${p.skinType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+          <div><label for="pSens">Sensitive skin</label><select id="pSens" name="sensitive"><option value="" ${!p.sensitive ? 'selected' : ''}>Not set</option><option value="no" ${p.sensitive === 'no' ? 'selected' : ''}>No</option><option value="mild" ${p.sensitive === 'mild' ? 'selected' : ''}>Sometimes</option><option value="yes" ${p.sensitive === 'yes' ? 'selected' : ''}>Yes, often reacts</option></select></div>
+          <div><label for="pHair">Hair type</label><select id="pHair" name="hairType"><option value="" ${!p.hairType ? 'selected' : ''}>Not set</option>${['Straight', 'Wavy', 'Curly', 'Coily'].map((t) => `<option ${p.hairType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
         <button class="btn primary sm mt">Save profile</button></form>
 
       ${dataCard()}
@@ -3536,11 +3754,11 @@ const App = (() => {
     const scan = [...db.scans].reverse().find((x) => x.kind === 'skin'), hscan = [...db.scans].reverse().find((x) => x.kind === 'hair');
     const bt = plateTotals(db.bowl?.items), bowl = Object.entries(db.bowl?.items || {}).filter(([, q]) => q).map(([id, q]) => `${q > 1 ? q + '× ' : ''}${FOOD[id]?.name} (${FOOD[id]?.serving})`).join(', ');
     const L = [`Today: ${fmtDay(today())}, local time ${hm(new Date())}.`,
-      `Profile: ${p.name || 'owner'}; ${p.sex}, ${p.age} y, ${p.weight} kg, ${p.height} cm; activity ${p.activity}; goal ${p.goal}; diet ${({ any: 'no preference', veg: 'vegetarian', egg: 'eggetarian', non: 'non-vegetarian' })[p.diet] || 'n/a'}; skin type ${p.skinType}; hair type ${p.hairType}. Lives in India.`,
+      `Profile (blank = not entered, never assume): name ${p.name || '—'}; sex ${p.sex || '—'}; age ${p.age || '—'}; weight ${p.weight ? p.weight + ' kg' : '—'}; height ${p.height ? p.height + ' cm' : '—'}; activity ${p.activity || '—'}; goal ${p.goal}; diet ${({ any: 'no preference', veg: 'vegetarian', egg: 'eggetarian', non: 'non-vegetarian' })[p.diet] || 'n/a'}; skin type ${p.skinType ? p.skinType + (p.skinTypeHow ? ' (' + p.skinTypeHow + ')' : '') : 'not determined yet'}; sensitive ${({ yes: 'yes', mild: 'sometimes', no: 'no' })[p.sensitive] || 'not set'}; concerns ${skinProfile().concerns.join(', ') || 'none set'}; hair type ${p.hairType || '—'}. Lives in India.`,
       `Lunch habit: ${p.lunch === 'muesli' ? 'avoids a full lunch to limit carbs and eats a muesli bowl at lunchtime' : p.lunch === 'skip' ? 'usually skips lunch to avoid carbs' : 'eats a full lunch'}. Current muesli bowl: ${bowl || 'not set'} = ${Math.round(bt.kcal)} kcal, ${Math.round(bt.p)} g protein, ${Math.round(bt.c)} g carbs, ${round(bt.fib, 1)} g fibre.`,
-      `Daily targets: ${Math.round(t.kcal)} kcal, protein ${Math.round(t.protein)} g, carbs ${Math.round(t.carbs)} g, fat ${Math.round(t.fat)} g, fibre ${Math.round(t.fiber)} g, water ${round(t.water, 1)} L from drinks.`,
-      tl ? `Today's log: skin oil ${tl.skin.oil}/10, dryness ${tl.skin.dry}/10, redness ${tl.skin.red}/10, sensitivity ${tl.skin.sens}/10, breakouts ${tl.skin.breakouts}${tl.skin.zones.length ? ' on ' + tl.skin.zones.join(', ') : ''}; hair fall ~${tl.hair.fall}/day, scalp itch ${tl.hair.itch}/10, flakes ${tl.hair.flakes}/10; sleep ${tl.life.sleep} h, water ${tl.life.water} glasses, stress ${tl.life.stress}/10, protein logged ${tl.life.protein ?? 'n/a'} g, lunch ${meals(tl).l ? 'eaten' : 'skipped'}.${tl.flags.length ? ' Warning signs ticked: ' + tl.flags.join(', ') + '.' : ''}${tl.note ? ' Note: ' + tl.note.slice(0, 200) : ''}` : 'Nothing logged today yet.',
-      d14.length ? `Last 14 days (${d14.length} logged): skin score ${a(skinScore)}/100, hair score ${a(hairScore)}/100, breakouts ${a((l) => l.skin.breakouts, 1)}/day, hair fall ${a((l) => l.hair.fall)}/day, sleep ${a((l) => l.life.sleep, 1)} h, water ${a((l) => l.life.water, 1)} glasses, stress ${a((l) => l.life.stress, 1)}/10, lunch skipped on ${d14.filter((l) => !meals(l).l).length} days.` : 'No history logged yet.',
+      t.known ? `Daily targets (${t.teen ? 'IOM teen energy requirement' : 'Mifflin-St Jeor'}): ${Math.round(t.kcal)} kcal, protein ${Math.round(t.protein)} g, carbs ${Math.round(t.carbs)} g, fat ${Math.round(t.fat)} g, fibre ${Math.round(t.fiber)} g, water ${round(t.water, 1)} L from drinks.${t.teen ? ' The user is under 18: never suggest calorie restriction or prescription drugs without a doctor and a parent or guardian.' : ''}` : 'Daily targets: unknown, because the user has not entered age, sex, height and weight. Do not assume them; ask if needed.',
+      tl ? `Today's log (only what was entered): ${[['skin oil', tl.skin.oil, '/10'], ['dryness', tl.skin.dry, '/10'], ['redness', tl.skin.red, '/10'], ['sensitivity', tl.skin.sens, '/10'], ['breakouts', tl.skin.breakouts, tl.skin.zones.length ? ' on ' + tl.skin.zones.join(', ') : ''], ['hair fall', tl.hair.fall, '/day'], ['scalp itch', tl.hair.itch, '/10'], ['flakes', tl.hair.flakes, '/10'], ['sleep', tl.life.sleep, ' h'], ['water', tl.life.water, ' glasses'], ['stress', tl.life.stress, '/10'], ['protein', tl.life.protein, ' g']].filter((x) => x[1] != null).map(([k, v, u]) => k + ' ' + v + u).join(', ') || 'nothing yet'}${meals(tl).l != null ? `; lunch ${meals(tl).l ? 'eaten' : 'skipped'}` : ''}.${tl.flags.length ? ' Warning signs ticked: ' + tl.flags.join(', ') + '.' : ''}${tl.note ? ' Note: ' + tl.note.slice(0, 200) : ''}` : 'Nothing logged today yet.',
+      d14.length ? `Last 14 days (${d14.length} logged): skin score ${a(skinScore)}/100, hair score ${a(hairScore)}/100, breakouts ${a((l) => l.skin.breakouts, 1)}/day, hair fall ${a((l) => l.hair.fall)}/day, sleep ${a((l) => l.life.sleep, 1)} h, water ${a((l) => l.life.water, 1)} glasses, stress ${a((l) => l.life.stress, 1)}/10, lunch skipped on ${d14.filter((l) => meals(l).l === false).length} days.` : 'No history logged yet.',
       `Routine AM: ${db.routine.am.map((x) => x.name).join(', ') || 'none'}. PM: ${db.routine.pm.map((x) => x.name).join(', ') || 'none'}. Warnings: ${routineWarnings().join(' ') || 'none'}.`,
       `Sleep: alarm ${db.sleep.alarm}${db.sleep.alarmOn ? '' : ' (off)'}, needs ${db.sleep.need} h.`,
       scan ? `Latest face scan (${scan.date}): scores 0-100 where higher = more of the problem except evenness: ${JSON.stringify(scan.scores)}; flagged: ${(scan.issues || []).join(', ') || 'nothing'}; ${scan.count ?? 0} findings.` : 'No face scan yet.',
@@ -3551,6 +3769,7 @@ const App = (() => {
   }
   const DERMA_RULES = `You are Derma, the personal skin, hair and nutrition coach inside the AURA Monitor app. You talk to the app's one owner, who lives in India.
 Style: warm, direct and practical, like a knowledgeable friend. Keep answers short (usually under 180 words) unless asked for detail. Use short bullet points or a numbered plan when it helps, bold key words sparingly, no tables. Use Indian foods, products available in India, Indian climate and metric units.
+Tailor every product and routine suggestion to the user's skin type, sensitivity, concerns and age below (texture, strength, how often). If skin type is not determined, say so and suggest the 2-minute skin type test on the Routine page instead of assuming one. Never invent the user's data.
 Ground every suggestion in evidence and in the user's own data below; mention the source briefly when useful (e.g. "AAD guideline", "ICMR-NIN"), and say plainly when evidence is weak.
 Diet: the user avoids a full lunch to limit carbs and eats muesli at lunchtime. Respect that choice and plan around it (make the bowl protein-rich, low in added sugar, and balance breakfast, snack and dinner).
 Safety: you are not a doctor and cannot diagnose. Recommend a dermatologist for a changing or bleeding mole, sudden or patchy hair loss, painful cystic or scarring acne, a rash that spreads, blisters or comes with fever, or no improvement after 8-12 weeks. Say when a treatment needs a prescription (tretinoin, isotretinoin, oral antibiotics, oral minoxidil, hydroquinone above 2%). Never suggest stopping a prescribed medicine.
@@ -3893,6 +4112,8 @@ The app's photo scores are colour-based estimates that change with lighting and 
     switch (a) {
       case 'step': { const l = ensureLog(); setPath(l, d.path, clamp((getPath(l, d.path) ?? 0) + +d.d, 0, d.path === 'hair.fall' ? 500 : d.path === 'life.protein' ? 300 : 50)); persist(); return render(); }
       case 'set': { const l = ensureLog(); setPath(l, d.path, +d.v); persist(); return render(); }
+      case 'clear': { const l = ensureLog(); setPath(l, d.path, null); persist(); return render(); }
+      case 'meal': { const l = ensureLog(), v = d.v === '1'; l.life.meals ||= { b: null, l: null, d: null }; l.life.meals[d.k] = l.life.meals[d.k] === v ? null : v; persist(); return render(); }
       case 'flip': { const l = d.today ? ensureLog(today()) : ensureLog(); setPath(l, d.path, !getPath(l, d.path)); persist(); return render(); }
       case 'water': { const l = ensureLog(); l.life.water = l.life.water === +d.v ? +d.v - 1 : +d.v; persist(); return render(); }
       case 'zone': { const l = ensureLog(), z = l.skin.zones, i = z.indexOf(d.z); i >= 0 ? z.splice(i, 1) : z.push(d.z); if (z.length && !l.skin.breakouts) l.skin.breakouts = 1; persist(); return render(); }
@@ -3900,7 +4121,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
       case 'done': { const l = ensureLog(d.date), arr = l.done[d.w], i = arr.indexOf(d.id); i >= 0 ? arr.splice(i, 1) : arr.push(d.id); persist(); return render(); }
       case 'day': return go('#/log/' + addDays(logDate, +d.d));
       case 'glass': {
-        const l = ensureLog(today()); l.life.water = clamp(l.life.water + +d.v, 0, 24); save();
+        const l = ensureLog(today()); l.life.water = clamp((l.life.water ?? 0) + +d.v, 0, 24); save();
         if (glassInst && $('#glass3d')) {   // update in place so the water rises instead of the glass being rebuilt
           const tg = targets(); glassInst.set(l.life.water / tg.glasses);
           $('#wCount').textContent = l.life.water; $('#wL').textContent = `${round(l.life.water * 0.25, 2)} of ${round(tg.water, 1)} L${l.life.water >= tg.glasses ? ' · target reached' : ''}`;
@@ -3962,6 +4183,8 @@ The app's photo scores are colour-based estimates that change with lighting and 
       case 'install': if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; showInstallBtn(); render(); }); } else go('#/me'); return;
       case 'derma': derma.open = !derma.open; if (derma.open) return dermaOpen(); try { speechSynthesis.cancel(); } catch {} return dermaRender();
       case 'askDerma': return dermaOpen(d.q);
+      case 'skinQuiz': return skinQuiz();
+      case 'buildRoutine': return routinePreview();
       case 'dSettings': derma.view = 'settings'; return dermaOpen();
       case 'dAsk': {
         if (d.q !== '__scanimg__') return dermaSend(d.q);
@@ -4040,9 +4263,10 @@ The app's photo scores are colour-based estimates that change with lighting and 
     if (form.dataset.form === 'derma') return dermaSend(fd.q);
     if (form.dataset.form === 'gkey') { if (cloud.user) store.set('gsync', !!fd.sync); return dermaConnect(fd.key, !!fd.remember).then(() => cloudPush()); }
     if (form.dataset.form === 'addStep') { db.routine[fd.when].push({ id: uid(), name: fd.name.trim(), kind: fd.kind }); toast('Step added'); }
-    if (form.dataset.form === 'profile') { if (fd.skinType !== db.profile.skinType) db.profile.skinTypeManual = true; Object.assign(db.profile, fd); toast('Profile saved'); }
-    if (form.dataset.form === 'body') { Object.assign(db.profile, { sex: fd.sex, age: +fd.age, weight: +fd.weight, height: +fd.height, activity: fd.activity, goal: fd.goal, diet: fd.diet, lunch: fd.lunch }); lunchTab = null; toast('Targets updated'); }
-    if (form.dataset.form === 'alarm') { db.sleep.alarm = fd.alarm; db.sleep.need = +fd.need; if (db.sleep.active && !ringing) db.sleep.active.alarmAt = nextAlarm(new Date(db.sleep.active.start))?.getTime() ?? null; toast('Alarm saved for ' + fd.alarm); }
+    if (form.dataset.form === 'profile') { if (fd.skinType !== db.profile.skinType) Object.assign(db.profile, { skinTypeManual: !!fd.skinType, skinTypeAuto: false, skinTypeHow: fd.skinType ? 'chosen by you' : '' }); Object.assign(db.profile, fd); toast('Profile saved'); }
+    if (form.dataset.form === 'body') { Object.assign(db.profile, { sex: fd.sex, age: +fd.age, weight: +fd.weight, height: +fd.height, activity: fd.activity, goal: +fd.age < 18 ? 'maintain' : fd.goal, diet: fd.diet, lunch: fd.lunch }); lunchTab = null;
+      if (!db.sleep.needSet) db.sleep.need = sleepAdvice().need; toast('Targets updated'); }
+    if (form.dataset.form === 'alarm') { db.sleep.alarm = fd.alarm; db.sleep.need = +fd.need; db.sleep.needSet = true; if (db.sleep.active && !ringing) db.sleep.active.alarmAt = nextAlarm(new Date(db.sleep.active.start))?.getTime() ?? null; toast('Alarm saved for ' + fd.alarm); }
     if (form.dataset.form === 'night') {
       const end = new Date(fd.date + 'T' + fd.wake), start = new Date(fd.date + 'T' + fd.bed);
       if (start >= end) start.setDate(start.getDate() - 1);
@@ -4558,6 +4782,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
       if (num) {
         el.style.setProperty('--p', ((v - el.min) / (el.max - el.min)) * 100);
         const out = $(`[data-out="${el.dataset.bind}"]`); if (out) out.textContent = v + (el.dataset.unit || '');
+        el.closest('.slider')?.classList.remove('unset');
       }
       liveUpdate(); clearTimeout(inputTimer); inputTimer = setTimeout(persist, 250);
     });
@@ -4574,7 +4799,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
     gateCheck(); dermaRender(); registerSW();
     storageInfo().then(() => { if (!dbHealth.persisted) navigator.storage?.persist?.().then((ok) => { dbHealth.persisted = ok; }).catch(() => {}); if (route === '/me') render(); });
     setTimeout(dailyCheck, 3000);
-    if (dbHealth.notes.length) setTimeout(() => dialog(`<h3>Your data was recovered</h3><ul class="small clean">${dbHealth.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul><p class="tiny muted">Check Me → Data & backups. If something is missing, restore an automatic backup or a backup file.</p>`), 800);
+    if (dbHealth.notes.length) setTimeout(() => dialog(`<h3>${dbHealth.notes.some((n) => /recovered|damaged|missing/.test(n)) ? 'Your data was recovered' : 'A quick tidy-up of your data'}</h3><ul class="small clean">${dbHealth.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul><p class="tiny muted">Check Me → Data & backups. If something is missing, restore an automatic backup or a backup file.</p>`), 800);
     fx.init();
     setInterval(remTick, 20000); remTick();
     setInterval(sleepTick, 1000);
