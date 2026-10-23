@@ -758,3 +758,20 @@ td.num { white-space: nowrap; }
   table.stack-sm td { padding: 2px 0; border: 0; white-space: normal; }
   table.stack-sm td[data-l]::before { content: attr(data-l); display: block; margin-top: 6px; font: 600 0.6rem var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 }
+
+/* ================= opening animation ================= */
+.splash { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; cursor: pointer;
+  background: radial-gradient(60% 50% at 50% 45%, #141220 0%, #08090f 60%, #05060a 100%);
+  transition: opacity 0.6s ease, filter 0.6s ease, transform 0.6s ease;
+  animation: splashFailsafe 0.4s ease 6s forwards; }   /* never stuck: hides itself even if the script doesn't run */
+.splash.out { opacity: 0; filter: blur(8px); transform: scale(1.06); pointer-events: none; }
+@keyframes splashFailsafe { to { opacity: 0; visibility: hidden; } }
+.splash-svg { width: min(300px, 68vw); height: auto; overflow: visible; }
+.splash .sp-ring, .splash .sp-gap { stroke-dasharray: 1 1; stroke-dashoffset: 1; }
+.splash #sp-glow { opacity: 0; }
+.splash .sp-l { opacity: 0; translate: 0 22px; transition: opacity 0.55s ease, translate 0.8s cubic-bezier(0.2, 0.9, 0.2, 1.15); transition-delay: calc(var(--i) * 90ms); }
+.splash .go .sp-l { opacity: 1; translate: 0 0; }
+.splash #sp-sub { opacity: 0; transform-box: fill-box; transform-origin: center; scale: 1.35 1; transition: opacity 0.6s ease, scale 0.9s cubic-bezier(0.2, 0.9, 0.2, 1); }
+.splash .go2 #sp-sub { opacity: 1; scale: 1 1; }
+.splash #sp-beam { mix-blend-mode: screen; }
+@media (prefers-reduced-motion: reduce) { .splash { display: none; } }

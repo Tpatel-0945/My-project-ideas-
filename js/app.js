@@ -3915,8 +3915,56 @@ The app's photo scores are colour-based estimates that change with lighting and 
     $$('[data-rem-time]').forEach((el) => el.addEventListener('change', () => { db.reminders.find((r) => r.id === el.dataset.remTime).time = el.value; save(); render(); }));
   }
 
+  /* ================= opening animation =================
+     A point of light orbits and draws the ring (the "scan"), the A rises and catches the light, the letters settle in,
+     a scan beam passes over the logo, then it melts into the lock screen. ~3 s, once per app launch; tap or any key skips;
+     never shown with "reduce motion". */
+  function intro() {
+    const el = $('#splash'); if (!el) return;
+    let seen = false; try { seen = sessionStorage.getItem('auraIntro') === '1'; sessionStorage.setItem('auraIntro', '1'); } catch {}
+    if (seen || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.remove(); return; }
+    const svg = el.querySelector('svg'), q = (id) => svg.querySelector('#' + id);
+    const O = { cx: 60, cy: 66, rx: 52, ry: 14, rot: (-14 * Math.PI) / 180 };   // same orbit as the logo (tools/make_logo.py)
+    const pt = (t) => { const x = O.rx * Math.cos(t), y = O.ry * Math.sin(t); return [O.cx + x * Math.cos(O.rot) - y * Math.sin(O.rot), O.cy + x * Math.sin(O.rot) + y * Math.cos(O.rot)]; };
+    const segs = [...svg.querySelectorAll('.sp-ring, .sp-gap')].map((p) => ({ p, a: +p.dataset.a, b: +p.dataset.b }));
+    const node = q('sp-node'), glow = q('sp-glow'), halo = q('sp-halo'), rise = q('sp-rise'), shine = q('sp-shine'), beam = q('sp-beam'), trail = q('sp-trail');
+    const W = svg.viewBox.baseVal.width, NS = 'http://www.w3.org/2000/svg';
+    const dots = Array.from({ length: 7 }, (_, i) => { const c = document.createElementNS(NS, 'circle'); c.setAttribute('r', (3.4 - i * 0.4).toFixed(2)); c.setAttribute('fill', i < 3 ? '#fff6ea' : '#b8a6ff'); c.setAttribute('opacity', '0'); trail.appendChild(c); return c; });
+    const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2), out = (x) => 1 - (1 - x) ** 3, k = (ms, a, b) => Math.min(1, Math.max(0, (ms - a) / (b - a)));
+    let t0 = null, done = false, raf;
+    const finish = () => {
+      if (done) return; done = true; cancelAnimationFrame(raf);
+      el.classList.add('out'); setTimeout(() => el.remove(), 650);
+      removeEventListener('keydown', finish); el.removeEventListener('pointerdown', finish);
+    };
+    const frame = (now) => {
+      t0 ??= now; const ms = now - t0;
+      // 1. the scan point appears, then orbits once and draws the ring behind it
+      const u = ease(k(ms, 380, 1550)), t = 0.5 + u * 2 * Math.PI, [x, y] = pt(t), pop = out(k(ms, 0, 380));
+      node.setAttribute('cx', x); node.setAttribute('cy', y); node.setAttribute('r', (4.6 * pop).toFixed(2));
+      glow.setAttribute('cx', x); glow.setAttribute('cy', y); glow.setAttribute('r', (13 + 10 * (1 - pop) * pop * 4).toFixed(2)); glow.style.opacity = pop;
+      halo.style.opacity = (0.55 * Math.sin(Math.PI * k(ms, 0, 900))).toFixed(3);
+      segs.forEach((s) => { s.p.style.strokeDashoffset = (1 - Math.min(1, Math.max(0, (t - s.a) / (s.b - s.a)))).toFixed(4); });
+      const moving = ms > 380 && ms < 1550;
+      dots.forEach((d, i) => { const [dx, dy] = pt(t - (i + 1) * 0.07); d.setAttribute('cx', dx); d.setAttribute('cy', dy); d.setAttribute('opacity', moving ? (0.55 - i * 0.07).toFixed(2) : '0'); });
+      // 2. the A rises through the ring and catches a sweep of light
+      rise.setAttribute('y', (120 - 125 * out(k(ms, 720, 1380))).toFixed(2));
+      shine.setAttribute('x', (-60 + 200 * ease(k(ms, 1280, 1820))).toFixed(1));
+      // 3. letters settle in, then the sub-line
+      if (ms > 1350) svg.classList.add('go');
+      if (ms > 1750) svg.classList.add('go2');
+      // 4. a scan beam passes over the whole logo, then everything melts into the lock screen
+      const bk = k(ms, 2050, 2650); beam.setAttribute('x', (-40 + (W + 80) * ease(bk)).toFixed(1)); beam.style.opacity = bk > 0 && bk < 1 ? '0.55' : '0';
+      if (ms > 2800) return finish();
+      raf = requestAnimationFrame(frame);
+    };
+    addEventListener('keydown', finish); el.addEventListener('pointerdown', finish);
+    raf = requestAnimationFrame(frame);
+  }
+
   let inputTimer, chartEl = null;
   async function init() {
+    intro();
     db = await loadDb(); persistDb();   // moves older localStorage data into the database without marking it as a new edit
     route = readHash();
     document.addEventListener('click', (e) => {

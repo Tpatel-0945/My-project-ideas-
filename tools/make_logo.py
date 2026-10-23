@@ -98,6 +98,46 @@ def app_icon():
 <g transform="translate(76,72) scale(3)">{em("color", "i")}</g>'''
     return svg(512, 512, body)
 
+def splash():
+    """Stacked lockup with separate, id-tagged parts for the opening animation (driven by js/app.js)."""
+    import math as _m
+    f = TTFont(f'{FD}/Unbounded.ttf'); cmap = f.getBestCmap(); gs = f.getGlyphSet(); size = 100; k = size / f['head'].unitsPerEm
+    letters, x = [], 0.0
+    for i, ch in enumerate('AURA'):
+        d, w, b = text_path(f'{FD}/Unbounded.ttf', ch, size)
+        letters.append((d, x)); x += gs[cmap[ord(ch)]].width * k + (0.08 * size if i < 3 else 0)
+    cap = WORD_B[3] - WORD_B[1]; E = 160; kk = 52 / cap; sk = kk * 0.32
+    ww, sw_ = WORD_W * kk, SUB_W * sk; W = max(ww, sw_, E) + 40; x_e = (W - E) / 2
+    y_w = E + 34 + -WORD_B[1] * kk; y_s = E + 34 + cap * kk + 18 + -SUB_B[1] * sk; H = y_s + 20
+    seg = lambda a, b_: arc(a, b_, 48)
+    FA, FB, BK = seg(0.5, _m.pi - 0.12), seg(0.12, 0.5), seg(_m.pi, 2 * _m.pi)
+    body = f"""<defs>
+  <linearGradient id="spA" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#ffe2c6"/><stop offset=".45" stop-color="#ffb27a"/><stop offset="1" stop-color="#f07a45"/></linearGradient>
+  <linearGradient id="spO" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8fded0"/><stop offset="1" stop-color="#b8a6ff"/></linearGradient>
+  <radialGradient id="spN"><stop offset="0" stop-color="#fff"/><stop offset=".3" stop-color="#fff3e2"/><stop offset="1" stop-color="#ffb27a" stop-opacity="0"/></radialGradient>
+  <radialGradient id="spH"><stop offset="0" stop-color="#ffb27a" stop-opacity=".55"/><stop offset=".5" stop-color="#b8a6ff" stop-opacity=".18"/><stop offset="1" stop-color="#b8a6ff" stop-opacity="0"/></radialGradient>
+  <linearGradient id="spShine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <clipPath id="spRise"><rect id="sp-rise" x="0" y="120" width="120" height="130"/></clipPath>
+  <clipPath id="spAclip"><path d="{A_PATH}"/></clipPath>
+  <mask id="spGap" maskUnits="userSpaceOnUse" x="-20" y="-20" width="160" height="160"><rect x="-20" y="-20" width="160" height="160" fill="#fff"/>
+    <path class="sp-gap" data-a="0.5" data-b="{_m.pi - 0.12}" d="{FA}" pathLength="1" fill="none" stroke="#000" stroke-width="13" stroke-linecap="round"/>
+    <path class="sp-gap" data-a="{2 * _m.pi + 0.12}" data-b="{2 * _m.pi + 0.5}" d="{FB}" pathLength="1" fill="none" stroke="#000" stroke-width="13" stroke-linecap="round"/></mask>
+</defs>
+<g id="sp-mark" transform="translate({x_e:.2f},0) scale({E / 120:.4f})">
+  <circle id="sp-halo" cx="60" cy="62" r="58" fill="url(#spH)" opacity="0"/>
+  <path class="sp-ring" data-a="{_m.pi}" data-b="{2 * _m.pi}" d="{BK}" pathLength="1" fill="none" stroke="url(#spO)" stroke-width="6" stroke-linecap="round" opacity=".9"/>
+  <g mask="url(#spGap)"><g clip-path="url(#spRise)"><path id="sp-A" d="{A_PATH}" fill="url(#spA)" stroke="url(#spA)" stroke-width="2.4" stroke-linejoin="round"/>
+    <g clip-path="url(#spAclip)"><rect id="sp-shine" x="-60" y="0" width="40" height="120" fill="url(#spShine)" transform="skewX(-18)"/></g></g></g>
+  <path class="sp-ring" data-a="0.5" data-b="{_m.pi - 0.12}" d="{FA}" pathLength="1" fill="none" stroke="url(#spO)" stroke-width="6" stroke-linecap="round"/>
+  <path class="sp-ring" data-a="{2 * _m.pi + 0.12}" data-b="{2 * _m.pi + 0.5}" d="{FB}" pathLength="1" fill="none" stroke="url(#spO)" stroke-width="6" stroke-linecap="round"/>
+  <g id="sp-trail"></g>
+  <circle id="sp-glow" r="13" fill="url(#spN)" cx="{NODE[0]:.2f}" cy="{NODE[1]:.2f}"/><circle id="sp-node" r="0" fill="#fff" cx="{NODE[0]:.2f}" cy="{NODE[1]:.2f}"/>
+</g>
+<g id="sp-word" transform="translate({(W - ww) / 2:.2f},{y_w:.2f}) scale({kk:.4f})">{''.join(f'<path class="sp-l" style="--i:{i}" transform="translate({lx:.1f},0)" d="{d}" fill="#f4efe9"/>' for i, (d, lx) in enumerate(letters))}</g>
+<g id="sp-subw" transform="translate({(W - sw_) / 2:.2f},{y_s:.2f}) scale({sk:.4f})"><path id="sp-sub" d="{SUB_D}" fill="#8e95a6"/></g>
+<rect id="sp-beam" x="-40" y="0" width="34" height="{H:.0f}" fill="url(#spShine)" opacity="0"/>"""
+    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W:.0f} {H:.0f}" class="splash-svg" aria-hidden="true">{body}</svg>', ORBIT
+
 files = {
     'aura-logo-horizontal.svg': horizontal('color'), 'aura-logo-horizontal-light.svg': horizontal('light'),
     'aura-logo-horizontal-white.svg': horizontal('mono-white'), 'aura-logo-horizontal-black.svg': horizontal('mono-black'),
@@ -107,4 +147,5 @@ files = {
     'aura-app-icon.svg': app_icon(),
 }
 for n, c in files.items(): open(f'{OUT}/{n}', 'w').write(c)
+open(f'{OUT}/aura-splash.svg', 'w').write(splash()[0])
 print('wrote', len(files), 'files; word width', round(WORD_W), 'cap', WORD_B)

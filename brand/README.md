@@ -8,6 +8,7 @@
 | `aura-logo-compact.svg` / `-light` | mark + AURA only, for small spaces (app top bar, lock screen) |
 | `aura-logo-stacked.svg` / `-light` | centred version for splash screens and posters |
 | `aura-mark.svg` / `-light` / `-white` / `-black` | the symbol alone (favicons, avatars, watermarks) |
+| `aura-splash.svg` | the stacked logo split into parts for the app's opening animation (scan point orbits and draws the ring, the A rises and catches the light, letters settle, a scan beam passes) |
 | `aura-app-icon.svg`, `aura-app-icon-1024.png` | the mark on a deep-space rounded square, ready as an app icon |
 | `*@3x.png`, `*-1024.png`, `*-512.png` | transparent PNG exports |
 
