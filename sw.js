@@ -1,7 +1,7 @@
 /* AURA service worker: lets the installed app open instantly and work offline.
    Your own files are fetched fresh when online (so updates show up) and fall back to the saved copy offline.
    Libraries from CDNs and the face model are cached after first use. Sign-in, sync and Derma requests are never cached. */
-const VERSION = 'aura-v9';
+const VERSION = 'aura-v10';
 const SHELL = ['./', './index.html', './css/style.css', './js/app.js', './js/firebase-config.js', './js/lock-config.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png', './favicon.ico'];
 const NEVER = /firestore\.googleapis|identitytoolkit|securetoken|googleapis\.com\/(identitytoolkit|v1)|generativelanguage|apis\.google\.com|firebaseapp\.com|accounts\.google/;
 const CDN = /cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com|www\.gstatic\.com\/firebasejs/;

@@ -775,3 +775,9 @@ td.num { white-space: nowrap; }
 .splash .go2 #sp-sub { opacity: 1; scale: 1 1; }
 .splash #sp-beam { mix-blend-mode: screen; }
 @media (prefers-reduced-motion: reduce) { .splash { display: none; } }
+
+/* Derma engine picker */
+.d-eng { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.d-eng button { text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.d-eng button.on { border-color: var(--accent); background: rgba(255, 178, 122, 0.1); }
+.d-eng button.on::after { content: ' ✓'; color: var(--good); }

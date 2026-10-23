@@ -2601,8 +2601,8 @@ const App = (() => {
       ${lockCard()}
       ${installCard()}
       <div class="card derma-card"><h3><span class="d-orb sm" aria-hidden="true"><i></i></span> Derma · AI coach</h3>
-        <p class="small">${derma.key ? `Connected to Google Gemini (<b>${esc(derma.model)}</b>). Derma knows your scans, check-ins, sleep, routine and your muesli lunch.` : 'Chat with Derma about your skin, hair, sleep and food. It runs on Google Gemini using your own free API key, which stays on this device.'}</p>
-        <div class="row"><button class="btn sm primary" data-act="askDerma">${derma.key ? 'Open chat' : 'Connect Google API key'}</button>${derma.key ? '<button class="btn sm" data-act="dSettings">Derma settings</button>' : ''}</div></div>
+        <p class="small">${engine() ? `Running on <b>${esc(engineLabel())}</b>. Derma knows your skin type, scans, check-ins, sleep, routine and your muesli lunch.` : 'Chat with Derma about your skin, hair, sleep and food. It runs on Claude: built in when opened inside claude.ai, or with your own Anthropic API key anywhere else.'}</p>
+        <div class="row"><button class="btn sm primary" data-act="askDerma">${engine() ? 'Open chat' : 'Connect Claude'}</button>${engine() ? '<button class="btn sm" data-act="dSettings">Derma settings</button>' : ''}</div></div>
     </div>
     <div class="grid g2 section">
       ${accountCard()}
@@ -2713,6 +2713,7 @@ const App = (() => {
       lock.cfg = p.lock.off ? null : { ...p.lock, bio, after: p.lock.after ?? lock.cfg?.after ?? 5 };
       store.set('lock', p.lock.off ? { off: true, at: p.lock.at } : lock.cfg); ch = true;
     }
+    if (p.akey && !derma.akey && store.get('gsync', true)) { derma.akey = p.akey; store.set('akey', p.akey); ch = true; }
     if (p.gkey && !derma.key && store.get('gsync', true)) { Object.assign(derma, { key: p.gkey, model: p.gmodel || derma.model || 'gemini-2.5-flash' }); store.set('gkey', p.gkey); store.set('gmodel', derma.model); ch = true; }
     return ch;
   }
@@ -2790,7 +2791,7 @@ const App = (() => {
     for (const sc of db.scans) if (!cloud.sent.has(sc.id)) { cloud.sent.add(sc.id); writes.push(ref.collection('scans').doc(sc.id).set(sc).catch((e) => { cloud.sent.delete(sc.id); throw e; })); }
     const chatJ = JSON.stringify(db.chat || []);
     if (chatJ !== cloud.chatJ) { writes.push(ref.collection('chat').doc('main').set({ j: chatJ, by: cloud.device, at: stamp })); cloud.chatJ = chatJ; }
-    const priv = { lock: syncLock(), gkey: store.get('gsync', true) ? derma.key || null : null, gmodel: derma.model || null }, privJ = JSON.stringify(priv);
+    const priv = { lock: syncLock(), gkey: store.get('gsync', true) ? derma.key || null : null, akey: store.get('gsync', true) ? derma.akey || null : null, gmodel: derma.model || null }, privJ = JSON.stringify(priv);
     if (privJ !== cloud.privJ) { writes.push(ref.collection('private').doc('settings').set({ ...priv, by: cloud.device, at: stamp })); cloud.privJ = privJ; }
     cloud.status = cloud.offline ? 'offline' : 'syncing'; renderAcct();
     Promise.all(writes).then(() => { cloud.status = 'synced'; cloud.err = ''; cloud.lastSync = Date.now(); renderAcct(); if (route === '/me') render(); })
@@ -2896,7 +2897,7 @@ const App = (() => {
       if (!res.ok) throw new Error(res.status === 400 || res.status === 403 ? 'Google rejected that key. Check you copied all of it, and that the Generative Language API is enabled for it.' : j.error?.message || 'HTTP ' + res.status);
       const names = rankModels((j.models || []).filter((m) => (m.supportedGenerationMethods || []).includes('generateContent')).map((m) => m.name.replace(/^models\//, '')));
       if (!names.length) throw new Error('This key has no Gemini chat models available.');
-      Object.assign(derma, { key, models: names, model: names[0], view: 'chat' });
+      Object.assign(derma, { key, models: names, model: names[0], view: 'chat' }); store.set('dengine', 'gemini');
       if (remember) { store.set('gkey', key); store.set('gmodel', derma.model); store.set('gmodels', names); }
       toast('Derma is connected');
     } catch (e) { derma.err = e instanceof TypeError ? 'Couldn\'t reach Google from this page. In the claude.ai preview outside connections are blocked; it works on your own deployed site.' : e.message; }
@@ -2928,23 +2929,117 @@ Ground every suggestion in evidence and in the user's own data below; mention th
 Diet: the user avoids a full lunch to limit carbs and eats muesli at lunchtime. Respect that choice and plan around it (make the bowl protein-rich, low in added sugar, and balance breakfast, snack and dinner).
 Safety: you are not a doctor and cannot diagnose. Recommend a dermatologist for a changing or bleeding mole, sudden or patchy hair loss, painful cystic or scarring acne, a rash that spreads, blisters or comes with fever, or no improvement after 8-12 weeks. Say when a treatment needs a prescription (tretinoin, isotretinoin, oral antibiotics, oral minoxidil, hydroquinone above 2%). Never suggest stopping a prescribed medicine.
 The app's photo scores are colour-based estimates that change with lighting and camera, so treat them as rough signals. If a photo is attached, describe only what is visible and be cautious.`;
-  async function dermaSend(text) {
-    text = (text || '').trim();
-    if (derma.busy || (!text && !derma.img)) return;
-    if (!derma.key) { derma.view = 'key'; derma.draft = text; return dermaRender(); }
-    db.chat ||= [];
-    const img = derma.img; derma.img = null;
-    db.chat.push({ r: 'u', t: text || 'What do you see in this photo?', img: !!img, at: Date.now() });
-    const msg = { r: 'm', t: '', at: Date.now() }; db.chat.push(msg);
+  /* ---------- Derma's engines ----------
+     builtin: Claude through claude.ai (the page asks Claude on your own claude.ai account; no key; only inside claude.ai)
+     claude:  Claude Opus 5.5 through the Anthropic API with your own key (official @anthropic-ai/sdk, streamed)
+     gemini:  Google Gemini with your own key */
+  const CLAUDE_MODEL = 'claude-opus-5-5', CLAUDE_SDK = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.132.1/+esm';
+  Object.assign(derma, { akey: store.get('akey', ''), builtin: null, builtinImg: false });
+  let sdkP = null;
+  const loadClaudeSDK = () => (sdkP ||= import(CLAUDE_SDK).then((m) => m.default || m.Anthropic).catch((e) => { sdkP = null; throw e; }));
+  const engine = () => {
+    const pref = store.get('dengine', 'auto');
+    if (pref === 'builtin' && derma.builtin) return 'builtin';
+    if (pref === 'claude' && derma.akey) return 'claude';
+    if (pref === 'gemini' && derma.key) return 'gemini';
+    return derma.builtin ? 'builtin' : derma.akey ? 'claude' : derma.key ? 'gemini' : null;
+  };
+  const engineLabel = (e = engine()) => ({ builtin: 'Claude · via claude.ai', claude: 'Claude Opus 5.5', gemini: derma.model || 'Gemini' })[e] || 'not connected';
+  // inside claude.ai the page can ask Claude directly; elsewhere this resolves to null
+  (async () => {
+    try {
+      if (!window.claude?.use) return;
+      const s = await window.claude.use('sample'); if (!s) return;
+      derma.builtin = s; derma.builtinImg = !!(await s.limits().catch(() => null))?.images;
+      if (derma.view === 'key') derma.view = 'chat';
+      dermaRender(); if (route === '/me') render();
+    } catch {}
+  })();
+  async function claudeConnect(key, remember) {
+    key = key.trim(); if (!key) return;
     derma.busy = true; derma.err = ''; dermaRender();
+    try {
+      const Anthropic = await loadClaudeSDK();
+      const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
+      await client.models.retrieve(CLAUDE_MODEL);   // checks the key and that it can use the model
+      derma.akey = key; if (remember) store.set('akey', key);
+      store.set('dengine', 'claude'); derma.view = 'chat'; toast('Derma is connected to Claude'); cloudPush();
+    } catch (e) {
+      const A = await loadClaudeSDK().catch(() => null);
+      derma.err = !A ? 'Couldn\'t load the Claude library. Check your connection.'
+        : e instanceof A.AuthenticationError ? 'Anthropic rejected that key. Check you copied all of it (it starts with sk-ant-).'
+        : e instanceof A.PermissionDeniedError || e instanceof A.NotFoundError ? 'This key can\'t use Claude Opus 5.5 yet. Check your plan and credits in the Claude Console.'
+        : e instanceof A.APIConnectionError ? 'Couldn\'t reach Anthropic from this page. Check your connection.'
+        : e?.message || 'Could not connect.';
+    }
+    derma.busy = false; dermaRender();
+  }
+  // the chat history as alternating turns that start with the user (failed sends can leave two user turns in a row)
+  function chatTurns() {
+    const out = [];
+    for (const m of db.chat.slice(-17, -1).filter((x) => x.t)) {
+      const role = m.r === 'u' ? 'user' : 'assistant';
+      if (!out.length && role !== 'user') continue;
+      if (out.length && out.at(-1).role === role) out.at(-1).content += '\n\n' + m.t; else out.push({ role, content: m.t });
+    }
+    return out;
+  }
+  async function sendClaude(msg, img, ctxText, paint) {
+    const Anthropic = await loadClaudeSDK();
+    const client = new Anthropic({ apiKey: derma.akey, dangerouslyAllowBrowser: true });
+    const turns = chatTurns(), last = turns.at(-1);
+    if (img) last.content = [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img.split(',')[1] } }, { type: 'text', text: last.content }];
+    try {
+      // refusal fallbacks are on: if Claude Opus 5.5's safety classifiers decline, the API retries on a fallback model in the same stream
+      const stream = client.beta.messages.stream({
+        model: CLAUDE_MODEL, max_tokens: 16000, system: ctxText, messages: turns,
+        output_config: { effort: 'medium' }, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      }, { signal: derma.ctrl.signal });
+      stream.on('text', (delta) => { msg.t += delta; paint(); });
+      const final = await stream.finalMessage();
+      if (final.stop_reason === 'refusal') msg.t = 'I can\'t help with that one. Try asking it a different way, or check with a dermatologist.';
+      else if (final.stop_reason === 'max_tokens') msg.t += '\n\n*(Reply cut short. Ask me to continue.)*';
+    } catch (e) {
+      if (e instanceof Anthropic.APIUserAbortError) { const er = new Error('stopped'); er.name = 'AbortError'; throw er; }
+      throw new Error(e instanceof Anthropic.AuthenticationError ? 'Anthropic says this key is no longer valid. Paste a new one in Derma settings.'
+        : e instanceof Anthropic.RateLimitError ? 'Too many requests right now. Wait a moment and try again.'
+        : e instanceof Anthropic.PermissionDeniedError ? 'This key isn\'t allowed to use Claude Opus 5.5. Check your plan and credits in the Claude Console.'
+        : e instanceof Anthropic.APIConnectionError ? 'Couldn\'t reach Anthropic. Check your connection.'
+        : e instanceof Anthropic.APIError && e.status >= 500 ? 'Claude is busy at the moment. Try again in a minute.'
+        : e?.message || 'Something went wrong.');
+    }
+  }
+  async function sendBuiltin(msg, img, ctxText, paint) {
+    const turns = chatTurns();
+    // no system prompt here: the instructions and your data go at the top of the first turn
+    turns[0] = { role: 'user', content: ctxText + '\n\n---\nThe chat with the user starts here. Reply as Derma to the latest message.\n\nUser: ' + turns[0].content };
+    let images;
+    if (img && derma.builtinImg) images = [await (await fetch(img)).blob()];
+    else if (img) turns.at(-1).content += '\n\n(The user attached a photo, but photos can\'t be sent from this view. Say so briefly.)';
+    try {
+      const r = await derma.builtin(turns, { onText: ({ text }) => { msg.t = text; paint(); }, signal: derma.ctrl.signal, modelTier: 'default', cache: false, ...(images ? { images } : {}) });
+      msg.t = r.text; if (r.truncated) msg.t += '\n\n*(Reply cut short. Ask me to continue.)*';
+    } catch (e) {
+      if (e?.code === 'cancelled') { const er = new Error('stopped'); er.name = 'AbortError'; throw er; }
+      if (e?.text) { msg.t = e.text + '\n\n*(Interrupted.)*'; return; }
+      throw new Error(({
+        not_granted: 'You haven\'t allowed AURA to ask Claude. Allow it from this page\'s Permissions menu, or add a Claude API key in Derma settings.',
+        rate_limited: 'You\'ve reached your Claude usage limit for now. Try again later.',
+        refused: 'Claude declined to answer that. Try asking it a different way.',
+        prompt_too_large: 'The conversation is too long. Clear the chat and ask again.',
+        session_expired: 'Your claude.ai session expired. Reload the page and sign in again.',
+        upstream_error: 'Claude is busy at the moment. Try again in a minute.',
+      })[e?.code] || 'Claude isn\'t available in this view right now. You can add a Claude API key in Derma settings.');
+    }
+  }
+
+  async function sendGemini(msg, img, ctxText, paint) {
     const hist = db.chat.slice(-17, -1).filter((m) => m.t).map((m, i, arr) => {
       const parts = [{ text: m.t }];
       if (i === arr.length - 1 && img) parts.push({ inlineData: { mimeType: 'image/jpeg', data: img.split(',')[1] } });
       return { role: m.r === 'u' ? 'user' : 'model', parts };
     });
-    const body = { systemInstruction: { parts: [{ text: DERMA_RULES + '\n\nUSER DATA (from the app, may be incomplete):\n' + dermaContext() }] }, contents: hist, generationConfig: { temperature: 0.6 } };
-    const bubble = () => $('#dmsgs .msg.m:last-child .bubble');
-    derma.ctrl = new AbortController();
+    const body = { systemInstruction: { parts: [{ text: ctxText }] }, contents: hist, generationConfig: { temperature: 0.6 } };
     try {
       const res = await fetch(`${GEM}/models/${derma.model || 'gemini-2.5-flash'}:streamGenerateContent?alt=sse`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': derma.key }, body: JSON.stringify(body), signal: derma.ctrl.signal });
       if (!res.ok) {
@@ -2962,13 +3057,34 @@ The app's photo scores are colour-based estimates that change with lighting and 
           (j.candidates?.[0]?.content?.parts || []).forEach((pt) => { if (pt.text && !pt.thought) msg.t += pt.text; });
           why = j.promptFeedback?.blockReason || (j.candidates?.[0]?.finishReason === 'SAFETY' ? 'SAFETY' : why);
         }
-        const b = bubble(); if (b) { b.innerHTML = md(msg.t) + '<span class="caret"></span>'; dScroll(); }
+        paint();
       }
       if (!msg.t) msg.t = why ? 'I can\'t answer that one. Try asking it a different way.' : '(No reply came back. Please try again.)';
+    } catch (e) {
+      if (e instanceof TypeError) throw new Error('Couldn\'t reach Google. Check your connection.');
+      throw e;
+    }
+  }
+  async function dermaSend(text) {
+    text = (text || '').trim();
+    if (derma.busy || (!text && !derma.img)) return;
+    const eng = engine();
+    if (!eng) { derma.view = 'key'; derma.draft = text; return dermaRender(); }
+    db.chat ||= [];
+    const img = derma.img; derma.img = null;
+    db.chat.push({ r: 'u', t: text || 'What do you see in this photo?', img: !!img, at: Date.now() });
+    const msg = { r: 'm', t: '', at: Date.now(), by: eng }; db.chat.push(msg);
+    derma.busy = true; derma.err = ''; dermaRender();
+    const ctxText = DERMA_RULES + '\n\nUSER DATA (from the app, may be incomplete):\n' + dermaContext();
+    const paint = () => { const b = $('#dmsgs .msg.m:last-child .bubble'); if (b) { b.innerHTML = md(msg.t) + '<span class="caret"></span>'; dScroll(); } };
+    derma.ctrl = new AbortController();
+    try {
+      await (eng === 'builtin' ? sendBuiltin : eng === 'claude' ? sendClaude : sendGemini)(msg, img, ctxText, paint);
+      if (!msg.t) msg.t = '(No reply came back. Please try again.)';
       if (derma.speak) speakOut(msg.t);
     } catch (e) {
       if (e.name === 'AbortError') msg.t ||= '(stopped)';
-      else { db.chat.pop(); derma.err = e instanceof TypeError ? 'Couldn\'t reach Google. Check your connection. (In the claude.ai preview outside connections are blocked; Derma works on your deployed site.)' : e.message; }
+      else { db.chat.pop(); derma.err = e.message; }
     }
     db.chat = db.chat.slice(-40); derma.busy = false; derma.ctrl = null; save(); dermaRender();
   }
@@ -3004,28 +3120,41 @@ The app's photo scores are colour-based estimates that change with lighting and 
     const el = $('#derma'); if (!el) return;
     el.classList.toggle('hidden', !derma.open); $('#dermaFab')?.classList.toggle('open', derma.open); document.body.classList.toggle('derma-open', derma.open);
     if (!derma.open) return;
-    const status = derma.key ? `${esc(derma.model || 'Gemini')} · ${derma.busy ? 'thinking…' : 'online'}` : 'not connected';
-    const head = `<div class="d-head"><span class="d-orb ${derma.busy ? 'busy' : ''}" aria-hidden="true"><i></i></span><div class="d-title"><b>Derma</b><span class="tiny ${derma.key ? 'ok' : 'muted'}">${status}</span></div>
+    const eng = engine();
+    const status = eng ? `${esc(engineLabel(eng))} · ${derma.busy ? 'thinking…' : 'online'}` : 'not connected';
+    const head = `<div class="d-head"><span class="d-orb ${derma.busy ? 'busy' : ''}" aria-hidden="true"><i></i></span><div class="d-title"><b>Derma</b><span class="tiny ${eng ? 'ok' : 'muted'}">${status}</span></div>
       <div class="d-tools">${derma.view === 'chat' && db.chat?.length ? '<button class="ib" data-act="dClear" title="Clear chat" aria-label="Clear chat"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M6.5 7l1 12.5h9L17.5 7M9.5 7V4.5h5V7"/></svg></button>' : ''}
       <button class="ib ${derma.view !== 'chat' ? 'on' : ''}" data-act="dView" data-v="${derma.view === 'chat' ? 'settings' : 'chat'}" title="Derma settings" aria-label="Derma settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg></button>
       <button class="ib" data-act="derma" title="Close" aria-label="Close Derma"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></div>`;
     const err = derma.err ? `<div class="insight bad d-err"><div class="ic">!</div><div><p style="color:var(--text);margin:0">${esc(derma.err)}</p></div></div>` : '';
     let body;
-    if (derma.view === 'key' || (derma.view === 'settings' && !derma.key)) {
-      body = `<div class="d-pane"><div class="d-hero"><span class="d-orb big" aria-hidden="true"><i></i></span><h3>Connect Derma</h3><p class="small muted">Derma runs on Google's Gemini models using your own free API key.</p></div>
-        <ol class="small steps"><li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → API keys</a> and sign in with your Google account.</li><li>Tap <b>Create API key</b> and copy it.</li><li>Paste it here.</li></ol>
+    const syncBox = cloud.user ? `<label class="dcheck"><input type="checkbox" name="sync" ${store.get('gsync', true) ? 'checked' : ''}> Also keep it in my account, so Derma works on all my devices</label>` : '';
+    if (derma.view === 'key' || derma.view === 'gkey' || (derma.view === 'settings' && !eng)) {
+      const gem = derma.view === 'gkey';
+      body = `<div class="d-pane"><div class="d-hero"><span class="d-orb big" aria-hidden="true"><i></i></span><h3>Connect Derma</h3><p class="small muted">${gem ? 'Use Google Gemini instead, with a free Google API key.' : 'Derma runs on Claude, Anthropic\'s AI, in real time.'}</p></div>
+        ${derma.builtin && !gem ? `<div class="insight good"><div class="ic">✓</div><div><p style="color:var(--text);margin:0"><b>Claude is built in here.</b> You opened AURA inside claude.ai, so Derma can use Claude with no key and no cost.</p><button class="btn sm primary mt" data-act="dEngine" data-e="builtin">Use built-in Claude</button></div></div><p class="tiny muted mt">Or connect your own key, so Derma also works when AURA runs on its own (your website, the installed app or AURA.html):</p>` : ''}
+        ${gem ? `<ol class="small steps"><li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → API keys</a> and sign in.</li><li>Tap <b>Create API key</b> and copy it.</li><li>Paste it here.</li></ol>
         ${err}<form class="stack" data-form="gkey"><div><label for="gKey">Gemini API key</label><input id="gKey" name="key" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…" required></div>
-        <label class="dcheck"><input type="checkbox" name="remember" checked> Remember on this device</label>
-        ${cloud.user ? `<label class="dcheck"><input type="checkbox" name="sync" ${store.get('gsync', true) ? 'checked' : ''}> Also keep it in my account, so Derma works on all my devices</label>` : ''}
-        <button class="btn primary" ${derma.busy ? 'disabled' : ''}>${derma.busy ? 'Checking…' : 'Connect'}</button></form>
-        <div class="d-note tiny muted"><b>Privacy.</b> Your key is kept in this browser${cloud.user ? ' and, if you tick the box, in your own account (readable only by you)' : ''}. It is never saved in the website's code. When you chat, your message and a short summary of your logs (scores, today's check-in, targets, routine) go to Google. On the free tier Google may use them to improve its products; a paid (billing-enabled) key keeps them private.<br><br><b>Protect the key:</b> in Google Cloud Console → APIs & Services → Credentials, restrict it to your website's address (HTTP referrer) and to the Generative Language API.</div></div>`;
+        <label class="dcheck"><input type="checkbox" name="remember" checked> Remember on this device</label>${syncBox}
+        <button class="btn primary" ${derma.busy ? 'disabled' : ''}>${derma.busy ? 'Checking…' : 'Connect Gemini'}</button></form>
+        <div class="d-note tiny muted">On Google's free tier your messages may be used to improve Google's products. Restrict the key to your website's address in Google Cloud Console → Credentials.</div>
+        <button class="btn sm ghost mt" data-act="dView" data-v="key">← Back to Claude</button>`
+        : `<ol class="small steps"><li>Open <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Claude Console → API keys</a> and sign in (add a few dollars of credit under Billing).</li><li>Tap <b>Create key</b> and copy it.</li><li>Paste it here.</li></ol>
+        ${err}<form class="stack" data-form="akey"><div><label for="aKey">Anthropic API key</label><input id="aKey" name="key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" required></div>
+        <label class="dcheck"><input type="checkbox" name="remember" checked> Remember on this device</label>${syncBox}
+        <button class="btn primary" ${derma.busy ? 'disabled' : ''}>${derma.busy ? 'Checking…' : 'Connect Claude'}</button></form>
+        <div class="d-note tiny muted"><b>Cost.</b> Pay as you go: a typical Derma reply on Claude Opus 5.5 costs about 1–3 US cents. Set a monthly spend limit in the Console under Limits.<br><br><b>Privacy.</b> Your key is kept in this browser${cloud.user ? ' and, if you tick the box, in your own account (readable only by you)' : ''}. It is never saved in the website's code. When you chat, your message and a short summary of your logs go straight from this device to Anthropic, which does not train on API data. Anyone using this browser could use the key, so keep the PIN lock on.</div>
+        <button class="btn sm ghost mt" data-act="dView" data-v="gkey">Use Google Gemini instead</button>`}</div>`;
     } else if (derma.view === 'settings') {
+      const opts = [['builtin', 'Claude, built into claude.ai', !!derma.builtin], ['claude', 'Claude Opus 5.5 (my key)', !!derma.akey], ['gemini', `Google ${derma.model || 'Gemini'} (my key)`, !!derma.key]].filter((o) => o[2]);
       body = `<div class="d-pane"><h3>Derma settings</h3>${err}
-        <label for="gModel">Model</label><select id="gModel" data-dmodel>${(derma.models.length ? derma.models : [derma.model]).map((m) => `<option ${m === derma.model ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select>
-        <p class="tiny muted">The newest "flash" model is picked automatically: fast, with the most generous free limits. "Pro" models think longer but have lower free limits.</p>
+        <label>AI engine</label><div class="d-eng">${opts.map(([k, l]) => `<button class="${eng === k ? 'on' : ''}" data-act="dEngine" data-e="${k}">${esc(l)}</button>`).join('')}</div>
+        ${eng === 'gemini' ? `<label for="gModel" class="mt">Gemini model</label><select id="gModel" data-dmodel>${(derma.models.length ? derma.models : [derma.model]).map((m) => `<option ${m === derma.model ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select>` : ''}
+        ${eng === 'builtin' ? '<p class="tiny muted">Built-in Claude works only while AURA is open inside claude.ai. Add your own key so Derma works everywhere.</p>' : ''}
         <label class="dcheck mt"><input type="checkbox" data-act="dSpeak" ${derma.speak ? 'checked' : ''}> Read replies aloud</label>
-        <div class="row mt"><button class="btn sm" data-act="dView" data-v="key">Change key</button><button class="btn sm ghost" data-act="dForget">Disconnect & forget key</button></div>
-        <div class="d-note tiny muted">Derma sees: your profile, targets, muesli bowl, today's check-in, 14-day averages, routine, alarm and latest scan scores. It does not see your photos unless you attach one.</div>
+        <div class="row mt"><button class="btn sm" data-act="dView" data-v="key">${derma.akey ? 'Change Claude key' : 'Add Claude key'}</button>${derma.akey ? '<button class="btn sm ghost" data-act="dForgetClaude">Forget Claude key</button>' : ''}
+        <button class="btn sm" data-act="dView" data-v="gkey">${derma.key ? 'Change Gemini key' : 'Add Gemini key'}</button>${derma.key ? '<button class="btn sm ghost" data-act="dForget">Forget Gemini key</button>' : ''}</div>
+        <div class="d-note tiny muted">Derma sees: your skin type and concerns, profile, targets, muesli bowl, today's check-in, 14-day averages, routine, alarm and latest scan scores. It does not see your photos unless you attach one.</div>
         <button class="btn primary mt" data-act="dView" data-v="chat">Back to chat</button></div>`;
     } else {
       const msgs = db.chat || [];
@@ -3034,7 +3163,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
           <div class="d-sugg">${dermaSuggestions().map(([ic, l, q]) => `<button data-act="dAsk" data-q="${esc(q)}"><span>${ic}</span>${esc(l)}</button>`).join('')}</div>${err}</div>`;
       body += `<form class="d-compose" data-form="derma">${derma.img ? `<div class="d-att"><img src="${derma.img}" alt=""><button type="button" data-act="dImgX" aria-label="Remove photo">×</button></div>` : ''}
         <label class="ib" title="Attach a photo" aria-label="Attach a photo"><input type="file" accept="image/*" id="dFile" hidden><svg viewBox="0 0 24 24"><path d="M20 12.5 12.6 20a5 5 0 0 1-7.1-7.1l8-8a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.2-7.2"/></svg></label>
-        <textarea id="dInput" name="q" rows="1" placeholder="${derma.key ? 'Ask Derma…' : 'Connect a key to start chatting'}" enterkeyhint="send">${esc(derma.draft)}</textarea>
+        <textarea id="dInput" name="q" rows="1" placeholder="${eng ? 'Ask Derma…' : 'Connect Claude to start chatting'}" enterkeyhint="send">${esc(derma.draft)}</textarea>
         <button type="button" class="ib" id="dMic" data-act="dMic" title="Speak" aria-label="Speak your question"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
         ${derma.busy ? '<button type="button" class="send stop" data-act="dStop" aria-label="Stop"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></svg></button>' : '<button class="send" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-2.5-6.5z"/></svg></button>'}</form>
         <p class="d-disc tiny muted">Derma can be wrong and is not medical advice.</p>`;
@@ -3051,9 +3180,9 @@ The app's photo scores are colour-based estimates that change with lighting and 
     }
   }
   function dermaOpen(q) {
-    derma.open = true; if (!derma.key) derma.view = 'key';
-    if (q) { if (derma.key) { derma.view = 'chat'; dermaRender(); return dermaSend(q); } derma.draft = q; }
-    dermaRender(); setTimeout(() => ($('#gKey') || $('#dInput'))?.focus(), 60);
+    derma.open = true; if (!engine()) derma.view = 'key';
+    if (q) { if (engine()) { derma.view = 'chat'; dermaRender(); return dermaSend(q); } derma.draft = q; }
+    dermaRender(); setTimeout(() => ($('#aKey') || $('#gKey') || $('#dInput'))?.focus(), 60);
   }
 
   /* ================= privacy lock & sign-in gate =================
@@ -3347,7 +3476,9 @@ The app's photo scores are colour-based estimates that change with lighting and 
       }
       case 'dView': derma.view = d.v; derma.err = ''; return dermaRender();
       case 'dClear': return askConfirm('Clear the whole conversation with Derma?', () => { db.chat = []; save(); dermaRender(); }, 'Clear chat');
-      case 'dForget': store.set('gkey', ''); store.set('gmodels', []); Object.assign(derma, { key: '', models: [], view: 'key' }); cloudPush(); toast('Key removed'); return dermaRender();
+      case 'dForget': store.set('gkey', ''); store.set('gmodels', []); Object.assign(derma, { key: '', models: [], view: engine() ? 'settings' : 'key' }); cloudPush(); toast('Gemini key removed'); return dermaRender();
+      case 'dForgetClaude': store.set('akey', ''); derma.akey = ''; derma.view = engine() ? 'settings' : 'key'; cloudPush(); toast('Claude key removed'); return dermaRender();
+      case 'dEngine': store.set('dengine', d.e); derma.err = ''; derma.view = 'chat'; toast('Derma: ' + engineLabel()); dermaRender(); if (route === '/me') render(); return;
       case 'dSpeak': derma.speak = !derma.speak; store.set('dspeak', derma.speak); if (!derma.speak) try { speechSynthesis.cancel(); } catch {} return dermaRender();
       case 'dCopy': return copyText(db.chat[+d.i]?.t || '');
       case 'dSay': return speakOut(db.chat[+d.i]?.t || '');
@@ -3367,7 +3498,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
       case 'pinOff': return askConfirm('Remove the PIN lock from this device?', () => { lockSave(null); lock.locked = false; render(); toast('Lock removed'); }, 'Remove lock');
       case 'pinForgot': return askConfirm(fbConfig() ? 'Reset the PIN? For your privacy this removes your data from this device and signs you out. Sign in again, choose a new PIN, and everything comes back from your account.' : 'Reset the lock? For your privacy this erases all AURA data stored on this device. This cannot be undone.', async () => {
         store.set('lock', null); lock.cfg = fbConfig() ? lockLoad() : null; lock.locked = false; lock.fails = 0; lock.until = 0;
-        db = fresh(); current = null; await wipeDevice(); save(true); store.set('gkey', ''); Object.assign(derma, { key: '', models: [] });
+        db = fresh(); current = null; await wipeDevice(); save(true); store.set('gkey', ''); store.set('akey', ''); Object.assign(derma, { key: '', akey: '', models: [] });
         if (cloud.user) await cloud.auth.signOut();
         Object.assign(lock, { setup: true, first: '', entry: '', len: 6 });   // choose a new PIN (after signing in again, if you use an account)
         gateCheck(true); render();
@@ -3415,6 +3546,7 @@ The app's photo scores are colour-based estimates that change with lighting and 
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(form));
     if (form.dataset.form === 'derma') return dermaSend(fd.q);
+    if (form.dataset.form === 'akey') { if (cloud.user) store.set('gsync', !!fd.sync); return claudeConnect(fd.key, !!fd.remember); }
     if (form.dataset.form === 'gkey') { if (cloud.user) store.set('gsync', !!fd.sync); return dermaConnect(fd.key, !!fd.remember).then(() => cloudPush()); }
     if (form.dataset.form === 'addStep') { db.routine[fd.when].push({ id: uid(), name: fd.name.trim(), kind: fd.kind }); toast('Step added'); }
     if (form.dataset.form === 'profile') { if (fd.skinType !== db.profile.skinType) Object.assign(db.profile, { skinTypeManual: !!fd.skinType, skinTypeAuto: false, skinTypeHow: fd.skinType ? 'chosen by you' : '' }); Object.assign(db.profile, fd); toast('Profile saved'); }
